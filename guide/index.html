@@ -147,9 +147,13 @@ worth understanding once, even though you'll mostly drive from the top.</p>
 <p>The offline rehearsal in <a href="/guide/02-rehearse-offline.html">step 02</a> needs only Python
 3.11+. A <em>live</em> cycle additionally needs:</p>
 <ul>
-<li>The <strong>Claude CLI</strong> (<code>claude</code>) installed and authenticated — the Plan, Do,
-Check-reviewer, sign-off, publish, and Act beats run as <code>claude</code> subprocesses
-(&quot;leaves&quot;).</li>
+<li><strong>An agent CLI for the leaves.</strong> The Plan, Do, Check-reviewer, sign-off,
+publish, and Act beats run as configured subprocesses (&quot;leaves&quot;) — arbitrary
+commands set in <code>pdca.toml</code>, so the model is the harness's choice, not a
+requirement. The cycle model itself is <strong>model-agnostic</strong>; it even recommends a
+<em>cross-vendor</em> reviewer (the template defaults the builder to Claude and the
+reviewer to Codex). The worked example uses the <strong>Claude CLI</strong> (<code>claude</code>)
+installed and authenticated.</li>
 <li>Whatever your <strong>gates</strong> need. For gramps that's <strong>Docker</strong> (the test suites run
 in a container) and the sibling fork checkouts (<code>../gramps</code>,
 <code>../addons-source</code>). Your project's gates will differ — you define them in
@@ -173,7 +177,7 @@ driver move a bundle with no model or gates wired up? Jump to
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
       </nav>
-      <div class="foot-meta">GPLv3 · driven by Claude</div>
+      <div class="foot-meta">GPLv3 · Agentic AI · model agnostic</div>
     </div>
   </footer>
 </div>

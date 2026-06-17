@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The model in one line — PDCA Harness</title>
+<meta name="description" content="One contribution turns one PDCA cycle: Plan → Do → Check → Act → back to Plan with a better baseline">
+<meta property="og:title" content="The model in one line — PDCA Harness">
+<meta property="og:description" content="One contribution turns one PDCA cycle: Plan → Do → Check → Act → back to Plan with a better baseline">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Quality-cycle model</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<!-- Vendored snapshot of the canonical PDCA spec. Obsidian [[wikilinks]] converted to relative Markdown links. The authoritative living source is the project wiki; re-vendor when it changes. -->
+<blockquote>
+<p>The top-level model. It sits above <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> (the operational layer) and <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> (the tier × home decomposition), and explains why those exist, how they connect, and who owns each part. Living document.</p>
+</blockquote>
+<h1>The model in one line</h1>
+<p>One contribution turns one PDCA cycle: <strong>Plan</strong> (author the spec) → <strong>Do</strong> (implement) → <strong>Check</strong> (verify the built artifact against the spec — correctness, conformance, <em>and</em> validation) → <strong>Act</strong> (process improvement: adjust the spec template, ruleset, or workflow so the issues this cycle exposed do not recur) → back to <strong>Plan</strong> with a better baseline.</p>
+<pre><code>         ┌─── Act: adjust the PROCESS (spec template, ruleset, ──┐
+         │      workflow) so this class of issue does not recur  │
+         ▼                                                        │
+   PLAN  ── author the spec for this contribution ──── you        │
+         │                                                        │
+         ▼                                                        │
+   DO    ── implement the fix ────────────── builder              │
+         │                                                        │
+         ▼                                                        │
+   CHECK ── verify the built artifact against the spec:           │
+            • correctness (5-step chain)                          │
+            • conformance (5-tier stack)                          │
+            • validation  (1 indivisible act — fitness-to-purpose)│
+            verdict on THIS contribution: ship / close / iterate  │
+         │                                                        │
+         ▼                                                        │
+   ACT   ── inspect what Do and Check exposed about the           │
+            PROCESS itself; modify spec template, ruleset,        │
+            agent skills, gates so the cycle returns to Plan      │
+            with a better baseline ────────────── you ────────────┘
+</code></pre>
+<p>Two beats own <em>the contribution</em>: <strong>Do</strong> builds it, <strong>Check</strong> decides whether to ship/close/iterate it. Two beats own <em>the process</em>: <strong>Plan</strong> draws from the current process baseline to spec this contribution, and <strong>Act</strong> reviews what this cycle revealed about the process baseline and adjusts it. The next Plan starts from Act's adjusted baseline.</p>
+<p><strong>Work in the next Do phase should not recreate the issues identified
+in this Act.</strong> If it does, the Act was not effective.</p>
+<h2>The four beats are the four roles</h2>
+<p>PDCA earns its place here because it is not decoration over the
+architecture — it <em>is</em> the role partition. Each beat is a single kind
+of work with a single owner:</p>
+<table>
+<thead>
+<tr>
+<th>Beat</th>
+<th>Activity</th>
+<th>Owner</th>
+<th>Subject</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Plan</strong></td>
+<td>author the spec for this contribution; triage (repro-or-close, scope, success criterion)</td>
+<td><strong>you</strong></td>
+<td>the contribution</td>
+</tr>
+<tr>
+<td><strong>Do</strong></td>
+<td>implement the fix — production only</td>
+<td><strong>builder</strong> (e.g. Claude Code)</td>
+<td>the contribution</td>
+</tr>
+<tr>
+<td><strong>Check</strong></td>
+<td>run the correctness chain, the conformance stack, and the validation act against the built artifact</td>
+<td><strong>deterministic gates + advisory reviewer + human sign-off</strong></td>
+<td>the contribution</td>
+</tr>
+<tr>
+<td><strong>Act</strong></td>
+<td>inspect what Do and Check exposed about the PROCESS; modify the spec template, ruleset, gates, or agent skills so the next cycle starts from a better baseline</td>
+<td><strong>you</strong></td>
+<td>the process</td>
+</tr>
+</tbody>
+</table>
+<p>Two role-axis observations the table makes explicit:</p>
+<ol>
+<li><strong>Plan and Act are both yours, but they are not the same act.</strong> Plan
+draws from the process baseline to write a contribution-level spec
+(forward-looking, contribution-subject). Act looks back at the
+completed cycle and edits the process baseline itself (backward-
+looking, process-subject). They share an owner because both require
+the kind of judgment no oracle holds, but their <strong>subjects differ</strong>.</li>
+<li><strong>Check is where the contribution is adjudicated.</strong> Validation —
+<em>is this the right thing</em> — is part of Check, not a separate beat.
+The reviewer participates in all of Check, advisory; the human
+completes Check by clearing what neither gates nor reviewer could
+decide.</li>
+</ol>
+<h2>Contribution work vs process work</h2>
+<p>The line between the cycle's two halves matters because the work and the questions are different on each side:</p>
+<ul>
+<li><strong>Plan + Do + Check</strong> operate on <strong>the contribution</strong>: this bug, this fix, this artifact. The questions are: what should be built, build it, did it work.</li>
+<li><strong>Act</strong> operates on <strong>the process</strong>: this ruleset, this spec template, this workflow, these gates. The question is: what did this cycle reveal about the system that produced it, and what should change so the next cycle is better.</li>
+</ul>
+<p>That seam is what keeps Act focused. Act is <strong>not</strong> a re-vote on whether this contribution should ship — Check decided that. Act is the audit on what the cycle's record (the bug report, the builder's rationale, the reviewer's findings, the deterministic gate output, the human sign-off) shows about the <em>process</em>: a rule that should be written down, a gate that should be added, a spec-template field that turned out to be ambiguous, an agent skill that needs sharpening, a wontfix policy that needs adjusting.</p>
+<p>When Check fails and the contribution needs another attempt, that
+iteration goes back to <strong>Do</strong> (rebuild) or <strong>Plan</strong> (re-spec) — it is
+not an Act. Act fires once per completed cycle and asks one question:
+did we learn anything here that should change the baseline?</p>
+<h2>The advisory reviewer's permission boundary</h2>
+<p>An advisory reviewer (different model family, decorrelated by file
+withholding — see <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a>) is permitted <strong>everything
+inside Check</strong>, advisory: it may opine on correctness causal-adequacy,
+on conformance Tier-5 scope judgment, and on validation fitness-to-
+purpose. It re-runs evidence and grounds citations; it produces per-
+item <code>PASS / FAIL / NEEDS-HUMAN</code>. It does not gate — deterministic gates
+do that — and it does not write the fix.</p>
+<p>The reviewer is <strong>not</strong> permitted inside Act. Process improvement — what rule to add, which spec-template field to revise, whether to retire a check — is yours. The reviewer evaluates this contribution against this spec; you decide whether the spec and ruleset themselves need adjusting.</p>
+<h1>The model in detail</h1>
+<h2>Plan - detailed steps</h2>
+<p>Plan's job is to convert <em>a problem report into a contribution spec</em>. Its input is the <strong>current process baseline</strong> (the <code>brief.md</code> template, the conformance ruleset, the branch-target rules, the agent files — all maintained by Act); its output is one filled <code>brief.md</code> ready to hand to Do. Everything in Plan is human work the Plan scaffolding (a project-provided tracker scraper + the interactive planner leaf) can draft but not finish.</p>
+<p><strong>Triage — repro-or-close, is it worth doing.</strong> The first question is
+not <em>how do we fix this</em> but <em>is there a defect at all, and is the cost
+of fixing it justified</em>. Reproduce against the canonical fixture on
+the target branch; if the report doesn't repro, close the cycle here
+with a confirm-and-close disposition rather than handing Do an
+unfounded spec. (Closed-without-fix is a successful PDCA cycle outcome,
+not a failure: Plan asked &quot;is this worth doing&quot; and answered &quot;no&quot;.)</p>
+<p><strong>Spec authoring — what &quot;fixed&quot; means.</strong> When the cycle does proceed, Plan writes the spec Check will later measure against. Every required field (defect, success criterion, branch target, scope-and-out-of-scope, repro instruction, test requirement, citations expected, STOP discipline, disposition hint) maps to a question Check, Do, or Act will subsequently rely on. The success criterion is the load-bearing field: it is <em>the</em> sentence &quot;did this work&quot; tests against, and a vague success criterion makes Check unable to adjudicate. Plan is where the irreducibly-human decisions get made ahead of time — what to build, what shape it should take, what counts as done — so Do and Check have something concrete to operate on.</p>
+<p><strong>Disposition hint, not verdict.</strong> Plan may guess at the eventual disposition (POSSIBLY-FIXED → verify first; likely-fix; likely-close), but the guess is a hint to Do/Check, not a binding. If Do or Check finds evidence overturning the hint, the hint loses. Hints save time on the common cases without short-circuiting evidence on the uncommon ones.</p>
+<p><strong>STOP discipline.</strong> Plan's output goes to Do as a draft. <em>Pushing to feature/draft branches and opening draft PRs MAY happen at any point during the cycle</em> — both are useful for triggering CI gates and surfacing work-in-progress. <em>What MUST NOT happen before Check sign-off accepts is the ready-mark</em> (the explicit &quot;this is ready to merge&quot; signal). The discipline is named in Plan because Plan is where the contract with the human (sign-off is yours, irreducibly) is established for this cycle. Operationally the ready-mark constraint is enforced by tool scope in Do; see <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> §PLAN for the per-field detail and Do's subagent-scope mechanism.</p>
+<h3>Solution-approach design (when the spec is more than a fix)</h3>
+<p>Not every contribution is a fix. Sometimes the right Plan output is a <strong>design proposal</strong> — a multi-part architectural design with phased sequencing, scope discipline, anticipated objections, and an explicit list of what it does <em>not</em> attempt. The <code>brief.md</code> shape collapses; the spec grows substructure of its own.</p>
+<p>This is still Plan: same beat, same human authorship, same validation-first judgment. The difference is <em>scope</em>. A brief specs one fix that Do will implement in one patch; a design proposal specs a coordinated set of changes, each of which will later spawn its own <code>brief.md</code>-scale cycle. <strong>One Plan, many child cycles.</strong> The design proposal is the meta-spec the child briefs derive from.</p>
+<p>A design-proposal-shaped Plan typically grows sections a one-contribution brief does not need:</p>
+<ul>
+<li><strong>Goals / Non-goals.</strong> Explicit forward-looking commitments and explicit forward-looking refusals. Non-goals do real work: they prevent scope drift in the Do/Check beats that later run against this design.</li>
+<li><strong>Terminology and scope.</strong> The vocabulary the rest of the proposal relies on, named once so downstream consumers do not improvise.</li>
+<li><strong>Decomposition into independently-landable parts.</strong> Each part ships value alone; rejecting or deferring a part leaves a coherent intermediate state. This is the same anti-bundle discipline that &quot;one logical fix per PR&quot; enforces at <a href="http://brief.md">brief.md</a> scale, applied at design scale.</li>
+<li><strong>Migration / phased rollout with safe stall points.</strong> Sequencing such that any prefix of phases leaves the system strictly better than the status quo. If the work runs out of bandwidth, the intermediate state still ships value.</li>
+<li><strong>Objections and responses.</strong> Plan-time anticipation of Check's later judgments. This <em>does not</em> replace Check (which evaluates a built artifact); it sharpens the spec by stress-testing it before Do begins. Documented opposition that has been weighed reads differently from opposition that has been ignored, and the difference shows up at Check sign-off.</li>
+<li><strong>Impact assessment.</strong> Plan-time anticipation of the validation act Check will later perform: is this the right thing to do at all, given what it costs users, authors, maintainers? The honest answer often has &quot;trade-off, not clear win&quot; in it.</li>
+<li><strong>De-risking.</strong> Concrete mitigations for the cross-cutting risks Plan identifies. Often shaped as &quot;if this fails, what does failure look like, and what catches it.&quot;</li>
+<li><strong>Open questions.</strong> Items Plan honestly could not resolve, marked for the review cycle on the proposal itself, or deferred to a later turn. Plan's ex-ante analogue of <code>SUMMARY.md</code> §6 NEEDS-HUMAN.</li>
+<li><strong>Future Work.</strong> What this design <em>enables</em> but does not include. Boundary maintenance: a Plan also says what is <em>not</em> the work of the next several cycles.</li>
+</ul>
+<p><strong>Plan-internal grounding investigations.</strong> A design-proposal-shaped Plan can spawn small, scoped Do-shape sub-investigations whose output feeds back into the spec — a measurement, an audit, an analysis run to ground a recommendation in evidence before the main Do begins. These are Do-shape work in service of Plan; their output is data the spec consumes, not a contribution the cycle ships. They keep Plan honest by making &quot;I think this is true&quot; into &quot;I measured it.&quot;</p>
+<p><strong>The design proposal has its own review cycle.</strong> Before any child brief is authored, the proposal goes through review (a discussion thread, draft status, reviewer feedback, consensus). That review is <em>iterate-within-Plan</em> — analogous to the iterate-to-Plan path inside a per-contribution cycle (<a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> §9), but operating on the design rather than on a single brief. The proposal's draft / under-review / accepted state is itself a Plan-internal lifecycle.</p>
+<p><strong>Illustration of the shape.</strong> GEPS 049 (<em>Versioned Addon API surface
+and 2 axis lifecycle model</em>) is a useful <strong>illustration</strong> of what a
+design-shaped Plan looks like — not evidence this cycle <em>produced</em>
+it. The GEPS was authored as an upstream Gramps wiki proposal in its
+project's normal proposal workflow, then retrofitted here as a
+worked-example contrast to the brief-shaped Plan in
+<a href="/spec/07-case-study-ci-hardening.html">07 - Case Study - CI Hardening</a>. Read it for the section structure (Goals /
+Non-goals; Terminology and scope; Objections-and-responses; Impact
+assessment; De-risking; Open questions; Future Work; Reference
+Implementation; Review discussion) — that <em>is</em> the shape a
+design-shaped Plan takes when this cycle authors one. The
+&quot;Reference Implementation&quot; section in particular illustrates
+<strong>Plan-internal grounding investigations</strong>: a scoped griffe analysis
+was run to produce the empirical breakage counts that ground the
+proposal's recommendation, before the main Do begins. Each part and
+each phase, <em>if</em> this cycle adopted the proposal, would spawn its own
+<code>brief.md</code>-scale child cycle.</p>
+<p>The brief-vs-design distinction is not a bright line. Most cycles are
+brief.md-sized; some are GEPS-sized; the boundary is &quot;how many
+coordinated Do/Check turns does this need.&quot; When in doubt, start with
+a brief; promote to a design proposal if Plan-internal iteration
+reveals coordination Do cannot resolve alone.</p>
+<h3>What Plan inherits from Act</h3>
+<p>Plan does not start from nothing each cycle. Its template, ruleset,
+branch-target rules, and the agent skills it relies on are the
+<strong>output of every prior Act</strong>. The closing edge of the PDCA diagram —
+<em>Act → back to Plan with a better baseline</em> — is literal: the
+<code>brief.md</code> template Plan fills today is exactly the version Act last
+adjusted, and any spec-template ambiguity Act resolved last batch is
+the ambiguity Plan does not have to navigate this cycle. Plan's
+quality is bounded above by the quality of the baseline Act maintains
+for it.</p>
+<h2>Do - detailed steps</h2>
+<p>Do is the single beat in the cycle that does <em>production work only</em> —
+it builds the change the brief specs, ships the test, and stops.
+Nothing in Do adjudicates, defends, or evaluates the change; those
+roles belong to Check. The clean separation is what lets the cycle's
+control flow stay deterministic: Do produces an artifact, Check
+decides about it, and the decision never feeds back into the
+production step within the same beat.</p>
+<p><strong>Input — <code>brief.md</code> only.</strong> Do reads the spec, the success criterion, the scope-and-out-of-scope, the repro instruction, the test requirement, and the STOP discipline. It does not read prior cycles' records, the conformance ruleset (which Check applies, not Do), or the project's broader context beyond what the brief cites. This narrow input is deliberate: it keeps Do focused on <em>this contribution</em> and lets Check's later evaluation rest on whether the build actually matches the brief.</p>
+<p><strong>Output — three files, in lockstep.</strong> <code>patch.diff</code> is the change itself; the <em>test</em> (at the location the brief named) is shipped in the same change and must fail pre-fix, pass post-fix; <code>build-notes.md</code> records the builder's rationale — why this change, what was tried, what was ruled out. The three are produced together: a patch without its test, or a build without its rationale, fails the brief's requirements before Check even runs.</p>
+<p><strong>STOP discipline — mechanical, not asked nicely.</strong> Do MAY push to feature/draft branches and MAY open draft PRs (both useful for letting CI gates run on the actual artifact and for surfacing the work-in-progress). Do has <strong>no ready-mark capability</strong>. The ready-mark constraint is enforced by <strong>tool scope</strong> on the builder subagent (<code>.claude/agents/</code>), not by instruction — the model can push commits and open draft PRs but cannot transition a PR out of draft state. Anything in the brief that would require <em>marking the PR ready</em> is a brief defect (or a Check-sign-off step), not a builder permission to expand.</p>
+<p><strong><code>build-notes.md</code> is for the human signing off Check, not the reviewer.</strong> This is the first appearance of the <strong>independence contract</strong> (developed in <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> §Independence contract and enforced operationally by the driver in <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Independence is enforced by the orchestrator): the builder's framing of <em>why</em> the change is correct must not anchor the advisory reviewer who later evaluates whether the change <em>is</em> correct. So <code>build-notes.md</code> is withheld from the reviewer by the driver's file-input list. The human signing off Check sees it alongside the reviewer's independent verdict; the reviewer never does.</p>
+<h2>Check - The inner anatomy: 5 / 5 / 1</h2>
+<p>PDCA names the four beats and the loop; it says nothing about the shape <em>inside</em> each beat. The Check beat has internal structure — the 5 / 5 / 1 — and that is where the deterministic-vs-human boundary sits.</p>
+<p><strong>Correctness — five steps, a chain.</strong> Spec → reproduction → change → verification → causal adequacy. Ordered and dependent: you cannot verify without a reproduction, cannot reproduce without a spec. The spec (step 1) is the hinge artifact — authored in Plan, consumed here. Answers <em>is it right</em>; &quot;right&quot; is always relative to the spec.</p>
+<p><strong>Conformance — five tiers, a stack.</strong> Structure → shape → runtime → contribution → judgment. <em>Not</em> a chain: independent layers checked in parallel, not prerequisites of one another. Tier 1 passing does not gate Tier 3. Answers <em>is it well-formed</em>. &quot;Tiers&quot; is exact; &quot;steps&quot; would be wrong. (See <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> for tier × home decomposition.)</p>
+<p><strong>Validation — one act, singular.</strong> Is this the right thing to do at all (given the spec, given the bug report, given everything the cycle has produced)? It does not decompose into five of anything, and that is the point: judgment of fitness-to-purpose is not a checklist, so it stays indivisible while the checkable stages break apart. The &quot;1&quot; is load-bearing — it marks the irreducible. In contribution-terms, this is &quot;ship this fix / close as wontfix / iterate&quot;.</p>
+<table>
+<thead>
+<tr>
+<th>Stage (within Check)</th>
+<th>Shape</th>
+<th>Count</th>
+<th>Structure</th>
+<th>Answers</th>
+<th>Owner</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Correctness</td>
+<td>chain</td>
+<td>5 steps</td>
+<td>ordered, dependent</td>
+<td>is it right</td>
+<td>gates + advisory</td>
+</tr>
+<tr>
+<td>Conformance</td>
+<td>stack</td>
+<td>5 tiers</td>
+<td>independent layers</td>
+<td>is it well-formed</td>
+<td>deterministic gates</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td>act</td>
+<td>1</td>
+<td>indivisible</td>
+<td>is it the right thing</td>
+<td>advisory + human sign-off</td>
+</tr>
+</tbody>
+</table>
+<p>All three stages produce their evidence inside Check. The human's Check-completion step (clearing NEEDS-HUMAN, accepting the verdict on the contribution) closes Check and hands off to Act.</p>
+<p>Do carries no 5/5/1 number because it is production, not evaluation. Plan and Act carry no 5/5/1 number because they operate on the <em>process</em> shape, which has its own (slower) structure. The 5/5/1 <em>is</em> the deterministic-vs-human boundary inside the contribution-evaluation beat.</p>
+<p><strong>On the symmetry — don't over-lean on it.</strong> The &quot;5 / 5 / 1&quot; pattern is partly mnemonic, not load-bearing taxonomy:</p>
+<ul>
+<li><em>Correctness is a 5-step chain</em> as written, but step 1 (Spec) and step 3 (Change) are <strong>inputs</strong> to Check from Plan and Do, not work Check performs. As performed <em>inside</em> Check, correctness is 3 steps (reproduction → verification → causal adequacy) plus two inputs. See <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a>'s observation #1 on the same point.</li>
+<li><em>Correctness step 5 (causal adequacy), Conformance Tier 5 (judgment), and the Validation act</em> all resolve to the same place: advisory reviewer + human sign-off (<a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> matrix collapses these into one judgment cell). Three labels, one judgment act.</li>
+</ul>
+<p>The numbers are useful as scaffolding for teaching — they name where the stages break apart and where they don't — but treat the symmetry as a presentation choice, not a deep claim about Check's shape.</p>
+<h3>Where the stages touch, and where they collapse</h3>
+<p><strong>Two touch-points only, both in Check.</strong></p>
+<ol>
+<li><em>The test suite does double duty.</em> Running it is Tier-3 <strong>conformance</strong> (&quot;declared runtime resolves, headless run works&quot;); what it proves about behavior is <strong>correctness</strong> (&quot;existing behavior preserved&quot;). One instrument, two readings.</li>
+<li><em>Judgment sits at the top of every Check stage</em> — correctness causal-adequacy, conformance Tier-5, and the validation act itself. All three go to the advisory reviewer (annotation) and to the human (final sign-off). The reviewer never gates; the human never edits the fix at Check time.</li>
+</ol>
+<p><strong>The collapse rule.</strong> For a <em>conformance-defect</em> fix (a missing <code>tests/__init__.py</code>, a banned import), correctness reduces to conformance: the conformance check <em>is</em> the oracle, &quot;correct&quot; just means &quot;the check now passes,&quot; no behavioral spec needed. For a <em>behavioral-defect</em> fix, correctness is fully independent and needs its own evidence chain. Validation is independent in both cases: even a clean conformance pass can be the wrong fix.</p>
+<h3>The oracle principle (cross-cutting, inside Check)</h3>
+<p>Every Check claim is only as strong as the oracle that decided it. A green test proves correctness <em>of the path it exercises</em> — nothing more. Oracle hierarchy, strongest to weakest: a conformance check (decides a rule), a written test (only as strong as its coverage), the existing suite (catches regressions in <em>covered</em> behavior only), human or advisory-LLM judgment (last resort). &quot;A green check is evidence of that narrow check, not of correctness&quot; is a statement about this principle — and a reminder that passing the gates is not the same as passing validation.</p>
+<h2>Act - detailed steps</h2>
+<p>Act's input is <strong>the cycle's record</strong> — <code>brief.md</code>, <code>patch.diff</code>, <code>build-notes.md</code>, <code>check-gates.json</code>, <code>check-review.md</code>, the completed <code>SUMMARY.md</code> (see <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a>). Its output is <strong>deltas to the process baseline</strong>:</p>
+<ul>
+<li><strong>Spec-template deltas.</strong> A field in <code>brief.md</code> that turned out to be ambiguous, missing, or systematically misread. The next Plan uses the improved template.</li>
+<li><strong>Ruleset deltas.</strong> A rule in the conformance ruleset that should be added, retired, relaxed, or tightened — based on what this cycle exposed. (&quot;This rule fired on a false positive that wasted Do time&quot; → relax. &quot;This bug class wasn't caught by any tier&quot; → add a rule.)</li>
+<li><strong>Gate deltas.</strong> A check that should be added to Tiers 1–4, or promoted from advisory to gating, or moved between homes (see <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a>).</li>
+<li><strong>Agent deltas.</strong> A pattern a leaf (e.g. the builder or reviewer) repeatedly got wrong — refined into its <code>.claude/agents/*.md</code> subagent file (or <code>AGENTS.md</code> for the cross-vendor reviewer).</li>
+<li><strong>Workflow / orchestration deltas.</strong> A state the driver should have surfaced earlier, an Act-queue ordering issue, an independence-contract gap.</li>
+</ul>
+<p>What Act does <strong>not</strong> do:</p>
+<ul>
+<li>Re-decide the contribution's disposition. Check did that.</li>
+<li>Run the validator or the suite. Check did that.</li>
+<li>Author the next contribution's spec. The <em>next</em> Plan does that, with Act's improved baseline as its starting point.</li>
+</ul>
+<p>Act is most useful when <strong>batched</strong> — process improvements made one cycle at a time can be noisy and reactive. Reviewing N cycles' records together surfaces patterns (&quot;three of these bugs share a root cause we have no rule for&quot;) that any single cycle would miss. The cycle's records are stable on-disk artifacts (see <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> §Bundle layout) precisely so Act can look across many of them.</p>
+<h3>When effectiveness is judged</h3>
+<p>The honest test of an Act is whether the next Do phase recreates the issue this Act tried to eliminate. If a Plan/Do/Check sequence in a subsequent cycle hits the same problem, the Act was not effective — the rule wasn't strong enough, the spec-template change didn't address the real ambiguity, the gate wasn't in the right place. That discovery is itself an input to the next Act, and the wheel turns again with a sharper question.</p>
+<p>This is why Act is <em>the</em> process-improvement beat and not a per-contribution decision: its value compounds across cycles, and its quality is measured against cycles that come after it.</p>
+<h1>Per repo (worked example)</h1>
+<p>In the Gramps testbed both <code>gramps</code> and <code>addons-source</code> owe the full cycle — the same spec authoring, the same Check stages, the same process-improvement Act. What differs is <strong>maturity</strong>, not structure: <code>addons-source</code> has a written conformance ruleset (addon-dev guidelines) and started its tooling; <code>gramps</code> core has conformance tooling (the analyzers) enforcing rules nobody has written down yet, and a Tier-3 surface partly running but not yet gated. The cycle is the same; the cells are filled to different depths, and each Act has different process-debt to chip away at. This pattern generalizes — most projects start with one repo/area further along than the others.</p>
+<h1>How this maps to neighboring docs</h1>
+<ul>
+<li>The contribution-side beats (Plan, Do, Check) — operational expression in <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> (<code>brief.md</code>, <code>patch.diff</code>, <code>check-gates</code>, <code>check-review.md</code>, the nine-section <code>SUMMARY.md</code>).</li>
+<li>The conformance stack (5 tiers in Check) — tier × home decomposition in <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a>.</li>
+<li>The mechanical components (Do, plus Check's gates and reviewer) automated; Plan, Check's sign-off step, and Act preserved as the three human touch points — the driver in <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>.</li>
+<li>A worked end-to-end example — <a href="/spec/07-case-study-ci-hardening.html">07 - Case Study - CI Hardening</a>.</li>
+</ul>
+<h1>On the vocabulary</h1>
+<p>PDCA (the Deming/Shewhart wheel) is adopted as the outer cycle because it is load-bearing, not gravitas: its four beats name the contribution half (Plan, Do, Check) and the process half (Act), and the return-to-Plan edge carries the improved baseline forward. Act's standard name in some PDCA literature is &quot;Adjust&quot; precisely because the act is to modify the process, not to revisit the just-completed contribution. What PDCA does <em>not</em> carry is the inner anatomy of Check — it is silent on why correctness is an ordered 5-step chain, conformance an independent 5-tier stack, validation singular. So PDCA and the 5/5/1 compose: PDCA is the macro rhythm and the role assignment; 5/5/1 is the micro shape inside Check, and the marker of the deterministic/human boundary. Other borrowed terms keep their standard meaning: <em>correctness</em> spec-relative (formal methods), <em>oracle</em> (the test-oracle problem), <em>conformance</em> (conformance-to-a-standard), <em>verification vs. validation</em> (build-it-right / build-the-right-thing — both poles live in Check; Act is downstream of both). Local to this model: the five conformance tiers (sorted from rule mechanism — see <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a>) and the correctness-chain naming.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

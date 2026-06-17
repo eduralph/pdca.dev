@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Introduction — why the PDCA harness exists — PDCA Harness</title>
+<meta name="description" content="Index · next: 01 Render &amp; integrate →">
+<meta property="og:title" content="Introduction — why the PDCA harness exists — PDCA Harness">
+<meta property="og:description" content="Index · next: 01 Render &amp; integrate →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Introduction — why the PDCA harness exists</h1>
+<p><a href="/guide/">Index</a> · next: <a href="/guide/01-render-and-integrate.html">01 Render &amp; integrate →</a></p>
+<p>Before the step-by-step, this page answers the <em>why</em>: the problem the harness
+solves, the benefits it delivers, the features that deliver them, and the
+vocabulary the rest of the walkthrough assumes. If you just want to run something,
+skip to <a href="/guide/01-render-and-integrate.html">step 01</a> — but five minutes here makes the
+rest land faster.</p>
+<hr />
+<h2>The problem</h2>
+<p>An AI model can write a plausible fix for almost any issue in seconds. That is
+exactly the danger. A plausible diff is not a <em>verified</em> one, &quot;looks done&quot; is not
+&quot;is correct,&quot; and a fix that passes review can still solve the wrong problem or
+quietly regress something else. Left unmanaged, AI-driven contribution produces a
+firehose of unreviewable, unverifiable, undifferentiated output — and the
+maintainer becomes the bottleneck <em>and</em> the only safety net, reading every line
+under time pressure.</p>
+<p>The instinct is to &quot;let the AI do it and review the PR.&quot; That fails at volume:
+review is the slowest, most fatiguing step, and a raw diff gives the reviewer
+nothing to anchor on — no spec to check against, no proof the bug existed, no
+proof it's gone, no statement of what's <em>not</em> proven.</p>
+<h2>The idea</h2>
+<p>Treat each contribution as one turn of a <strong>PDCA quality cycle</strong> — the
+<strong>P</strong>lan-<strong>D</strong>o-<strong>C</strong>heck-<strong>A</strong>ct improvement loop from manufacturing quality
+control — and automate everything in it <em>except</em> the few judgments only a human
+should make:</p>
+<ul>
+<li><strong>Plan</strong> — author a precise spec (the <em>brief</em>).</li>
+<li><strong>Do</strong> — implement against that spec, and only that spec.</li>
+<li><strong>Check</strong> — verify the built artifact against the spec along three axes:
+<strong>correctness</strong> (does it work?), <strong>conformance</strong> (does it fit the project?), and
+<strong>validation</strong> (is it the <em>right</em> thing?).</li>
+<li><strong>Act</strong> — periodically, improve the <em>process itself</em> so the gaps one cycle
+exposed don't recur.</li>
+</ul>
+<p>A deterministic <strong>driver</strong> moves the work through this cycle and <strong>stops only at
+three irreducible human touch points</strong> — authoring the Plan, signing off the
+Check, and the cross-cycle Act review. Everything between is automated; nothing
+ships without the human sign-off.</p>
+<blockquote>
+<p>The full reasoning behind the model lives in the vendored spec at
+<a href="/spec/"><code>../template/PCDA/quality-cycle/</code></a> (files
+<code>00</code>–<code>10</code>). This walkthrough is the applied counterpart.</p>
+</blockquote>
+<hr />
+<h2>Benefits</h2>
+<p><strong>Verifiable correctness, not vibes.</strong> Each cycle ships proof: a test that is
+<strong>red before the fix and green after it</strong>. That red→green check is the one thing
+allowed to <em>block</em> a sign-off — so &quot;verified&quot; has a concrete, deterministic
+meaning instead of being a reviewer's gut feel.</p>
+<p><strong>The human stays in the loop — at three points, not every line.</strong> Plan
+authoring, Check sign-off, and Act are reserved for human judgment. Everything
+else runs unattended. The maintainer adjudicates a short, specific checklist
+(§6 NEEDS-HUMAN) instead of re-reading a raw diff.</p>
+<p><strong>No silent failures.</strong> A check that can't run, or fails for reasons outside the
+fix's control, doesn't get swept under the rug <em>or</em> block a good fix — it surfaces
+as an explicit NEEDS-HUMAN item for a person to adjudicate. The gating path that
+decides &quot;can this be accepted?&quot; contains <strong>no LLM at all</strong> — it reads only
+deterministic gate results.</p>
+<p><strong>The process gets better over time.</strong> The <strong>Act</strong> beat turns recurring
+misses — something a maintainer caught at review that no gate owned — into
+permanent improvements: a new gate, a new brief field, a tightened rule. Each
+future cycle starts from a better baseline. (The walkthrough shows a real
+example: a maintainer's review comment about a translation-manifest rule became a
+proposed deterministic gate — see <a href="/guide/07-publish-and-act.html">step 07</a>.)</p>
+<p><strong>Scale without losing rigor.</strong> Because state lives in files (not a database), the
+driver is <strong>idempotent and resumable</strong>, and one Plan session can brief <em>several</em>
+issues that then build unattended and queue up for a fast, cheap-first sign-off
+burn-down. You review many contributions in one focused sitting.</p>
+<p><strong>Cheap to adopt and cheap to learn.</strong> A full cycle can be <strong>rehearsed entirely
+offline</strong> — stub models, stub gates, no network — so you can prove the plumbing
+(and learn the state machine) before spending a single token. See
+<a href="/guide/02-rehearse-offline.html">step 02</a>.</p>
+<p><strong>Project-agnostic, drop-in.</strong> The harness ships the <em>contract</em> (state machine,
+artifact templates, the gate interface) — not your repo's specifics. You render it
+into any project and concretize it once; the model logic is reused, the
+project-specific parts are yours.</p>
+<hr />
+<h2>Features (and where you meet them)</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>What it is</th>
+<th>Walkthrough step</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Copier template</strong></td>
+<td>Render the harness into any repo; pull template updates later with <code>copier update</code></td>
+<td><a href="/guide/01-render-and-integrate.html">01</a></td>
+</tr>
+<tr>
+<td><strong><code>pdca.toml</code> wiring</strong></td>
+<td>One config file binds the driver to your repo's leaves (the per-beat commands) and gates</td>
+<td><a href="/guide/01-render-and-integrate.html">01</a></td>
+</tr>
+<tr>
+<td><strong><code>INTEGRATION.md</code> (11 items)</strong></td>
+<td>The contract for concretizing the generic model to your tracker, branches, fixtures, ruleset</td>
+<td><a href="/guide/01-render-and-integrate.html">01</a></td>
+</tr>
+<tr>
+<td><strong>File-derived state machine</strong></td>
+<td>A bundle's state is <em>computed from which files exist</em> — no DB, fully resumable</td>
+<td><a href="/guide/02-rehearse-offline.html">02</a></td>
+</tr>
+<tr>
+<td><strong>Offline rehearsal</strong></td>
+<td><code>make rehearse</code> drives the whole flow with stubs — instant, free</td>
+<td><a href="/guide/02-rehearse-offline.html">02</a></td>
+</tr>
+<tr>
+<td><strong>The brief</strong></td>
+<td>A parsed, field-structured spec every later beat consumes</td>
+<td><a href="/guide/03-plan.html">03</a></td>
+</tr>
+<tr>
+<td><strong>Headless builder, narrow tools</strong></td>
+<td>The Do leaf can edit and run tests but not open PRs — STOP discipline by capability</td>
+<td><a href="/guide/04-do.html">04</a></td>
+</tr>
+<tr>
+<td><strong>Deterministic gates</strong></td>
+<td>Your check commands, each tagged gating (blocks) or advisory (informs); baseline-diffed</td>
+<td><a href="/guide/05-check.html">05</a></td>
+</tr>
+<tr>
+<td><strong>Decorrelated reviewer</strong></td>
+<td>An advisory second-opinion leaf that never sees the builder's notes (ideally a different model family)</td>
+<td><a href="/guide/05-check.html">05</a></td>
+</tr>
+<tr>
+<td><strong>The assembled SUMMARY</strong></td>
+<td>brief + gates + review folded into one 10-section verdict, with a §6 NEEDS-HUMAN checklist</td>
+<td><a href="/guide/05-check.html">05</a></td>
+</tr>
+<tr>
+<td><strong>Sign-off + C6 guard</strong></td>
+<td>Four dispositions; <code>--accept</code> is refused while any NEEDS-HUMAN item is open</td>
+<td><a href="/guide/06-signoff.html">06</a></td>
+</tr>
+<tr>
+<td><strong>Iterate carry-forward</strong></td>
+<td>A rejection archives the attempt and folds the <em>reason</em> into the next build</td>
+<td><a href="/guide/06-signoff.html">06</a></td>
+</tr>
+<tr>
+<td><strong>Draft-PR publish</strong></td>
+<td>Contribute the accepted fix as a <em>draft</em> — a human marks it ready, never the harness</td>
+<td><a href="/guide/07-publish-and-act.html">07</a></td>
+</tr>
+<tr>
+<td><strong>Cross-cycle Act loop</strong></td>
+<td>Periodic review that turns recurring misses into spec/gate/rule deltas</td>
+<td><a href="/guide/07-publish-and-act.html">07</a></td>
+</tr>
+<tr>
+<td><strong>Front-door <code>Makefile</code></strong></td>
+<td><code>make flow ID=…</code> orchestrates the whole cycle; <code>make status</code>, <code>make batch</code>, …</td>
+<td><a href="/guide/">README</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Vocabulary</h2>
+<p>Five terms recur throughout. Learn them once:</p>
+<ul>
+<li><strong>Bundle</strong> — the folder for one contribution, <code>results/issue_&lt;id&gt;/</code>. All its
+artifacts (brief, patch, gates, SUMMARY) live here; its <strong>state</strong> is derived
+from which of those files exist.</li>
+<li><strong>Beat</strong> — one phase of the cycle: Plan, Do, Check, Act.</li>
+<li><strong>Leaf</strong> — the command a beat runs (e.g. the <code>builder</code> leaf, the <code>reviewer</code>
+leaf). Configured in <code>pdca.toml</code>; may be a real model invocation or an offline
+stub.</li>
+<li><strong>Gate</strong> — a deterministic Check command with a pass/fail result. <strong>Gating</strong>
+gates block a sign-off; <strong>advisory</strong> ones only inform.</li>
+<li><strong>Disposition</strong> — the human's §9 verdict: <code>accept</code>, <code>iterate-do</code>,
+<code>iterate-plan</code>, or <code>discontinue</code>.</li>
+</ul>
+<p>The states a bundle moves through:</p>
+<pre><code>UNPLANNED → PLANNED → BUILT → CHECKED → AWAITING_SIGNOFF → COMPLETE
+  (no brief) (brief)  (patch) (gates+    (SUMMARY ready,    (accepted,
+                               review)    driver STOPS)      frozen)
+                                              │
+                                 iterate-do → PLANNED  (rebuild, same brief)
+                               iterate-plan → UNPLANNED (re-spec)
+                                discontinue → DISCONTINUED (abandon)
+</code></pre>
+<p>The four <strong>halted</strong> states — <code>UNPLANNED</code>, <code>AWAITING_SIGNOFF</code>, <code>COMPLETE</code>,
+<code>DISCONTINUED</code> — are where the driver hands control back to a human or stops.
+Everything else it advances through on its own.</p>
+<hr />
+<h2>Is this for you?</h2>
+<p>The harness fits when you are <strong>funnelling AI-generated contributions into a real
+codebase</strong> and need each one verified, scoped, and signed off — especially at
+volume, across multiple branches, or into a project with real conformance rules
+(tests, linters, contribution conventions). The worked example throughout this
+guide — <a href="/guide/">Gramps Testbed v2</a>, which contributes fixes upstream to the
+Gramps genealogy project and its addons — is exactly that shape.</p>
+<p>It's heavier than you need for a one-off script or a solo throwaway. The payoff is
+in <em>repeated</em> contribution where correctness, traceability, and a maintainer's
+limited attention all matter.</p>
+<p>Ready to set it up against a real repo? → <a href="/guide/01-render-and-integrate.html">step 01</a>.</p>
+<p><a href="/guide/">Index</a> · next: <a href="/guide/01-render-and-integrate.html">01 Render &amp; integrate →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 Validation Tooling — PDCA Harness</title>
+<meta name="description" content="&quot;Validation tooling&quot; is shorthand for the implementation of Check&#x27;s deterministic gates and advisory reviewer. Check has three components:">
+<meta property="og:title" content="04 Validation Tooling — PDCA Harness">
+<meta property="og:description" content="&quot;Validation tooling&quot; is shorthand for the implementation of Check&#x27;s deterministic gates and advisory reviewer. Check has three components:">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Quality-cycle model</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<!-- Vendored snapshot of the canonical PDCA spec. Obsidian [[wikilinks]] converted to relative Markdown links. The authoritative living source is the project wiki; re-vendor when it changes. -->
+<blockquote>
+<p>The Check beat (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Check) has internal structure — the <strong>5 / 5 / 1</strong> (correctness chain, conformance stack, validation act) — and runs through three <strong>components</strong> (gates, reviewer, sign-off — see <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Check). This doc documents the code and process that <em>implements</em> those components: which tool covers which 5/5/1 element, where that tool lives, and how single-sourcing keeps the driver and CI invoking the same implementation. Worked example uses the Gramps testbed at the end; the structure is project-agnostic. Living document.</p>
+</blockquote>
+<h2>What &quot;validation tooling&quot; means here</h2>
+<p>&quot;Validation tooling&quot; is shorthand for <strong>the implementation of Check's deterministic gates and advisory reviewer.</strong> Check has three components:</p>
+<ul>
+<li><strong>Gates</strong> (deterministic, full automation) — the validators, rule scanners, suite runners, and hooks that produce <code>check-gates.json</code>.</li>
+<li><strong>Reviewer</strong> (advisory, full automation) — the cross-vendor model that grounds the gate evidence, re-runs the asserted red/green, and emits per-item <code>PASS / FAIL / NEEDS-HUMAN</code> into <code>check-review.md</code>.</li>
+<li><strong>Sign-off</strong> (instrumented, human) — the human completes Check by reading the assembled <code>SUMMARY.md</code> and recording §9.</li>
+</ul>
+<p>This doc is about the <strong>gates</strong> and <strong>reviewer</strong>. Sign-off is human work whose tooling is the result-document presentation in <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> / <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Check sign-off, not the subject here.</p>
+<h2>Two axes — what and where</h2>
+<p>Validation tooling decomposes along two orthogonal axes:</p>
+<ol>
+<li><strong>What it evaluates</strong> — which element of Check's 5/5/1 it covers. The 5/5/1 is the <em>what</em>:
+<ul>
+<li>Correctness chain (5 steps): spec → reproduction → change → verification → causal adequacy.</li>
+<li>Conformance stack (5 tiers): structure → shape → runtime → contribution → judgment.</li>
+<li>Validation (1 act): fitness-to-purpose.</li>
+</ul>
+</li>
+<li><strong>Where it lives</strong> — which <strong>home</strong> runs the tool. The home is the <em>where</em>:
+<ul>
+<li>Upstream project CI (the project that owns the contribution ruleset gates each PR there).</li>
+<li>Local driver / dev-tooling (the same gates run pre-merge on the contributor's machine, single-sourced with upstream CI).</li>
+<li>Fork-local hooks (<code>commit-msg</code>, pre-push) plus fork PR CI.</li>
+<li>Check's reviewer component (advisory model + tool scope).</li>
+<li>Check's sign-off step (human at the result-document review).</li>
+</ul>
+</li>
+</ol>
+<p><strong>What and where are independent.</strong> A given conformance tier may be implemented as code (covering &quot;what&quot;) and live in upstream CI (covering &quot;where&quot;) — but the same tier's implementation can <em>also</em> mirror locally, so &quot;where&quot; can be multiple homes for one &quot;what&quot;. The two-axis framing makes the locations explicit instead of letting tooling drift to &quot;wherever it was first written.&quot;</p>
+<h2>The 5/5/1 × tooling-shape matrix</h2>
+<p>Each element of the 5/5/1 maps to a tooling shape, and each tool
+lands in one of Check's three components.</p>
+<table>
+<thead>
+<tr>
+<th>5/5/1 element</th>
+<th>Tooling shape</th>
+<th>Check component</th>
+<th>Artifact written</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Correctness 1 — Spec</strong></td>
+<td>the brief (no code)</td>
+<td>(Plan output, Check input)</td>
+<td><code>brief.md</code></td>
+</tr>
+<tr>
+<td><strong>Correctness 2 — Reproduction</strong></td>
+<td>fixture loader + repro runner; pre-fix red proof</td>
+<td>Gates</td>
+<td>row in <code>check-gates.json</code></td>
+</tr>
+<tr>
+<td><strong>Correctness 3 — Change</strong></td>
+<td>the patch (no code)</td>
+<td>(Do output, Check input)</td>
+<td><code>patch.diff</code></td>
+</tr>
+<tr>
+<td><strong>Correctness 4 — Verification</strong></td>
+<td>the shipped test + regression suite</td>
+<td>Gates</td>
+<td>rows in <code>check-gates.json</code></td>
+</tr>
+<tr>
+<td><strong>Correctness 5 — Causal adequacy</strong></td>
+<td>judgment (symptom vs. root cause)</td>
+<td>Reviewer (advisory), human at sign-off</td>
+<td>row in <code>check-review.md</code>; §6 NEEDS-HUMAN if unresolvable</td>
+</tr>
+<tr>
+<td><strong>Conformance T1 — Structure</strong></td>
+<td>structural validator (stdlib + filesystem + spec-format exec-shim)</td>
+<td>Gates</td>
+<td>rows in <code>check-gates.json</code></td>
+</tr>
+<tr>
+<td><strong>Conformance T2 — Shape</strong></td>
+<td>shape scanner (semgrep, AST)</td>
+<td>Gates</td>
+<td>rows in <code>check-gates.json</code></td>
+</tr>
+<tr>
+<td><strong>Conformance T3 — Runtime</strong></td>
+<td>dependency resolution (<code>find_spec</code>, install-and-import) + clean-env suite</td>
+<td>Gates</td>
+<td>rows in <code>check-gates.json</code></td>
+</tr>
+<tr>
+<td><strong>Conformance T4 — Contribution</strong></td>
+<td><code>commit-msg</code> hook, branch-target check, version-bump check</td>
+<td>Gates (mostly fork-local + fork PR CI)</td>
+<td>rows in <code>check-gates.json</code></td>
+</tr>
+<tr>
+<td><strong>Conformance T5 — Judgment</strong></td>
+<td>scope, one-logical-fix, message-from-user-perspective</td>
+<td>Reviewer (advisory), human at sign-off</td>
+<td>row in <code>check-review.md</code>; §6 NEEDS-HUMAN if unresolvable</td>
+</tr>
+<tr>
+<td><strong>Validation (1 act) — fitness-to-purpose</strong></td>
+<td>&quot;is this the right thing at all&quot;</td>
+<td>Reviewer (advisory), human at sign-off</td>
+<td>row in <code>check-review.md</code>; §6 NEEDS-HUMAN; §9 sign-off</td>
+</tr>
+</tbody>
+</table>
+<p>Three observations the matrix makes explicit:</p>
+<ol>
+<li><strong>Correctness 1 and 3 carry no tooling row</strong> — they are <em>inputs</em> to Check (the brief from Plan, the patch from Do), not work Check performs. They appear in the matrix to keep the chain complete.</li>
+<li><strong>Tiers 1–4 of conformance plus correctness steps 2 and 4</strong> are the <strong>gates path</strong> — fully mechanical, fully automated, the only thing that blocks accept.</li>
+<li><strong>Correctness step 5, Conformance Tier 5, and the validation act</strong> are the <strong>judgment path</strong> — the reviewer attempts each advisory, then the human signs off in §9. The reviewer never gates; the human never edits the fix at Check time (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Where the stages touch).</li>
+</ol>
+<p><strong>Gate result vocabulary.</strong> A gate-path row's <code>result</code> is one of <code>pass</code> / <code>fail</code> / <code>unverifiable</code> / <code>none</code>. A gate <strong>passes</strong> iff its command exits 0 and <strong>fails</strong> on any other exit. A gate may instead declare itself <strong><code>unverifiable</code></strong> when it genuinely <em>cannot run</em> its mechanical check (as opposed to running and failing) — exit code <strong>77</strong> (the automake SKIP convention) <strong>or</strong> print a line containing <strong><code>PDCA-UNVERIFIABLE: &lt;reason&gt;</code></strong> (the marker wins over the exit code, so a gate may exit 0 and still defer; the text after the marker is the recorded reason). An <code>unverifiable</code> row does <strong>not</strong> count toward <code>overall</code> — it neither silently passes nor hard-fails — and the driver routes it into <code>SUMMARY.md</code> §6 NEEDS-HUMAN, where the <strong>C6</strong> accept-guard (<a href="/spec/06-quality-cycle-guidelines.html">06 - Quality-Cycle Guidelines</a> §C6) makes the human clear it before accept. This is the mechanism behind &quot;a green mechanical check is not a correctness verification&quot;: a gate with nothing to verify says so rather than manufacturing a green. (<code>none</code> is the separate non-gating matrix-alignment cell decided on the judgment path.)</p>
+<h2>Single-sourcing — one implementation, multiple invocations</h2>
+<p>The connection to <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Where it runs is load-bearing: the gates that run locally during the cycle MUST be the same gates that re-run in CI as the merge-gate. This is enforced not by policy but by <strong>single-sourcing the implementation</strong>:</p>
+<ul>
+<li>One repository / module owns each tool (the structural validator, the shape scanner's rule file, the runtime checker, the contribution hooks, the correctness re-runners).</li>
+<li>The local driver invokes it with one command.</li>
+<li>CI invokes the <em>same</em> command (against the actual PR).</li>
+<li>No regex copy-pasted across YAML files, no parallel implementation in dev-tooling and CI both, no hand-maintained dependency lists in more than one place.</li>
+</ul>
+<p>The anti-pattern this prevents: tooling drift between local and CI, where a contribution passes locally and fails in CI (or vice versa) because the two invocations are different code. Both invocations must read the same single source, so &quot;passes locally&quot; and &quot;passes CI&quot; collapse into the same fact.</p>
+<h2>Homes — where each gate lives</h2>
+<p>Conformance Tier-by-tier home assignments differ by project, but the
+generic rationale follows a small set of rules:</p>
+<table>
+<thead>
+<tr>
+<th>Home</th>
+<th>Lives there because</th>
+<th>Tools that fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Upstream project CI</strong></td>
+<td>Gates every contribution PR; zero-config for contributors; canonical</td>
+<td>T1 Structure, T3 Runtime — when the upstream project will host them</td>
+</tr>
+<tr>
+<td><strong>Local driver / dev-tooling (mirror)</strong></td>
+<td>Pre-merge feedback; runs the same gates the upstream CI runs; cycle's inner loop</td>
+<td>Any gate that needs to run <em>before</em> a PR is opened — typically a mirror of T1/T3 + the project's correctness re-runners</td>
+</tr>
+<tr>
+<td><strong>Local driver / dev-tooling (staging)</strong></td>
+<td>Gates the project's CI doesn't host yet — staged until upstream accepts</td>
+<td>T2 Shape (often semgrep, which an upstream may not yet depend on)</td>
+</tr>
+<tr>
+<td><strong>Fork-local hooks</strong></td>
+<td>Fire pre-commit / pre-push, before the artifact reaches a PR</td>
+<td>T4 Contribution: <code>commit-msg</code> format, signing</td>
+</tr>
+<tr>
+<td><strong>Fork PR CI</strong></td>
+<td>Runs on PR open; gates branch-target, version-bump, etc.</td>
+<td>T4 Contribution: branch-target, version-bump</td>
+</tr>
+<tr>
+<td><strong>Check's reviewer component</strong></td>
+<td>Judgment cells that can't be mechanized</td>
+<td>C5 causal adequacy, T5 judgment, validation act (advisory)</td>
+</tr>
+<tr>
+<td><strong>Check's sign-off step</strong></td>
+<td>Final human call on judgment + clearing NEEDS-HUMAN</td>
+<td>All of the reviewer's path, finalized</td>
+</tr>
+</tbody>
+</table>
+<p>The home that does NOT exist: there is no &quot;Act home&quot; for gates. Act improves the <em>rules</em> that gates enforce (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Act); the gates themselves run in Check. A new rule lands as an addition to one of the homes above, recorded in <code>process/act-log.md</code>.</p>
+<h2>Two rule families (project-agnostic)</h2>
+<p>Validation tooling typically splits into two families that share tools but must not be merged in the layout:</p>
+<ul>
+<li><strong>Family A — project-guideline conformance.</strong> The project's own written ruleset for contributions to itself. Subject: contribution artifacts (patches, packages, addons, plugins) against the project's written rules. The 5/5/1 above (especially the conformance stack) is Family A.</li>
+<li><strong>Family B — upstream-defect analysis.</strong> Bug-hunting analyzers against the source the <em>project depends on</em>. Subject: upstream code; findings become <em>upstream</em> PRs, not contributions to this project. Family B uses the same tool families (semgrep, type-checkers, flow analysis) but its rules and rule-targets differ.</li>
+</ul>
+<p>The split matters because Family B's analyzers ARE NOT conformance checks. A semgrep rule that hunts for missing <code>disconnect()</code> in upstream Gtk code is a bug-hunting rule, not a &quot;Tier 2 shape&quot; rule under the project's own conformance stack. Sharing a layout collapses the distinction; keeping them in separate directories preserves it.</p>
+<h2>Worked example — Gramps testbed <code>dev-tooling/</code></h2>
+<blockquote>
+<p><strong>Illustrative, not normative.</strong> This is <em>one</em> project's filled matrix at an earlier
+snapshot; the paths (<code>agent-work/dev-tooling/...</code>) are the Gramps testbed's of that
+time (since reorganized under <code>engine/</code> / <code>dev-tooling/</code>), and the rules (doc-16,
+semgrep shape rules, the gramps maintenance branches) are gramps's. The generic
+harness — the single-sourced <strong>gate runner</strong> that produces <code>check-gates.json</code>/<code>.md</code>
+and renders the full 5/5/1 matrix — ships <code>[built]</code>; what this table's &quot;Status today&quot;
+column tracks is the <em>project's</em> per-tier rule-writing, which stays the project's work.</p>
+</blockquote>
+<p>The Gramps testbed instantiates this generic structure as follows.
+References:</p>
+<ul>
+<li>Family A = <code>addons-source</code> conformance (the addon-dev guidelines /
+&quot;doc 16&quot; ruleset).</li>
+<li>Family B = <code>gramps</code> core defect analysis (None-flow, init-order,
+missing-disconnect).</li>
+</ul>
+<h3>Tier × home assignment (testbed slice of Family A)</h3>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Representative rules</th>
+<th>Mechanism</th>
+<th>Home in this project</th>
+<th>Status today</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1 — Structure</strong></td>
+<td>folder==<code>id</code>; <code>gramps_target_version</code> present; <code>fname</code> resolves; no <code>__init__.py</code> in addon dir; <code>tests/__init__.py</code> exists; <code>po/template.pot</code> present; <code>TOOL</code> has <code>optionclass</code>; GPL header</td>
+<td>stdlib + <code>.gpr.py</code> exec-shim + filesystem checks</td>
+<td><strong>Upstream <code>addons-source</code> CI</strong> (gates every addon PR); testbed mirror for pre-merge</td>
+<td>Partly built upstream (PR #820's <code>test_plugin_registration.py</code>, <code>test_addon_dependencies.py</code>, the <code>po/template.pot</code> job)</td>
+</tr>
+<tr>
+<td><strong>2 — Shape</strong></td>
+<td><code>_(f&quot;...&quot;)</code>; <code>print()</code> diagnostics; <code>gramps.gui</code> / <code>plugins</code> imports from addons; <code>if cls is Person</code>; direct <code>pgettext</code>; <code>Optional[X]</code>; missing <code>DbTxn</code>; no <code>import register</code> in <code>.gpr.py</code></td>
+<td><strong>semgrep</strong> (rule file + fixtures)</td>
+<td>Testbed <code>agent-work/dev-tooling/</code> (staging; propose upstream once zero-FP-tuned)</td>
+<td>Harness exists (used by Family B); addon rules not yet written</td>
+</tr>
+<tr>
+<td><strong>3 — Runtime</strong></td>
+<td><code>requires_mod</code> importable via <code>find_spec</code> (Pillow/PIL); <code>requires_gi</code> / <code>requires_exe</code> mapped; tests pass with deps absent (skip cleanly); GI pins match imports</td>
+<td>Install + run in a clean env</td>
+<td><strong>Upstream <code>addons-source</code> CI</strong>; testbed mirror</td>
+<td>Most mature: PR #820's <code>find_spec</code> gate, <code>run_addon_tests.py</code> degraded-skip, <code>addon_system_deps.py --unmapped</code></td>
+</tr>
+<tr>
+<td><strong>4 — Contribution</strong></td>
+<td>commit summary ≤70 / wrap 80; trailer on last line; <code>#NNNN</code> issue refs; full-hash refs; branch target (addon→60 / core→61); no addon <code>version</code> bump in maintenance PR; no merge commits; <code>POTFILES.in</code> sync (core)</td>
+<td><code>commit-msg</code> hook (local) + PR CI (fork)</td>
+<td><strong>The <code>gramps</code> and <code>addons-source</code> forks</strong> — commits land there, not the testbed</td>
+<td>Greenfield</td>
+</tr>
+<tr>
+<td><strong>5 — Judgment</strong></td>
+<td>user-perspective commit; one-logical-fix scope; symptom-vs-root-cause; test actually exercises the fix; &quot;wrap <em>every</em> user-visible string&quot;; upstream-isn't-ahead (semantic)</td>
+<td>human + advisory cross-vendor reviewer (Codex)</td>
+<td><strong>Check's reviewer + sign-off components</strong> (<a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>)</td>
+<td>The reviewer-contract thread (advisory, decorrelated)</td>
+</tr>
+</tbody>
+</table>
+<h3>Correctness chain (testbed slice)</h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Implementation</th>
+<th>Home</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2 — Reproduction</td>
+<td><code>tests/interface/*</code> (dogtail), <code>example.gramps</code> fixture</td>
+<td>Local driver + CI (<code>interface-tests.yml</code>)</td>
+</tr>
+<tr>
+<td>4 — Verification</td>
+<td>the shipped test (per cycle) + existing suite (<code>tests/</code>, <code>gramps/*_test.py</code>)</td>
+<td>Local driver + CI (<code>unit-tests.yml</code>, <code>addon-unit-tests.yml</code>)</td>
+</tr>
+<tr>
+<td>5 — Causal adequacy</td>
+<td>reviewer (Codex) + human sign-off</td>
+<td>Check's reviewer + sign-off</td>
+</tr>
+</tbody>
+</table>
+<h3>Two families in the layout</h3>
+<p><code>agent-work/dev-tooling/</code> reorganized by <em>family</em> (instead of by tool) keeps the
+two distinct:</p>
+<pre><code>agent-work/dev-tooling/
+  core-analysis/             # FAMILY B — subject: gramps CORE; findings → core PRs
+    pyright/                 #   None-flow            (existing)
+    semgrep/                 #   core bug-hunting rules incl. connect-without-disconnect
+    codeql/                  #   reserved flow        (existing NOTES)
+    README.md                #   &quot;subject = core; NOT addon-dev conformance&quot;
+  addon-conformance/         # FAMILY A — subject: addons-source; addon-dev tiers
+    lib/                     #   shared .gpr.py exec-shim + requires_mod extractor (single-sourced)
+    tier1-structure/         #   stdlib + exec-shim + fs    (TESTBED MIRROR of upstream)
+    tier2-shape/             #   semgrep addon rules + fixtures (staging pre-upstream)
+    README.md                #   &quot;canonical home = addons-source CI; this mirrors it&quot;
+  pre-commit/                # hooks (existing) — Tier-4 local + analyzer pre-commits
+  ide/                       # vscode/ + claude-commands/ (existing)
+  README.md                  # this matrix; what is NOT here (T1/3 upstream, T4 forks, T5 process)
+</code></pre>
+<p>Names are a proposal, not the point. The point: Family B stays whole and clearly upstream-source-subject; Family A is tiered and explicitly labeled a <em>mirror</em> of its upstream home; the shared exec-shim library has one location so single-sourcing has a place to point.</p>
+<h2>Build order (concrete deliverables, per <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>)</h2>
+<ol>
+<li><strong>The gates, single-sourced</strong> — structural validator (T1 exec-shim
+<ul>
+<li>T2 semgrep), runtime gate (T3 <code>find_spec</code> + clean-env suite),
+correctness re-runners (repro, verification, regression), T4
+commit-msg + branch-target + version-bump hooks. Each callable
+identically by the local driver and by CI.</li>
+</ul>
+</li>
+<li><strong>The driver</strong> (in 03) — calls the gates, withholds <code>build-notes.md</code>
+from the reviewer, assembles <code>SUMMARY.md</code>.</li>
+<li><strong>The contribution-batch fan-out</strong> (in 03) — uses the gates over N
+issues.</li>
+<li><strong>The reviewer's <code>AGENTS.md</code></strong> (in 03) — fixes the judgment-path
+shape for C5, T5, validation.</li>
+</ol>
+<p>The gates are the long pole because both the local driver and the CI
+re-gate depend on them existing as single-sourced code. Until they
+exist, Check cannot run unattended and the body cannot fan out.</p>
+<h2>What this doc is not</h2>
+<p>This doc does not specify the project's <em>conformance rules</em> (those are
+the per-repo specification — <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a>
+§Precondition; in the Gramps worked example, the &quot;doc 16&quot; addon-dev
+guidelines). It documents the <strong>tooling axis</strong> — what implements
+Check, where each piece lives, how single-sourcing connects local and
+CI — so a project adopting the cycle can plan its build order without
+ambiguity about which gate goes where.</p>
+<p>The rules themselves are subject to Act
+(<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Act): when a rule needs adding, retiring,
+relaxing, or tightening, that change lands as an Act delta in
+<code>process/act-log.md</code> and modifies the per-repo specification. The
+tooling that <em>applies</em> the rules — this doc's subject — is downstream
+of the rules themselves and changes only when a rule's home moves,
+its mechanism changes, or single-sourcing introduces a new shared
+component.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

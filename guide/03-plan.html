@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 03 — Plan: author the brief — PDCA Harness</title>
+<meta name="description" content="← 02 Rehearse offline · Index · next: 04 Do →">
+<meta property="og:title" content="Step 03 — Plan: author the brief — PDCA Harness">
+<meta property="og:description" content="← 02 Rehearse offline · Index · next: 04 Do →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Step 03 — Plan: author the brief</h1>
+<p>← <a href="/guide/02-rehearse-offline.html">02 Rehearse offline</a> · <a href="/guide/">Index</a> · next: <a href="/guide/04-do.html">04 Do →</a></p>
+<p><strong>Beat: Plan.</strong> Human touch point #1. The output is one artifact — <code>brief.md</code> —
+the contribution spec the rest of the cycle is measured against. A bundle with no
+<code>brief.md</code> is <code>UNPLANNED</code>; once the brief exists it's <code>PLANNED</code> and ready for Do.</p>
+<h2>How Plan runs</h2>
+<p>The Plan leaf is <strong>interactive</strong> — it opens Claude in your terminal so you and the
+planner co-author the brief from a tracker issue. gramps configured it to read a
+single Mantis CSV row for the issue id:</p>
+<pre><code class="language-bash">make flow ID=11589        # opens the planner; you converge on a brief, then the
+                          # driver continues unattended into Do + Check
+</code></pre>
+<p>Under the hood that's the <code>planner</code> leaf from <a href="/guide/01-render-and-integrate.html">step 01</a>
+writing <code>results/issue_11589/brief.md</code>. You can also seed a brief directly
+(<code>pdca init-issue 11589 --from-brief path/to/brief.md</code>) when you've written it by
+hand.</p>
+<h2>What a real brief looks like</h2>
+<p>This is the <strong>actual</strong> brief the planner produced for gramps issue 11589, a
+PluginManager bug. Read it as a checklist of what a good spec contains — every
+field earns its place downstream.</p>
+<pre><code class="language-markdown"># Brief — issue 11589 / pluginmanager-uninstall-destroys-shared-dir
+
+- **Slug:** pluginmanager-uninstall-destroys-shared-dir
+- **Defect:** In the enhanced Plugin Manager addon, uninstalling a single add-on
+  filter rule deletes the **entire** shared `FilterRules` plugin directory — all
+  the other rules in the pack *and* any unrelated user content the user placed
+  there. Root cause: `__uninstall` calls `shutil.rmtree(pdata.fpath)` on the
+  plugin's *directory* (`PluginManager.py:349`), but `pdata.fpath` is the
+  directory shared by every plugin in a multi-plugin pack ...
+- **Success criterion:** Uninstalling one plugin whose directory is shared by
+  other registered plugins removes only the files belonging to the selected
+  plugin; the sibling plugins' files and any unrelated files/sub-folders survive,
+  and the directory itself is **not** removed while other registered plugins still
+  live in it. (Uninstalling a plugin that is the sole occupant of its own
+  directory must still remove the directory, preserving today's behaviour.)
+- **Repo + branch target:** addons-source @ `maintenance/gramps60` (addons
+  production branch per INTEGRATION §2; maintainer cherry-picks forward to gramps61).
+- **Scope:** Make `PluginManager.__uninstall` (`...PluginManager.py:339-358`)
+  non-destructive for shared directories ... /
+  **out of scope:** repackaging the FilterRules pack; the reporter's secondary
+  observation; the core plugin manager; changing the install path.
+- **Repro instruction:** With the FilterRules pack installed ... select one rule
+  and click Uninstall. Observed: the whole directory is deleted. Expected: only
+  the selected rule's files are removed.
+- **Test file:** `../addons-source/PluginManager/tests/test_uninstall_shared_dir.py`
+  (addon convention per INTEGRATION §3 — `tests/` package, `test_*.py` prefix).
+</code></pre>
+<h2>Why each field is there</h2>
+<p>A brief is not free-form. Each labelled field is consumed by a later beat, which
+is <em>why</em> the harness can automate Do and Check at all:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Consumed by</th>
+<th>What would go wrong without it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Defect</strong> + root cause</td>
+<td>Do (where to fix), Check C5 (causal adequacy)</td>
+<td>The builder treats symptoms, not the cause</td>
+</tr>
+<tr>
+<td><strong>Success criterion</strong></td>
+<td>Check (the validation oracle), §9 sign-off</td>
+<td>&quot;Done&quot; is unfalsifiable</td>
+</tr>
+<tr>
+<td><strong>Repo + branch target</strong></td>
+<td>Do (branch from), Publish (where the PR goes)</td>
+<td>The fix lands on the wrong branch</td>
+</tr>
+<tr>
+<td><strong>Scope / out-of-scope</strong></td>
+<td>Do (stay in lane), reviewer (scope creep is a FAIL)</td>
+<td>Scope creep; an un-reviewable diff</td>
+</tr>
+<tr>
+<td><strong>Repro instruction</strong></td>
+<td>Check C2 (red pre-fix)</td>
+<td>No way to prove the bug existed</td>
+</tr>
+<tr>
+<td><strong>Test file</strong></td>
+<td>Do (ship it here), C4 gate (run it)</td>
+<td>The C4 red→green proof has nothing to run</td>
+</tr>
+<tr>
+<td><strong>Disposition hint</strong></td>
+<td>sets expectations for sign-off</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Notice how <strong><a href="http://INTEGRATION.md">INTEGRATION.md</a> is cited inline</strong> — &quot;addons production branch per
+INTEGRATION §2&quot;, &quot;addon convention per INTEGRATION §3&quot;. That's the payoff of
+<a href="/guide/01-render-and-integrate.html">step 01</a>: the planner resolves abstract questions
+(&quot;which branch? where does the test go?&quot;) against your repo's concretizations
+instead of guessing.</p>
+<h2>STOP discipline</h2>
+<p>Every brief carries the rule that the cycle never ships before sign-off:</p>
+<blockquote>
+<p>Draft only until Check sign-off. A draft PR MAY be opened for CI; the PR MUST
+NOT be marked ready before sign-off accepts.</p>
+</blockquote>
+<p>The brief is now written. State: <code>PLANNED</code>. The driver advances unattended into
+the Do beat — <a href="/guide/04-do.html">step 04</a>.</p>
+<p>← <a href="/guide/02-rehearse-offline.html">02 Rehearse offline</a> · <a href="/guide/">Index</a> · next: <a href="/guide/04-do.html">04 Do →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

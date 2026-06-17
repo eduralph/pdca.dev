@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worked example — driving the PDCA cycle with the harness — PDCA Harness</title>
+<meta name="description" content="This folder is a tutorial. It walks you through using the pdca-harness">
+<meta property="og:title" content="Worked example — driving the PDCA cycle with the harness — PDCA Harness">
+<meta property="og:description" content="This folder is a tutorial. It walks you through using the pdca-harness">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Worked example — driving the PDCA cycle with the harness</h1>
+<p>This folder is a <strong>tutorial</strong>. It walks you through using the <code>pdca-harness</code>
+template end-to-end, using a real project — <a href="https://github.com/eduralph"><strong>Gramps Testbed
+v2</strong></a> — as the worked example at every step.</p>
+<p>The harness itself (the driver, the templates, the generic model docs) lives in
+<a href="https://github.com/eduralph/pdca-harness/tree/main/template"><code>../template/</code></a>. The canonical <em>reference</em> for the model is the
+vendored spec in
+<a href="/spec/"><code>../template/PCDA/quality-cycle/</code></a> (files
+<code>00</code>–<code>10</code>). <strong>This folder is the opposite of reference material</strong>: instead of
+&quot;here is what each artifact means&quot;, it shows &quot;here is what a maintainer actually
+typed, what the harness produced, and the real decisions they made&quot; on a live
+codebase.</p>
+<blockquote>
+<p>Everything quoted here — briefs, gate tables, sign-off lines, the Act log — is
+copied verbatim from the gramps-testbed-v2 instance. Paths look like
+<code>results/issue_11589/SUMMARY.md</code>; those are real files in that repo.</p>
+</blockquote>
+<h2>What the harness is, in one paragraph</h2>
+<p>One contribution turns one <strong>PDCA cycle</strong>: <strong>Plan</strong> (author the spec) → <strong>Do</strong>
+(implement) → <strong>Check</strong> (verify the built artifact against the spec —
+correctness, conformance, <em>and</em> validation) → <strong>Act</strong> (improve the process so the
+issues this cycle exposed don't recur). A deterministic <strong>driver</strong> advances a
+<em>bundle</em> (a folder under <code>results/issue_&lt;id&gt;/</code>) through a file-derived state
+machine and <strong>stops only at the three points where a human is irreducible</strong>:
+authoring the Plan, signing off the Check, and the cross-cycle Act review.
+Everything between those points is automated.</p>
+<pre><code>UNPLANNED ─Plan→ PLANNED ─Do→ BUILT ─Check→ CHECKED ─assemble→ AWAITING_SIGNOFF
+                                                                      │  (driver STOPS — human)
+                                          ┌───────────────────────────┤
+                                  accept ─┤ iterate-do  → back to PLANNED (rebuild)
+                              (COMPLETE)  │ iterate-plan → back to UNPLANNED (re-spec)
+                                          └ discontinue → DISCONTINUED (abandon)
+</code></pre>
+<p>The four <strong>halted</strong> states — <code>UNPLANNED</code>, <code>AWAITING_SIGNOFF</code>, <code>COMPLETE</code>,
+<code>DISCONTINUED</code> — are where the driver hands control back. Everything else it
+advances through unattended.</p>
+<h2>The steps</h2>
+<p>Read these in order. Each maps to one beat of the cycle (or one setup step) and
+shows the real gramps-testbed-v2 artifact it produces.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Beat</th>
+<th>What you do / what the harness produces</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="/guide/00-introduction.html">00</a></td>
+<td>Introduction</td>
+<td>—</td>
+<td>Why the harness exists — the problem, the benefits, the features, the vocabulary</td>
+</tr>
+<tr>
+<td><a href="/guide/01-render-and-integrate.html">01</a></td>
+<td>Render &amp; integrate</td>
+<td>—</td>
+<td><code>copier copy</code> the template; fill <code>docs/INTEGRATION.md</code>; wire gates and leaves in <code>pdca.toml</code></td>
+</tr>
+<tr>
+<td><a href="/guide/02-rehearse-offline.html">02</a></td>
+<td>Rehearse offline</td>
+<td>—</td>
+<td>Drive the bundled <code>TOY</code> issue with stub leaves + stub gates — no model, no live gates, instant</td>
+</tr>
+<tr>
+<td><a href="/guide/03-plan.html">03</a></td>
+<td>Plan</td>
+<td><strong>P</strong></td>
+<td>Author <code>brief.md</code> — the contribution spec (real: gramps issue 11589)</td>
+</tr>
+<tr>
+<td><a href="/guide/04-do.html">04</a></td>
+<td>Do</td>
+<td><strong>D</strong></td>
+<td>Builder writes <code>patch.diff</code> + the test + <code>build-notes.md</code></td>
+</tr>
+<tr>
+<td><a href="/guide/05-check.html">05</a></td>
+<td>Check</td>
+<td><strong>C</strong></td>
+<td>Gates + reviewer run; driver assembles <code>SUMMARY.md</code> (the 5/5/1 verdict + §6 NEEDS-HUMAN)</td>
+</tr>
+<tr>
+<td><a href="/guide/06-signoff.html">06</a></td>
+<td>Sign-off</td>
+<td><strong>C</strong></td>
+<td>You record §9: <code>--accept</code> / <code>--iterate-do</code> / <code>--iterate-plan</code> / <code>--discontinue</code> (real: issue 46's two iterations)</td>
+</tr>
+<tr>
+<td><a href="/guide/07-publish-and-act.html">07</a></td>
+<td>Publish &amp; Act</td>
+<td><strong>C / A</strong></td>
+<td>Publish the accepted fix as a draft PR; later, the cross-cycle Act review turns recurring misses into process deltas</td>
+</tr>
+</tbody>
+</table>
+<h2>The whole cycle in one command</h2>
+<p>Once a repo is integrated, a maintainer rarely types the per-beat commands. The
+front door is the <code>Makefile</code>:</p>
+<pre><code class="language-bash">make flow ID=13636      # Plan → Do → Check → sign-off → publish, for one issue
+make flow CSV=issues.csv   # one Plan session can brief SEVERAL issues, then build + sign off all
+make status             # every bundle and its state
+</code></pre>
+<p>The per-beat detail in steps 03–07 is what <code>make flow</code> orchestrates for you —
+worth understanding once, even though you'll mostly drive from the top.</p>
+<h2>Prerequisites (for a live run)</h2>
+<p>The offline rehearsal in <a href="/guide/02-rehearse-offline.html">step 02</a> needs only Python
+3.11+. A <em>live</em> cycle additionally needs:</p>
+<ul>
+<li>The <strong>Claude CLI</strong> (<code>claude</code>) installed and authenticated — the Plan, Do,
+Check-reviewer, sign-off, publish, and Act beats run as <code>claude</code> subprocesses
+(&quot;leaves&quot;).</li>
+<li>Whatever your <strong>gates</strong> need. For gramps that's <strong>Docker</strong> (the test suites run
+in a container) and the sibling fork checkouts (<code>../gramps</code>,
+<code>../addons-source</code>). Your project's gates will differ — you define them in
+<a href="/guide/01-render-and-integrate.html">step 01</a>.</li>
+<li><code>git</code> and (for publishing) the <code>gh</code> CLI.</li>
+</ul>
+<p>New to the harness? Start with <a href="/guide/00-introduction.html">step 00</a> for the <em>why</em>. Ready
+to set it up? Go to <a href="/guide/01-render-and-integrate.html">step 01</a>. Just want to see the
+driver move a bundle with no model or gates wired up? Jump to
+<a href="/guide/02-rehearse-offline.html">step 02</a>.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

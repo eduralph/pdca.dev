@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 02 — Rehearse offline — PDCA Harness</title>
+<meta name="description" content="← 01 Render &amp; integrate · Index · next: 03 Plan →">
+<meta property="og:title" content="Step 02 — Rehearse offline — PDCA Harness">
+<meta property="og:description" content="← 01 Render &amp; integrate · Index · next: 03 Plan →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Step 02 — Rehearse offline</h1>
+<p>← <a href="/guide/01-render-and-integrate.html">01 Render &amp; integrate</a> · <a href="/guide/">Index</a> · next: <a href="/guide/03-plan.html">03 Plan →</a></p>
+<p>Before any beat touches a real model or runs a live gate, drive the <strong>whole
+control flow offline</strong> with stub leaves and stub gates. This is the single most
+valuable habit when adopting the harness: it proves the <em>plumbing</em> (state
+transitions, artifact assembly, archiving on iterate) independent of any model
+behaviour, in well under a second, for free.</p>
+<h2>The toy bundle</h2>
+<p>The template ships a worked brief at <code>examples/toy/brief.md</code> whose only purpose is
+to let the driver run end-to-end with nothing wired up:</p>
+<pre><code class="language-markdown"># Brief — issue TOY / off-by-one-in-pager
+
+&gt; A worked toy brief so the driver runs end-to-end offline (stub leaves/gates).
+&gt; Replace with real briefs from your Plan beat. The field labels are what the
+&gt; driver parses — keep the `- **Label:** value` shape.
+
+- **Slug:** off-by-one-in-pager
+- **Defect:** The result pager shows N-1 of N items; the last item is dropped.
+- **Success criterion:** Pager shows all N items; a test over a 3-item list asserts 3 are rendered.
+- **Repo + branch target:** example-repo @ main
+- **Scope:** Fix the pager's range bound. / out of scope: pager styling, pagination size.
+- **Repro instruction:** Load a 3-item fixture, open the pager, observe 2 items shown.
+- **Test file:** test_toy.py
+- **Citations expected:** Do must cite path:line on main for the changed bound.
+- **Disposition hint:** likely-fix
+</code></pre>
+<p>Note the <code>- **Label:** value</code> shape — those labels are exactly what the driver
+parses out of every brief, including your real ones.</p>
+<h2>Drive it, beat by beat</h2>
+<pre><code class="language-bash"># seed a bundle from the toy brief  →  state: PLANNED
+PYTHONPATH=src python -m pdca_harness.cli init-issue TOY --from-brief examples/toy/brief.md
+
+# advance until the driver halts     →  Do (stub) → gates (stub) → reviewer (stub)
+#                                        → assemble SUMMARY → state: AWAITING_SIGNOFF
+PYTHONPATH=src python -m pdca_harness.cli run TOY
+
+# see where it stopped
+PYTHONPATH=src python -m pdca_harness.cli status
+</code></pre>
+<p><code>run</code> advances the bundle until it reaches a <strong>halted</strong> state. With stubs, the
+builder/reviewer leaves emit canned artifacts and the gates report canned passes,
+so the bundle sails to <code>AWAITING_SIGNOFF</code> — the driver's &quot;your turn, human&quot; stop.
+From there you record a verdict exactly as you would on a real cycle (this is
+<a href="/guide/06-signoff.html">step 06</a>):</p>
+<pre><code class="language-bash">PYTHONPATH=src python -m pdca_harness.cli signoff TOY --accept     # → COMPLETE
+# or try the others to watch the state machine archive + loop:
+PYTHONPATH=src python -m pdca_harness.cli signoff TOY --iterate-do    # → archives, back to PLANNED
+PYTHONPATH=src python -m pdca_harness.cli signoff TOY --iterate-plan  # → archives brief too, back to UNPLANNED
+PYTHONPATH=src python -m pdca_harness.cli signoff TOY --discontinue   # → DISCONTINUED (terminal)
+</code></pre>
+<h2>The one-shot rehearsal</h2>
+<p>Typing the beats individually is good for <em>seeing</em> the state machine. To rehearse
+the <strong>same orchestration <code>make flow</code> uses</strong> — Plan → Do → Check → sign-off →
+publish — but entirely stubbed, use:</p>
+<pre><code class="language-bash">make rehearse ID=TOY
+</code></pre>
+<p>This forces <code>PDCA_LEAVES_MODE=stub</code>, stubs the gates, dry-runs the publish, and
+writes to a throwaway bundle root (<code>.rehearse/</code>, not your real <code>results/</code>). No
+Claude, no Docker, no network — just the control flow, instantly. gramps used
+this constantly while building out its <code>engine/</code> gates, because it answers &quot;did I
+break the driver?&quot; without &quot;is the model having a bad day?&quot; muddying the signal.</p>
+<h2>What you've proven</h2>
+<p>After a green rehearsal you know the <strong>plumbing</strong> is sound: states derive
+correctly from files, the SUMMARY assembles, iterate archives into
+<code>iteration-v&lt;N&gt;/</code>, and the sign-off transitions fire. Now — and only now — is it
+worth pointing the beats at real models and real gates. The next five steps walk
+one <strong>live</strong> gramps cycle through each beat.</p>
+<p>← <a href="/guide/01-render-and-integrate.html">01 Render &amp; integrate</a> · <a href="/guide/">Index</a> · next: <a href="/guide/03-plan.html">03 Plan →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

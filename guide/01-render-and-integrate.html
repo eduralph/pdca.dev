@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 01 — Render the harness &amp; integrate your repo — PDCA Harness</title>
+<meta name="description" content="← 00 Introduction · Index · next: 02 Rehearse offline →">
+<meta property="og:title" content="Step 01 — Render the harness &amp; integrate your repo — PDCA Harness">
+<meta property="og:description" content="← 00 Introduction · Index · next: 02 Rehearse offline →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Step 01 — Render the harness &amp; integrate your repo</h1>
+<p>← <a href="/guide/00-introduction.html">00 Introduction</a> · <a href="/guide/">Index</a> · next: <a href="/guide/02-rehearse-offline.html">02 Rehearse offline →</a></p>
+<p>This step gets you from &quot;I have the template&quot; to &quot;the driver knows how to build,
+gate, and publish for <em>my</em> repo.&quot; There are three sub-steps: <strong>render</strong>,
+<strong>concretize</strong> (<code>docs/INTEGRATION.md</code>), and <strong>wire</strong> (<code>pdca.toml</code>).</p>
+<hr />
+<h2>1a. Render the template</h2>
+<p>The harness is a <a href="https://copier.readthedocs.io/">Copier</a> template. Rendering it
+copies the project-agnostic parts into a new directory and asks you a handful of
+questions:</p>
+<pre><code class="language-bash">copier copy gh:eduralph/pdca-harness ../gramps-testbed-v2
+cd ../gramps-testbed-v2
+</code></pre>
+<p>The prompts (from <a href="https://github.com/eduralph/pdca-harness/blob/main/copier.yml"><code>copier.yml</code></a>) and what gramps answered:</p>
+<table>
+<thead>
+<tr>
+<th>Prompt</th>
+<th>What it sets</th>
+<th>gramps-testbed-v2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_name</code></td>
+<td>Human-readable name</td>
+<td><code>Gramps Testbed v2</code></td>
+</tr>
+<tr>
+<td><code>project_slug</code></td>
+<td>Slug for paths/package</td>
+<td><code>gramps-testbed-v2</code></td>
+</tr>
+<tr>
+<td><code>author_name</code> / <code>author_email</code></td>
+<td>§9 attribution default</td>
+<td><code>Eduard Ralph</code></td>
+</tr>
+<tr>
+<td><code>tracker_system</code></td>
+<td>github / mantis / jira / other</td>
+<td><code>mantis</code></td>
+</tr>
+<tr>
+<td><code>tracker_url</code></td>
+<td>Base tracker URL</td>
+<td><code>https://gramps-project.org/bugs</code></td>
+</tr>
+<tr>
+<td><code>issue_id_example</code></td>
+<td>ID shape in briefs/commits</td>
+<td><code>13418</code></td>
+</tr>
+<tr>
+<td><code>default_branch</code></td>
+<td>Where fixes land unless overridden</td>
+<td><code>main</code></td>
+</tr>
+<tr>
+<td><code>bundle_root</code></td>
+<td>Per-cycle bundle dir</td>
+<td><code>results</code></td>
+</tr>
+<tr>
+<td><code>process_dir</code></td>
+<td>Cross-cycle process artifacts</td>
+<td><code>process</code></td>
+</tr>
+<tr>
+<td><code>builder_family</code></td>
+<td>Model for the Do leaf</td>
+<td><code>claude</code></td>
+</tr>
+<tr>
+<td><code>reviewer_family</code></td>
+<td>Model for the Check reviewer — <strong>should differ from builder</strong></td>
+<td><code>codex</code> (gramps later used a separate <code>claude</code> agent)</td>
+</tr>
+<tr>
+<td><code>leaves_mode</code></td>
+<td><code>stub</code> (offline) or real commands</td>
+<td><code>stub</code> to start</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Start in <code>stub</code> mode.</strong> You want the offline rehearsal in
+<a href="/guide/02-rehearse-offline.html">step 02</a> working before you point any beat at a real
+model. The render message says the same thing: <em>&quot;Replace the stub leaves once
+the deterministic gates exist (build order: gates → driver → batch → Act).&quot;</em></p>
+</blockquote>
+<p>After rendering you have:</p>
+<pre><code>gramps-testbed-v2/
+  pdca.toml                 # driver config — you edit this (1c below)
+  PCDA/quality-cycle/       # the vendored model spec (reference; don't edit)
+  docs/INTEGRATION.md       # your repo's concretizations — you fill this (1b below)
+  src/pdca_harness/         # the driver (don't edit; updated via `copier update`)
+  templates/                # brief / SUMMARY / PR-description templates
+  examples/toy/             # the offline toy brief (step 02)
+  results/                  # bundles land here
+  process/act-log.md        # Act log (step 07)
+  Makefile                  # the front door
+</code></pre>
+<hr />
+<h2>1b. Concretize: fill <code>docs/INTEGRATION.md</code></h2>
+<p>The model spec is deliberately project-agnostic. <code>docs/INTEGRATION.md</code> is where
+you bind it to <em>your</em> repo — it has <strong>11 items</strong>. You don't need all 11 before a
+first cycle, but items 1–4 (tracker, branches, fixtures/runners, conformance
+ruleset) are what the Plan and Check beats lean on.</p>
+<p>The 11 items:</p>
+<ol>
+<li><strong>Tracker integration</strong> — system/URL, issue-ID format, cross-link form, status → disposition mapping</li>
+<li><strong>Branch-target rules</strong> — per-area branch map, override convention, cross-version cherry-pick rules</li>
+<li><strong>Reproduction fixtures and runners</strong> — canonical fixture, repro/verification runner commands, what counts as a successful repro</li>
+<li><strong>Conformance ruleset</strong> — the T1–T5 matrix: written ruleset + home + the single command per tier</li>
+<li><strong>Upstream-isn't-ahead routine</strong> — what &quot;upstream&quot; is and how to confirm it isn't already fixed</li>
+<li><strong>Brief and design-proposal templates</strong> — required project-specific fields</li>
+<li><strong>Bundle and act-log paths</strong> — bundle root + ID format, iterate-archive convention</li>
+<li><strong>Committing and PR conventions</strong> — commit-message + PR-body format</li>
+<li><strong>Repo-specific scripts and tooling</strong> — the role → path table</li>
+<li><strong>Maintainer and governance</strong> — who reviews, the ready-mark gate</li>
+<li><strong>Per-repo P-/D-/C-/A- extensions</strong> — rules that tighten the generic ones</li>
+</ol>
+<p>Here is how gramps filled a few, verbatim from
+<code>gramps-testbed-v2/docs/INTEGRATION.md</code>:</p>
+<p><strong>Item 2 — Branch-target rules</strong> (gramps fixes don't all go to one branch):</p>
+<pre><code class="language-markdown">- gramps **core** fixes → `maintenance/gramps61` (v6.1.0), forward-merged to `master`
+- **addon** fixes (`addons-source`) → `maintenance/gramps60`; maintainer cherry-picks
+  forward to gramps61
+- **testbed itself** → `main`
+- Branch from `upstream/&lt;base&gt;`, not the fork's tracking copy
+- Validation target — UPSTREAM by default. Bundles validated against clean
+  `upstream/maintenance/gramps6{0,1}` in pinned worktrees `make worktrees` builds
+</code></pre>
+<p><strong>Item 3 — test placement</strong> (this exact rule is what the Plan leaf cites when it
+names a brief's <em>Test file</em>):</p>
+<pre><code class="language-markdown">- core = `test/` package (singular) + `&lt;module&gt;_test.py` (suffix)
+- addon = `tests/` package (plural) + `test_&lt;thing&gt;.py` (prefix)
+</code></pre>
+<p><strong>Item 4 — the conformance ladder.</strong> Each tier names a <em>written ruleset</em>, a
+<em>home</em> (the file that implements the check), and a <em>single command</em>:</p>
+<pre><code class="language-markdown">| Tier | Written ruleset | Command | Status |
+|---|---|---|---|
+| T1 structure | doc16 §Structure | python3 ./engine/conformance/gate.py T1 | advisory, bundle |
+| T2 shape | GPL header MUST + §Logging + POTFILES | python3 ./engine/conformance/gate.py T2 | advisory, bundle |
+| T3 runtime | gramps test suite, baseline-diffed | t3_baseline.py run-unit.sh | advisory, matrix 6.0/6.1 |
+| T4 contribution | §Commit messages; 4-section PR body | python3 ./engine/conformance/gate.py T4 | advisory, bundle |
+</code></pre>
+<p>The lesson: <strong>the harness doesn't ship gate logic — it ships the <em>contract</em> for
+gates.</strong> You write the checkers (gramps put them under <code>engine/conformance/</code>) and
+point <code>pdca.toml</code> at them (1c).</p>
+<hr />
+<h2>1c. Wire: <code>pdca.toml</code></h2>
+<p><code>pdca.toml</code> is the driver's only config. Two things matter most: the <strong>leaves</strong>
+(the commands each beat runs) and the <strong>gates</strong> (the deterministic Check
+oracles). Here is gramps' real config, trimmed to the shape.</p>
+<h3>The leaves — one command per beat</h3>
+<pre><code class="language-toml">[leaves.planner]
+mode = &quot;command&quot;
+family = &quot;claude&quot;
+interactive = true                                  # opens in your terminal
+argv = [&quot;claude&quot;, &quot;--model&quot;, &quot;claude-opus-4-8&quot;, &quot;--effort&quot;, &quot;xhigh&quot;,
+        &quot;--agent&quot;, &quot;planner&quot;, &quot;--permission-mode&quot;, &quot;acceptEdits&quot;]
+
+[leaves.builder]
+mode = &quot;command&quot;
+family = &quot;claude&quot;
+interactive = false                                 # headless — runs unattended
+argv = [&quot;claude&quot;, &quot;-p&quot;, &quot;--agent&quot;, &quot;builder&quot;, &quot;--permission-mode&quot;, &quot;acceptEdits&quot;,
+        &quot;--allowedTools&quot;, &quot;Read,Edit,Bash(git *),Bash(python3 *)&quot;]
+
+[leaves.reviewer]
+mode = &quot;command&quot;
+family = &quot;claude&quot;                                   # a decorrelated reviewer agent
+interactive = false
+argv = [&quot;claude&quot;, &quot;-p&quot;, &quot;--agent&quot;, &quot;reviewer&quot;, &quot;--permission-mode&quot;, &quot;acceptEdits&quot;,
+        &quot;--allowedTools&quot;, &quot;Read,Edit&quot;]
+
+[leaves.signoff]
+interactive = true                                  # YOU, at the §9 step
+argv = [&quot;claude&quot;, &quot;--agent&quot;, &quot;signoff&quot;, &quot;--permission-mode&quot;, &quot;acceptEdits&quot;]
+# ...and publisher, act — same shape
+</code></pre>
+<p>The interactive leaves (planner, signoff, publisher, act) open Claude in your
+terminal because they're the human touch points. The headless ones (builder,
+reviewer) run unattended. The agent definitions themselves live under
+<code>.claude/agents/&lt;name&gt;.md</code>.</p>
+<blockquote>
+<p><strong>Decorrelate the reviewer.</strong> The model recommends the Check reviewer be a
+<em>different</em> family from the builder (the template default is <code>codex</code>), so the
+reviewer doesn't share the builder's blind spots. gramps used a separate
+<code>claude</code> agent with a narrowed toolset — acceptable, but a cross-vendor
+reviewer is stronger.</p>
+</blockquote>
+<h3>The gates — your deterministic Check oracles</h3>
+<p>A gate is a command plus metadata. <code>gating = true</code> means a failure <strong>blocks</strong> the
+sign-off; <code>gating = false</code> is advisory (it still shows in the SUMMARY, but a human
+adjudicates). <code>scope</code> is <code>bundle</code> (this fix) or <code>repo</code> (whole tree).</p>
+<pre><code class="language-toml">[gates]
+target_default = &quot;core&quot;
+
+# C4 — the one GATING per-fix correctness check
+[[gates.checks]]
+id = &quot;C4-verify&quot;
+tier = &quot;C4&quot;
+label = &quot;fix verified: test red pre-fix, green post-fix&quot;
+cmd = &quot;./engine/scripts/ubuntu/run-verify.sh&quot;     # applies patch, runs ONLY its test
+gating = true
+scope = &quot;bundle&quot;
+
+# T3 — whole gramps unit suite, baseline-diffed (ADVISORY)
+[[gates.checks]]
+id = &quot;T3-unit&quot;
+tier = &quot;T3&quot;
+label = &quot;runtime: gramps core unit suite (whole-suite baseline)&quot;
+cmd = &quot;CORE_VERSION=6.1 python3 ./engine/conformance/t3_baseline.py ./engine/scripts/ubuntu/run-unit.sh&quot;
+gating = false
+scope = &quot;repo&quot;
+
+# T1/T2/T4 conformance checkers (doc16-founded, ADVISORY)
+[[gates.checks]]
+id = &quot;T1-structure&quot;
+tier = &quot;T1&quot;
+cmd = &quot;python3 ./engine/conformance/gate.py T1&quot;
+gating = false
+scope = &quot;bundle&quot;
+# ...T2-shape, T4-contribution likewise
+</code></pre>
+<p>The key design choice you're making here: <strong>what blocks, and what merely
+informs.</strong> gramps made exactly one check gating — <code>C4-verify</code>, the red→green
+proof that the fix actually fixes the bug — and left every conformance tier
+advisory, so a pre-existing lint failure or an environmental test segfault
+surfaces to a human (in §6 NEEDS-HUMAN) rather than silently blocking a correct
+fix. You'll see that play out in <a href="/guide/05-check.html">step 05</a>.</p>
+<hr />
+<h2>Before you go live</h2>
+<p>Run <code>make setup</code> once (grants the interactive Claude leaves read of your
+workspace so they don't prompt per-file). Then <strong>prove the control flow offline
+before spending a single model token</strong> — that's <a href="/guide/02-rehearse-offline.html">step 02</a>.</p>
+<p>← <a href="/guide/00-introduction.html">00 Introduction</a> · <a href="/guide/">Index</a> · next: <a href="/guide/02-rehearse-offline.html">02 Rehearse offline →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

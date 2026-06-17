@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The quality-cycle model — PDCA Harness</title>
+<meta name="description" content="The vendored PDCA quality-cycle model — the project-agnostic reference spec the harness implements.">
+<meta property="og:title" content="The quality-cycle model — PDCA Harness">
+<meta property="og:description" content="The vendored PDCA quality-cycle model — the project-agnostic reference spec the harness implements.">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>The quality-cycle model</h1>
+<p>The project-agnostic reference model the harness implements — Plan / Do / Check / Act, the 5/5/1 Check, the bundle state machine, and how to adapt it to a repo. Vendored into every rendered project under <code>PCDA/quality-cycle/</code>.</p>
+<h2>Documents</h2>
+<ul>
+    <li><a href="/spec/00-overview.html">00 Overview</a></li>
+    <li><a href="/spec/01-the-quality-cycle.html">The model in one line</a></li>
+    <li><a href="/spec/02-cycle-artifacts.html">Result — issue &lt;id&gt; / &lt;slug&gt;</a></li>
+    <li><a href="/spec/03-cycle-automation.html">states are derived from files present in results/issue_&lt;id&gt;/ — no DB</a></li>
+    <li><a href="/spec/04-validation-tooling.html">04 Validation Tooling</a></li>
+    <li><a href="/spec/05-repository-integration.html">05 Repository Integration</a></li>
+    <li><a href="/spec/06-quality-cycle-guidelines.html">06 Quality Cycle Guidelines</a></li>
+    <li><a href="/spec/07-case-study-ci-hardening.html">07 Case Study Ci Hardening</a></li>
+    <li><a href="/spec/08-glossary.html">08 Glossary</a></li>
+    <li><a href="/spec/09-parallel-lanes.html">09 Parallel Lanes</a></li>
+    <li><a href="/spec/10-adapting.html">10 Adapting</a></li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

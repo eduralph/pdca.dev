@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 Glossary — PDCA Harness</title>
+<meta name="description" content=", 01)">
+<meta property="og:title" content="08 Glossary — PDCA Harness">
+<meta property="og:description" content=", 01)">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Quality-cycle model</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<!-- Vendored snapshot of the canonical PDCA spec. Obsidian [[wikilinks]] converted to relative Markdown links. The authoritative living source is the project wiki; re-vendor when it changes. -->
+<blockquote>
+<p>A reference index of the terms used across docs 00–07. Each entry is a one-line
+definition; the doc that <em>owns</em> the term (where it is defined and treated in full)
+is named in parentheses. This glossary does not restate the model — it points back
+into it. When a term and a doc disagree, the doc wins.</p>
+</blockquote>
+<h2>The cycle and its four beats</h2>
+<p>(docs <a href="/spec/00-overview.html">00</a>, <a href="/spec/01-the-quality-cycle.html">01</a>)</p>
+<ul>
+<li><strong>PDCA quality cycle</strong> — one contribution turns one cycle: Plan → Do → Check → Act →
+back to Plan with a better baseline.</li>
+<li><strong>Beat</strong> — one of the cycle's <strong>exactly four</strong> stages: <strong>Plan · Do · Check · Act</strong>.
+There are never more than four. A beat may contain several <em>steps</em>.</li>
+<li><strong>Plan</strong> — author the spec for one contribution; triage (repro-or-close, scope,
+success criterion). Human-owned.</li>
+<li><strong>Do</strong> — implement the fix (patch + test + rationale). Production work only; no
+adjudication. The builder's beat.</li>
+<li><strong>Check</strong> — verify the built artifact against the spec (correctness, conformance,
+validation), adjudicate, and contribute it. One beat with several <em>steps</em>: gates →
+review → sign-off → publish.</li>
+<li><strong>Act</strong> — improve the <em>process</em> (spec template, ruleset, gates, agent skills) so the
+issues this cycle exposed don't recur. Human-owned; runs <strong>across</strong> cycles, not per
+cycle.</li>
+<li><strong>Step</strong> — a stage <em>within</em> a beat (e.g. Check's review / sign-off / publish; Plan's
+scrape / brief). A step is never a beat; the model leaves are step-level touchpoints.</li>
+<li><strong>Contribution</strong> vs <strong>process</strong> — Plan + Do + Check operate on the <em>contribution</em>
+(this bug, this fix); Act operates on the <em>process</em> (the rules and templates). The
+boundary between them is <strong>the seam</strong>: Act is not a re-vote on a contribution.</li>
+<li><strong>Human touch points</strong> — the three places judgment is irreducible: <em>Plan-authoring</em>,
+<em>Check sign-off</em>, <em>Act</em>. Three touches across the four beats (Do has none) (<a href="/spec/03-cycle-automation.html">03</a>).</li>
+</ul>
+<h2>Leaves — the model touchpoints</h2>
+<p>(doc <a href="/spec/03-cycle-automation.html">03</a>)</p>
+<ul>
+<li><strong>Leaf / model leaf</strong> — a point where a model is invoked. The leaves fill <em>artifacts</em>;
+they never decide control flow. There are <strong>six</strong>, all steps within beats:
+<ul>
+<li><strong>planner</strong> — Plan (interactive): turns the human's documents into <code>brief.md</code>.</li>
+<li><strong>builder</strong> — Do (headless): writes <code>patch.diff</code> + the named test + <code>build-notes.md</code>.</li>
+<li><strong>reviewer</strong> — Check review step (headless, advisory): writes <code>check-review.md</code>.</li>
+<li><strong>signoff</strong> — Check sign-off step (interactive): records the human's decision token.</li>
+<li><strong>publisher</strong> — Check publish step (interactive): drafts the contribution artifacts.</li>
+<li><strong>act</strong> — Act (interactive): proposes process deltas.</li>
+</ul>
+</li>
+<li><strong>Leaf mode</strong> — <code>stub</code> (offline placeholder; the vertical-slice default) or <code>command</code>
+(a real model wired via <code>argv</code> in <code>pdca.toml</code>).</li>
+<li><strong>Interactive vs headless</strong> — interactive leaves hand the terminal to a seeded REPL
+(Plan, sign-off, publish, Act); headless leaves run autonomously and write a doc (Do,
+reviewer). <code>PDCA_LEAVES_MODE=stub</code> forces every leaf offline.</li>
+</ul>
+<h2>The bundle and its artifacts</h2>
+<p>(doc <a href="/spec/02-cycle-artifacts.html">02</a>)</p>
+<ul>
+<li><strong>Bundle</strong> — the per-cycle directory <code>&lt;bundle_root&gt;/issue_&lt;id&gt;/</code> holding every artifact
+for one contribution. <strong>State is the files present</strong> in it — no database.</li>
+<li><strong>Bundle root</strong> — the project's base path for bundles (e.g. <code>results/</code>).</li>
+<li><strong>Frozen bundle</strong> — an accepted (COMPLETE) bundle; no longer in flight, and input to
+the next Act review.</li>
+<li><strong><a href="http://brief.md">brief.md</a></strong> — the Plan artifact: the one-page spec for one logical fix (success
+criterion, repo + branch target, scope/out-of-scope, repro, test file, citations).</li>
+<li><strong>Design proposal</strong> (a.k.a. <strong>GEPS</strong>-shaped) — a richer Plan artifact for a change big
+enough to warrant a design (architecture / API / UX). Still a brief, not a separate
+track; reserved for the exception (<a href="/spec/01-the-quality-cycle.html">01</a>, <a href="/spec/07-case-study-ci-hardening.html">07</a>).</li>
+<li><strong>iteration-v&lt;N&gt;/</strong> — a prior rejected attempt, archived intact on iterate (<code>brief.md</code> included on iterate-to-Plan); moved here, not deleted.</li>
+<li><strong>patch.diff</strong> — the Do change. May be pushed to a draft branch; never merged by the
+builder.</li>
+<li><strong>the shipped test</strong> — the regression test that fails pre-fix and passes post-fix,
+shipped in the same change.</li>
+<li><strong><a href="http://build-notes.md">build-notes.md</a></strong> — the builder's rationale, <strong>withheld from the reviewer</strong> by the
+driver; it exists for the human at sign-off.</li>
+<li><strong>check-gates.json / .md</strong> — the deterministic gate results (the gates component of
+Check). Renders the full 5/5/1 matrix.</li>
+<li><strong><a href="http://check-review.md">check-review.md</a></strong> — the advisory reviewer's per-item verdicts (PASS / FAIL /
+NEEDS-HUMAN).</li>
+<li><strong><a href="http://SUMMARY.md">SUMMARY.md</a></strong> — the assembled result document. Its sections: §1 Spec · §2 Disposition
+· §3 Correctness · §4 Conformance · §5 Advisory review · <strong>§6 NEEDS-HUMAN</strong> · §7
+Proven/unproven · §8 Attachments · <strong>§9 Check sign-off</strong> · §10 Act candidates.</li>
+<li><strong>§6 NEEDS-HUMAN</strong> — items only a human can clear before sign-off; the C6 guard refuses
+accept while any are open.</li>
+<li><strong>§9 sign-off</strong> — where the human records the disposition + outcome; completing it
+closes the cycle.</li>
+<li><strong>§10 Act candidates</strong> — process observations for the next Act review; never gates.</li>
+<li><strong>Attachments</strong> (§8) — <code>pr-description.md</code>, <code>tracker-comment.md</code> (always),
+<code>MANUAL-VERIFICATION.md</code> (any manual-work outcome), and (for publish) <code>commit-msg.txt</code>.</li>
+<li><strong>process/act-log.md</strong> — the append-only log of process deltas, one dated entry per
+Act review.</li>
+</ul>
+<h2>Bundle states</h2>
+<p>(doc <a href="/spec/03-cycle-automation.html">03</a>) — each is derived from which files exist:</p>
+<ul>
+<li><strong>UNPLANNED</strong> — no <code>brief.md</code> yet (ready for Plan).</li>
+<li><strong>PLANNED</strong> — <code>brief.md</code> present, no <code>patch.diff</code> (ready for Do).</li>
+<li><strong>BUILT</strong> — patch + test + build-notes present (ready for Check gates).</li>
+<li><strong>CHECKED</strong> — gates + review present, no <code>SUMMARY.md</code> (ready to assemble).</li>
+<li><strong>AWAITING_SIGNOFF</strong> — <code>SUMMARY.md</code> assembled, §9 empty; the pipeline <strong>STOPS</strong> here.</li>
+<li><strong>COMPLETE</strong> — §9 accepted; the bundle is frozen.</li>
+<li><strong>ITERATE_DO</strong> — §9 = iterate-to-Do; driver clears Do+Check artifacts → PLANNED.</li>
+<li><strong>ITERATE_PLAN</strong> — §9 = iterate-to-Plan; driver archives the attempt (incl. brief) → UNPLANNED.</li>
+<li><strong>iterate-to-Do</strong> — the fix was wrong, the spec right: rebuild against the same brief.</li>
+<li><strong>iterate-to-Plan</strong> — the spec was wrong: re-author the brief (old attempt archived to <code>iteration-v&lt;N&gt;/</code>).</li>
+</ul>
+<h2>Check — the 5/5/1, gates and judgment</h2>
+<p>(docs <a href="/spec/01-the-quality-cycle.html">01</a>, <a href="/spec/02-cycle-artifacts.html">02</a>, <a href="/spec/04-validation-tooling.html">04</a>)</p>
+<ul>
+<li><strong>5/5/1</strong> — the anatomy of Check: <strong>5 correctness</strong> (a chain) + <strong>5 conformance</strong> (a
+stack) + <strong>1 validation</strong> (one indivisible judgment).</li>
+<li><strong>Correctness (C1–C5)</strong> — ordered chain answering &quot;is it <em>right</em> (relative to the
+spec)&quot;: C1 Spec · C2 Reproduction · C3 Change · C4 Verification · C5 Causal adequacy.
+C1/C3 are inputs (from Plan/Do); C2/C4 are gates; C5 is judgment.</li>
+<li><strong>Conformance (T1–T5)</strong> — independent layers answering &quot;is it <em>well-formed</em>&quot;: T1
+Structure · T2 Shape · T3 Runtime · T4 Contribution · T5 Judgment. T1–T4 are gates; T5
+is judgment.</li>
+<li><strong>Validation</strong> — the one indivisible act: &quot;is this the right thing to do <em>at all</em>&quot;
+(fitness-to-purpose). Judgment, always human-confirmed.</li>
+<li><strong>Gate / gating</strong> — a deterministic check that <strong>blocks</strong> accept (exits 0 = pass). Only
+gates block. C2/C4 + T1–T4.</li>
+<li><strong>Unverifiable</strong> — a gate result for a check that genuinely <em>cannot run</em> (exit 77 or a
+<code>PDCA-UNVERIFIABLE:</code> line). Not a pass, not a fail: routed to §6 NEEDS-HUMAN so C6 makes
+the human clear it (docs 04 §Gate result vocabulary, 06 §C5a).</li>
+<li><strong>Advisory</strong> — a non-blocking signal (the reviewer, and anything <code>gating = false</code>); it
+annotates, never gates.</li>
+<li><strong>Judgment cell</strong> — C5, T5, and Validation — the three cells no gate can decide; they
+resolve to <em>advisory reviewer + human sign-off</em>.</li>
+<li><strong>Oracle / oracle hierarchy</strong> — every claim is only as strong as what decided it:
+conformance check &gt; written test &gt; existing suite &gt; human/advisory judgment.</li>
+<li><strong>scope = repo / scope = bundle</strong> — a gate runs against the working tree (what CI
+re-runs) / needs the bundle's patch context (<code>$PDCA_BUNDLE</code> exported; local only).</li>
+<li><strong>Single-sourcing</strong> — one implementation of each gate, invoked identically by the local
+driver and CI — no drift.</li>
+<li><strong>Reviewer independence / decorrelation</strong> — the reviewer is decorrelated from the
+builder by <em>file-withholding</em> (no <code>build-notes.md</code>), <em>tool scope</em> (execute-only, no
+write), and <em>vendor split</em> (a different model family). It protects evidence-integrity,
+not fix-correctness.</li>
+<li><strong>Collapse rule</strong> — for a conformance-defect fix, correctness collapses into conformance
+(the check is the oracle); for a behavioural-defect fix, correctness needs its own
+evidence chain.</li>
+<li><strong>C6 accept-guard</strong> — accept is refused while §6 NEEDS-HUMAN has open items. Enforced by
+deterministic code, even when the decision is made in a model+human session.</li>
+<li><strong>Per-beat rule prefixes</strong> — the guidelines are numbered by beat: <strong>P-</strong> (Plan), <strong>D-</strong>
+(Do), <strong>C-</strong> (Check), <strong>A-</strong> (Act) — e.g. P1, P8, C6, A1. A repo may add prefixed rules
+that <em>tighten</em> a generic one, never weaken it (<a href="/spec/06-quality-cycle-guidelines.html">06</a>).</li>
+</ul>
+<h2>Sign-off, iteration and disposition</h2>
+<p>(docs <a href="/spec/02-cycle-artifacts.html">02</a>, <a href="/spec/03-cycle-automation.html">03</a>, <a href="/spec/06-quality-cycle-guidelines.html">06</a>)</p>
+<ul>
+<li><strong>Sign-off (Check sign-off)</strong> — the human step completing Check: clear §6, weigh the
+advisory review, record §9. The model <em>proposes</em> (a one-token decision); the driver
+<em>records</em> it under the C6 guard.</li>
+<li><strong>Sign-off decision</strong> — exactly one of <code>accept</code> · <code>iterate-do</code> · <code>iterate-plan</code>.</li>
+<li><strong>Disposition</strong> — the cycle's final verdict: fixed / already-fixed / can't-reproduce /
+wontfix / by-design / external / merged-wider / closed-<reason>.</li>
+<li><strong>Confirm-and-close</strong> — closing a cycle <em>without</em> a fix (doesn't reproduce, already
+fixed, wontfix, external). A first-class, successful PDCA outcome.</li>
+<li><strong>Disposition hint</strong> — the Plan-time triage guess (likely-fix / likely-close /
+POSSIBLY-FIXED → verify first / UPSTREAM / EXTERNAL / NO-NOTES); never binding on Do or
+Check.</li>
+<li><strong>Sign-off queue</strong> — the cheap-first burn-down of AWAITING_SIGNOFF bundles (empty §6 +
+a close disposition come first; adjudication-heavy ones last).</li>
+</ul>
+<h2>Publish — Check's contribution arm</h2>
+<p>(doc <a href="/spec/03-cycle-automation.html">03</a>)</p>
+<ul>
+<li><strong>Publish</strong> — the closing <strong>step of Check</strong> (not a beat): contribute an accepted fix as
+a <strong>draft PR</strong>. The publisher leaf writes prose; deterministic code does the git/PR
+mechanics, stopping at the draft. In <code>pdca flow</code> it runs on every accept (<code>--no-publish</code>
+to skip); offline it dry-runs.</li>
+<li><strong>draft PR</strong> — the contribution artifact publish opens; it is never marked ready or
+merged by the harness — that is the human's sign-off disposition.</li>
+<li><strong>issue trailer</strong> — the commit/PR line linking to the issue (<code>[tracker].issue_trailer</code>,
+e.g. <code>Fixes #&lt;id&gt;</code>); the T4 gate enforces it.</li>
+</ul>
+<h2>Automation — driver, flow and maturity</h2>
+<p>(doc <a href="/spec/03-cycle-automation.html">03</a>)</p>
+<ul>
+<li><strong>Driver / orchestrator</strong> — the deterministic state machine over the bundle: read file
+state, run the next beat's leaf, write the artifact, advance, STOP at AWAITING_SIGNOFF.
+No model in the control path. Resumable, idempotent, inspectable.</li>
+<li><strong>Flow / <code>pdca flow</code></strong> — the continuous orchestrator: Plan → Do → Check(gates → review →
+sign-off → publish) → Act as one run. <strong><code>flow_batch</code></strong> does it for several issues from
+one Plan session.</li>
+<li><strong>Batch</strong> — N issues processed together: scrape → draft briefs → one human Plan session →
+<code>pdca batch</code> (unattended Do+Check) → <code>pdca queue</code> (cheap-first sign-off).</li>
+<li><strong>Batch selection</strong> — the deliberate, Plan-front choice of <em>which</em> issues go in a batch:
+start from a real pool, profile it (status/severity/<strong>age</strong>/component), pick the
+<strong>batch character</strong> (fix-oriented vs hygiene/long-tail), drop non-defects, pre-disposition
+into buckets, size to the natural set.</li>
+<li><strong>Maturity ladder (L1–L4)</strong> — L1 scripted handoff (project-provided scraper) · L2
+unattended per-issue body (<code>pdca run</code>) · L3 batch + sign-off queue (<code>pdca batch</code>/<code>queue</code>)
+· L4 Act tooling (<code>pdca act-index</code>/<code>act-log</code>).</li>
+<li><strong>Maturity tags</strong> — <code>[built]</code> (ships and runs) · <code>[partial]</code> (ships, needs per-project
+wiring) · <code>[project-provided]</code> (not shipped; the project supplies it) · <code>[planned]</code>
+(designed, not yet implemented).</li>
+<li><strong>Heartbeat</strong> — the elapsed-time tick (<code>… still working (NmSSs elapsed)</code>) a headless leaf
+or long gate prints so a silent job doesn't look hung.</li>
+<li><strong>Env overrides</strong> — <code>PDCA_LEAVES_MODE=stub</code> (force all leaves offline) · <code>PDCA_GATES_MODE=stub</code>
+(stub the gates) · <code>PDCA_BUNDLE_ROOT</code> (redirect bundles, so a rehearsal can't collide
+with the real <code>results/</code>) · <code>PDCA_LANES=N</code> (in-driver lane-pool size; overrides
+<code>[driver].lanes</code>, <a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong>Lane</strong> — an isolated execution context running cycles concurrently with other lanes,
+realized either as an independent copy / <code>git worktree</code> of the workspace (own <code>results/</code>
+<ul>
+<li>own checkout) <strong>or</strong> as a worker slot in the in-driver pool (<code>[driver].lanes</code>), where a
+gate scopes its checkout / runner by <code>$PDCA_LANE</code>. Several lanes give throughput; the
+bundle is still the unit of isolation (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+</ul>
+</li>
+<li><strong>Lane planning</strong> — assigning issues to lanes by <strong>code locality</strong>: same-area fixes to
+one lane (serial), parallel only across disjoint areas. Partition by <em>what changes</em>, not
+by id; a Plan-beat judgment that prevents integration conflicts up front (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong>Integration re-gate</strong> — validating the <em>combination</em> of independently-accepted lane
+patches at the <strong>merge boundary</strong>: the repo-scoped working-tree gate (<code>gates.run_working_tree</code>,
+single-sourced with CI) over the merged tree + draft-PR conflict surfacing. Catches what
+a per-fix gate (clean base, blind to other lanes) cannot (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+</ul>
+<h2>Discipline and guardrails</h2>
+<p>(docs <a href="/spec/01-the-quality-cycle.html">01</a>, <a href="/spec/03-cycle-automation.html">03</a>, <a href="/spec/06-quality-cycle-guidelines.html">06</a>)</p>
+<ul>
+<li><strong>STOP discipline</strong> — pushing to a draft branch and opening a <em>draft</em> PR MAY happen during
+the cycle; the <strong>ready-mark</strong> MUST NOT happen before Check sign-off accepts.</li>
+<li><strong>Ready-mark</strong> — the explicit &quot;this is ready to merge&quot; transition; the one action reserved
+for the human at sign-off.</li>
+<li><strong>builder_guard</strong> — the per-subagent PreToolUse hook (<code>.claude/hooks/builder_guard.py</code>)
+that mechanically blocks <code>gh pr ready</code> / <code>gh pr merge</code> for the builder (and publisher),
+not a global deny.</li>
+<li><strong>Auto-fixable vs decision-level FAIL</strong> — a mechanical FAIL (lint/format/genuinely-red) is
+auto-fixed and re-run; a FAIL needing a human call goes to §6 NEEDS-HUMAN.</li>
+</ul>
+<h2>Process, integration and the per-repo spec</h2>
+<p>(docs <a href="/spec/01-the-quality-cycle.html">01</a>, <a href="/spec/05-repository-integration.html">05</a>, <a href="/spec/06-quality-cycle-guidelines.html">06</a>)</p>
+<ul>
+<li><strong>Process baseline</strong> — what Plan inherits from prior Act: the brief template, the
+conformance ruleset, the branch-target rules, the agent files. Act improves it.</li>
+<li><strong>Act review / Act index / act-log</strong> — the cross-cycle pass: <code>pdca act-index</code> surfaces
+frozen-bundle §6/§7/§10 + recurring signals; the human decides deltas; <code>pdca act-log</code>
+scaffolds the dated, <strong>append-only</strong>, <strong>concrete-and-located</strong> entry.</li>
+<li><strong>Integration / per-repo specification</strong> — the project's answer to the &quot;which / where /
+how&quot; the generic cycle leaves open (tracker, branches, fixtures, ruleset, templates,
+paths, scripts, governance). Lives in <code>docs/INTEGRATION.md</code>; <strong>generic wins on shape,
+the integration wins on instantiation</strong>.</li>
+<li><strong>Conformance ruleset</strong> — the project's <em>written</em> rules each tier consumes (a contributor
+guide, an addon-dev doc, a PEP/RFC). The matrix cites it; a gate that traces to a written
+source is auditable.</li>
+<li><strong>Tracker</strong> — the bug tracker (Mantis / GitHub Issues / Jira); the integration declares
+its URL, issue-ID format, cross-link form, status→disposition mapping, and comment voice.</li>
+<li><strong>Reproduction fixture / runner</strong> — the canonical fixture (e.g. <code>example.gramps</code>) and the
+scripts that <em>reproduce</em> a defect and <em>verify</em> a fix; they live in the project's
+verification engine (<code>engine/</code>).</li>
+<li><strong>Branch-target rules</strong> — the per-area map of which fix targets which branch; resolved in
+Plan (P4), never deferred to Do. Symptom-location ≠ fix-location — resolve by reproducing.</li>
+<li><strong>Upstream-isn't-ahead</strong> — the P8 pre-flight: is the defect already fixed, or being
+addressed? Search by <strong>affected file path</strong>, check merged history, and assess open <em>and
+closed</em> PRs (a closed PR is signal, not noise).</li>
+<li><strong>Success criterion</strong> — the load-bearing brief field: the observable, mechanically
+testable condition that means it's fixed.</li>
+<li><strong>Scope / out-of-scope</strong> — the brief's explicit boundary (one logical fix); how Check
+flags scope creep against something written.</li>
+<li><strong>Root cause vs symptom</strong> — the causal-adequacy (C5) distinction; the tracker's
+filed-under location is the symptom, not necessarily the fix location.</li>
+<li><strong>Two rule families</strong> — <strong>Family A</strong> (project-guideline conformance: the contribution
+against the project's own ruleset — the T1–T5 stack) vs <strong>Family B</strong> (upstream-defect
+analysis: bug-hunting the code the project depends on, whose findings become <em>upstream</em>
+PRs). Same tools, different subjects.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

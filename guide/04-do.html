@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 04 — Do: build the fix — PDCA Harness</title>
+<meta name="description" content="← 03 Plan · Index · next: 05 Check →">
+<meta property="og:title" content="Step 04 — Do: build the fix — PDCA Harness">
+<meta property="og:description" content="← 03 Plan · Index · next: 05 Check →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Step 04 — Do: build the fix</h1>
+<p>← <a href="/guide/03-plan.html">03 Plan</a> · <a href="/guide/">Index</a> · next: <a href="/guide/05-check.html">05 Check →</a></p>
+<p><strong>Beat: Do.</strong> Fully automated — no human touch point. The builder leaf reads the
+<code>PLANNED</code> bundle's <code>brief.md</code> (and nothing else) and produces the change. When
+<code>patch.diff</code> lands, the bundle becomes <code>BUILT</code>.</p>
+<h2>How Do runs</h2>
+<p>The <code>builder</code> leaf is <strong>headless</strong> (<code>interactive = false</code>) — it runs unattended
+as part of <code>make flow</code>, so there's nothing to type. From gramps' <code>pdca.toml</code>:</p>
+<pre><code class="language-toml">[leaves.builder]
+mode = &quot;command&quot;
+interactive = false
+argv = [&quot;claude&quot;, &quot;-p&quot;, &quot;--agent&quot;, &quot;builder&quot;, &quot;--permission-mode&quot;, &quot;acceptEdits&quot;,
+        &quot;--allowedTools&quot;, &quot;Read,Edit,Bash(git *),Bash(python3 *)&quot;]
+</code></pre>
+<p>The narrow <code>--allowedTools</code> is deliberate: the builder may read, edit, and run
+git/python — it cannot, say, open a PR. STOP discipline (<a href="/guide/03-plan.html">step 03</a>)
+is enforced by what the leaf <em>can't do</em>, not just by instruction.</p>
+<h2>What Do produces</h2>
+<p>Three artifacts land in the bundle:</p>
+<table>
+<thead>
+<tr>
+<th>Artifact</th>
+<th>Purpose</th>
+<th>Who sees it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>patch.diff</code></td>
+<td>The change itself</td>
+<td>Check gates, reviewer, you</td>
+</tr>
+<tr>
+<td>the test file</td>
+<td>The red→green proof, shipped at the brief's <strong>Test file</strong> path</td>
+<td>C4 gate runs it</td>
+</tr>
+<tr>
+<td><code>build-notes.md</code></td>
+<td>The builder's rationale — why this approach, trade-offs considered</td>
+<td><strong>You</strong> at sign-off — <strong>withheld from the reviewer</strong></td>
+</tr>
+</tbody>
+</table>
+<p>That last withholding is a real design decision, not an accident: the Check
+reviewer (<a href="/guide/05-check.html">step 05</a>) sees only <code>{patch.diff, test, brief.md, check-gates.json}</code>. If the reviewer could read the builder's self-justification,
+it would anchor on the builder's framing instead of judging the diff cold. The
+human signing off <em>does</em> get <code>build-notes.md</code>, because the human is adjudicating,
+not independently re-deriving.</p>
+<h2>The real patch</h2>
+<p>Here's the heart of the actual <code>results/issue_11589/patch.diff</code>. The brief said
+&quot;delete only the selected plugin's own files when the directory is shared&quot;; the
+builder added two helpers and rerouted <code>__uninstall</code>:</p>
+<pre><code class="language-diff">--- a/PluginManager/PluginManager.py
++++ b/PluginManager/PluginManager.py
+@@ -336,11 +336,52 @@ class PluginStatus(tool.Tool, ManagedWindow):
++    def __plugins_sharing_dir(self, pdata):
++        &quot;&quot;&quot;Return the registered plugins, other than *pdata*, whose files live
++        in the same directory (``fpath``). ... (bug 11589).&quot;&quot;&quot;
++        shared = {}
++        for ptype in PTYPE_STR:
++            for other in self._preg.type_plugins(ptype):
++                if other.id != pdata.id and other.fpath == pdata.fpath:
++                    shared[other.id] = other
++        return list(shared.values())
++
++    def __remove_plugin_files(self, pdata, siblings):
++        &quot;&quot;&quot;Delete only the files belonging to *pdata* ... leaving the shared
++        directory and everything else in it intact.&quot;&quot;&quot;
++        if pdata.fname in {other.fname for other in siblings}:
++            return
++        base = os.path.splitext(pdata.fname)[0]
++        for fname in (base + &quot;.gpr.py&quot;, pdata.fname):
++            target = os.path.join(pdata.fpath, fname)
++            if os.path.isfile(target):
++                os.remove(target)
++
+     def __uninstall(self, pid, path):
+         &quot;&quot;&quot;Uninstall the plugin&quot;&quot;&quot;
+         pdata = self._pmgr.get_plugin(pid)
++        siblings = self.__plugins_sharing_dir(pdata)
+         try:
+-            if os.path.islink(pdata.fpath):  # linux link
++            if siblings:
++                # The directory is shared by other registered plugins (e.g. the
++                # multi-rule FilterRules pack). Removing the whole directory
++                # would destroy those siblings ... so remove only this plugin's
++                # own files (bug 11589).
++                self.__remove_plugin_files(pdata, siblings)
++            elif os.path.islink(pdata.fpath):  # linux link
+</code></pre>
+<p>Two things to note, both traceable straight back to the brief:</p>
+<ul>
+<li><strong>The success criterion's two halves are both honoured.</strong> Shared directory →
+remove only own files (new branch); sole occupant → fall through to the old
+<code>rmtree</code> (the <code>elif</code>). The brief explicitly demanded the sole-occupant case
+&quot;still remove the directory, preserving today's behaviour&quot; — so the builder kept
+the old path instead of replacing it.</li>
+<li><strong>The fix targets the root cause named in the brief</strong> (<code>shutil.rmtree</code> on a
+shared <code>fpath</code>), not the symptom. That's what Check's C5 &quot;causal adequacy&quot; will
+probe.</li>
+</ul>
+<p>The companion test ships at exactly the path the brief named —
+<code>PluginManager/tests/test_uninstall_shared_dir.py</code> — so the C4 gate has something
+to run.</p>
+<p>The bundle is now <code>BUILT</code>. The driver moves straight into Check — <a href="/guide/05-check.html">step
+05</a> — with no pause.</p>
+<p>← <a href="/guide/03-plan.html">03 Plan</a> · <a href="/guide/">Index</a> · next: <a href="/guide/05-check.html">05 Check →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

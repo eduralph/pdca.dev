@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 07 — Publish &amp; Act — PDCA Harness</title>
+<meta name="description" content="← 06 Sign-off · Index">
+<meta property="og:title" content="Step 07 — Publish &amp; Act — PDCA Harness">
+<meta property="og:description" content="← 06 Sign-off · Index">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Step 07 — Publish &amp; Act</h1>
+<p>← <a href="/guide/06-signoff.html">06 Sign-off</a> · <a href="/guide/">Index</a></p>
+<p>Two things remain. <strong>Publish</strong> is the closing work of Check: turn the accepted
+bundle into a draft PR. <strong>Act</strong> is the fourth beat — the cross-cycle review that
+closes the PDCA loop by improving the <em>process</em>, not the contribution.</p>
+<hr />
+<h2>Publish — contribute the accepted fix</h2>
+<p>Once a bundle is <code>COMPLETE</code>, publish opens it as a <strong>draft</strong> PR on the target
+branch from the brief. In <code>make flow</code> this runs automatically on an accept; you
+can also run it standalone:</p>
+<pre><code class="language-bash">make publish ID=11589           # open the draft PR
+make publish ID=11589 DRY=1     # print the git/gh plan without pushing
+</code></pre>
+<p>It writes <code>publish.json</code> into the bundle and uses the project's PR conventions
+from INTEGRATION §8. For gramps that's a four-section body (Root cause / Fix /
+Verified against / Test), and — because 11589 touches an addon — an <code>## Affected addon</code> section that @-mentions the addon's maintainer (INTEGRATION §10).</p>
+<p><strong>STOP discipline holds to the end:</strong> the PR opens as a <em>draft</em>. A human marks it
+ready — the harness never does. gramps' governance makes this explicit
+(INTEGRATION §10): <em>&quot;Eduard opens fork PRs as draft, marks ready himself; builder
+commits and stops — no push/PR-open/ready-mark without explicit instruction.&quot;</em></p>
+<p>In gramps' git history you can see cycles land this way — each result bundle gets
+a branch and a PR:</p>
+<pre><code>c52c6a4 Merge pull request #105 from eduralph/results/issue-46-graphview-import
+f1092ca results(46): record published GraphView import-safety cycle
+</code></pre>
+<p>That's one full cycle, <a href="/guide/03-plan.html">steps 03–07</a>, from tracker issue to merged
+record.</p>
+<hr />
+<h2>Act — improve the process, not the contribution</h2>
+<p>Plan/Do/Check operate on <strong>one contribution</strong>. <strong>Act</strong> operates on the <strong>process
+itself</strong>, across <em>many</em> completed cycles, on its own cadence (every N cycles, or
+weekly — <em>not</em> per-cycle). It's touch point #3.</p>
+<pre><code class="language-bash">pdca act-index                              # read-only: frozen cycles + recurring signals
+pdca act-log --date 2026-06-12 --append     # scaffold a dated entry into process/act-log.md
+</code></pre>
+<p>Act reads the <code>COMPLETE</code> bundles' SUMMARYs — especially §6 (what needed a human),
+§7 (what stayed unproven), and §10 (Act candidates the cycle flagged) — looking
+for <strong>patterns</strong>. A one-off is noise; the same gap across three cycles is a
+process defect. What Act explicitly does <strong>not</strong> do: re-decide any disposition,
+re-run the suite, or write the next brief.</p>
+<h3>A real Act entry</h3>
+<p>This is from <code>gramps-testbed-v2/process/act-log.md</code> (2026-06-12), and it's the
+clearest demonstration of why the beat exists. A maintainer reviewing the
+<code>glade-setattr</code> cycle's published PR was asked to list a new <code>.py</code> file in
+<code>po/POTFILES</code> — a documented rule <strong>no gate owned</strong>:</p>
+<pre><code class="language-markdown"># Act review — 2026-06-12 — cycles considered: glade-setattr (PR #2356 review feedback)
+
+## What the cycles' records exposed
+- A documented doc-16 MUST with no owner in the cycle — surfaced by a maintainer
+  at review, not by any gate. Nick-Hall asked for the new test file to be listed
+  in `po/POTFILES.{in,skip}`. The rule is explicit and sourced ... It is not
+  exotic — it simply has no encoding in our T1–T4 ladder.
+- The omission fell through every beat. Plan: the brief never stated the
+  obligation. Do: the builder has no independent doc-16 checklist. Check/gates:
+  T1 is addon-only; T2 checks file *shape*; T4 checks the commit/PR *wrapper* —
+  none implement doc 16 §Translation Files. New-file→manifest registration falls
+  in the gap between T2 (shape) and T4 (wrapper); neither owns it.
+
+## Process deltas (candidates — routed for engineering, NOT applied here)
+- Gate (highest-value): add a bundle-scoped, deterministic check — for a *core*
+  bundle whose `patch.diff` adds a `.py` file, assert it appears in
+  `po/POTFILES.in` or `po/POTFILES.skip`. Directly implements doc 16:99-100, is
+  target-aware (core-only), and needs no Docker. Home: extend `t2_shape.py`.
+</code></pre>
+<p>Trace the loop: a human review comment (§ outside the gates) → Act <em>generalizes</em>
+it (&quot;this will recur on every core bundle that adds a file&quot;) → a concrete process
+delta (a new gate) → which, once built, means <strong>the next cycle's gates catch it
+automatically</strong> instead of a maintainer catching it at review. That is the &quot;→ back
+to Plan with a better baseline&quot; arrow made operational.</p>
+<p>Another entry shows Act tightening the <em>spec</em>, not the gates — the <code>issue_8653</code>
+cycle shipped a test that exercised a hand-ported copy of production rather than
+production itself; only the human's T5 judgment caught it:</p>
+<pre><code class="language-markdown">- Reference (applied): new principle §3.4 — test the production path: the success
+  evidence MUST exercise the production path; a parallel re-implementation that
+  mirrors production is not acceptable evidence. (docs/principles.md §3.4)
+- Spec template (applied): brief Test file field now reminds that the test must
+  drive the production path, not a parallel copy. (templates/brief.md.tpl)
+</code></pre>
+<p>Act deltas land in five places: the <strong>spec template</strong> (a brief field), the
+<strong>ruleset</strong> (a written rule), the <strong>gates</strong> (a new/promoted check), the <strong>agent
+files</strong> (<code>.claude/agents/*.md</code>), or the <strong>orchestration</strong> (driver/state). Each is
+a permanent improvement to the baseline every future cycle starts from.</p>
+<hr />
+<h2>The loop, closed</h2>
+<pre><code>Plan ─► Do ─► Check ─► (sign-off) ──► COMPLETE ──► publish (draft PR)
+  ▲                                      │
+  └──────────── Act ◄────────────────────┘
+        (every N cycles: turn recurring
+         misses into spec/gate/rule deltas)
+</code></pre>
+<p>You've now walked one contribution from a tracker issue to a merged, signed-off,
+verified fix — and seen how the cycle feeds its own improvement. To do it for
+real, go back to <a href="/guide/01-render-and-integrate.html">step 01</a> and render the harness into
+your own project; the reference spec in
+<a href="/spec/"><code>../template/PCDA/quality-cycle/</code></a> is there when
+you want the <em>why</em> behind any beat.</p>
+<p>← <a href="/guide/06-signoff.html">06 Sign-off</a> · <a href="/guide/">Index</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

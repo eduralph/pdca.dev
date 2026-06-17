@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 06 — Sign-off: the §9 verdict — PDCA Harness</title>
+<meta name="description" content="← 05 Check · Index · next: 07 Publish &amp; Act →">
+<meta property="og:title" content="Step 06 — Sign-off: the §9 verdict — PDCA Harness">
+<meta property="og:description" content="← 05 Check · Index · next: 07 Publish &amp; Act →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Step 06 — Sign-off: the §9 verdict</h1>
+<p>← <a href="/guide/05-check.html">05 Check</a> · <a href="/guide/">Index</a> · next: <a href="/guide/07-publish-and-act.html">07 Publish &amp; Act →</a></p>
+<p><strong>Beat: Check, completed by the human.</strong> Touch point #2. The bundle is
+<code>AWAITING_SIGNOFF</code>; you've cleared §6 (<a href="/guide/05-check.html">step 05</a>); now you record the
+verdict in §9. This single decision is the only thing standing between a built fix
+and a shipped one — by design, no model can make it.</p>
+<h2>The four dispositions</h2>
+<pre><code class="language-bash">pdca signoff &lt;id&gt; --accept        # the fix is good → COMPLETE, ready to publish
+pdca signoff &lt;id&gt; --iterate-do    # right spec, wrong build → rebuild against same brief
+pdca signoff &lt;id&gt; --iterate-plan  # the spec itself was wrong → re-author the brief
+pdca signoff &lt;id&gt; --discontinue   # this doesn't belong in the cycle → abandon
+</code></pre>
+<p>Each maps to a state transition the driver applies the instant you record it:</p>
+<table>
+<thead>
+<tr>
+<th>Disposition</th>
+<th>§9 outcome</th>
+<th>New state</th>
+<th>What the driver does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--accept</code></td>
+<td><code>merged-wider</code></td>
+<td><code>COMPLETE</code></td>
+<td>Freezes the bundle; publish can run</td>
+</tr>
+<tr>
+<td><code>--iterate-do</code></td>
+<td><code>iterated-to-Do</code></td>
+<td>→ <code>PLANNED</code></td>
+<td>Archives Do+Check into <code>iteration-v&lt;N&gt;/</code>, keeps the brief, re-runs the builder</td>
+</tr>
+<tr>
+<td><code>--iterate-plan</code></td>
+<td><code>iterated-to-Plan</code></td>
+<td>→ <code>UNPLANNED</code></td>
+<td>Archives the <strong>whole attempt incl. brief</strong>, you re-spec</td>
+</tr>
+<tr>
+<td><code>--discontinue</code></td>
+<td><code>discontinued</code></td>
+<td><code>DISCONTINUED</code></td>
+<td>Records §9, no transition, drops from the pending set</td>
+</tr>
+</tbody>
+</table>
+<p><code>--accept</code> is <strong>guarded</strong> (the C6 rule from <a href="/guide/05-check.html">step 05</a>): it's refused
+while any §6 item is unchecked. The other three are not — you can redirect or
+abandon a bundle with §6 still open. Add <code>--by &quot;Name&quot;</code> to set attribution and
+<code>--delta &quot;…&quot;</code> to record the rationale on an iterate.</p>
+<blockquote>
+<p><code>--discontinue</code> is the disposition this harness version
+(<a href="https://github.com/eduralph/pdca-harness/releases">v0.18.0</a>) unified — the
+action, the <code>discontinued</code> §9 outcome, and the terminal <code>DISCONTINUED</code> state now
+all share one word. Use it for work that, on inspection, doesn't fit the cycle
+(handled out-of-band, duplicate, won't-fix) — a deliberate abandon, independent
+of §6.</p>
+</blockquote>
+<h2>The simple case — accept</h2>
+<p>For issue 11589 (<a href="/guide/03-plan.html">steps 03–05</a>), the gates proved correctness and the
+four §6 items were all cleared, so the maintainer accepted. The real
+<code>results/issue_11589/SUMMARY.md</code> §9:</p>
+<pre><code class="language-markdown">## 9. Check sign-off                     ← human completes Check here
+- Disposition confirmed / overridden:
+- Outcome: merged-wider
+- Iteration delta (if iterating):
+- By / date: Eduard Ralph / 2026-06-06
+</code></pre>
+<p><code>Outcome: merged-wider</code> ⇒ state <code>COMPLETE</code>. The bundle is frozen and ready for
+publish (<a href="/guide/07-publish-and-act.html">step 07</a>).</p>
+<h2>The instructive case — iterate, with a real reason</h2>
+<p>Acceptance is the boring path. The cycle earns its keep on <strong>iteration</strong> — when
+the human catches something the gates can't. gramps issue 46 (a GraphView
+import-safety fix) took <strong>two</strong> iterations before it was accepted. The brief's
+own carry-forward records <em>why</em> the first attempt was rejected — this is a real
+<code>--iterate-do</code> rationale, verbatim:</p>
+<pre><code class="language-markdown">## Iteration 1 — carry-forward (from the previous attempt)
+- Sign-off rationale: Reject: the regression test reimplements GTK load/version-
+  pinning (test_graphview_import.py:80-82, top-level `import gi` +
+  gi.require_version(&quot;Gtk&quot;,&quot;3.0&quot;)). GTK loading/pinning is already owned by gramps
+  at runtime and by PR 950 in unit testing, so this machinery must not be in the
+  addon test — it is redundant and is the likely cause of the two T3 addon-unit
+  exit-2 collection aborts. Rebuild the test without any manual gi/Gtk pinning;
+  keep the production change (removal of the two import-time raises) as-is.
+  Re-run T3 addon-unit and E2E ...
+</code></pre>
+<p>What happened mechanically:</p>
+<ol>
+<li><strong>Iteration 1</strong> built a fix whose <em>production change was correct</em> but whose
+<em>test</em> carried redundant GTK-pinning machinery. The C4 gate went green (the fix
+worked), but the human noticed the test introduced two new <code>[delta]</code> failures in
+the T3 addon-unit matrix — a regression the test itself caused.</li>
+<li>The maintainer ran <code>pdca signoff 46 --iterate-do --delta &quot;rebuild the test without the gi pin; keep the production change&quot;</code>. The driver archived the
+attempt into <code>iteration-v1/</code>, reverted to <code>PLANNED</code>, and re-ran the builder —
+which got the rejection rationale folded into the brief (above), so it didn't
+repeat the mistake.</li>
+<li><strong>Iteration 2</strong> rebuilt the test without the pin. Accepted:</li>
+</ol>
+<pre><code class="language-markdown">## 9. Check sign-off
+- Outcome: merged-wider
+- Iteration delta (if iterating): [iteration 2 — rebuilt test without gi pin]
+- By / date: Eduard Ralph / 2026-06-13
+</code></pre>
+<p>The lesson this case teaches about the harness: <strong>the deterministic C4 gate said
+&quot;correct,&quot; and it was right — but &quot;correct fix&quot; is not &quot;good contribution.&quot;</strong> A
+test that pins GTK is correct <em>and</em> redundant <em>and</em> regression-inducing; only the
+human reading the §6/§7/review material caught it. The harness didn't prevent the
+mistake — it <strong>surfaced it cheaply</strong> (the <code>[delta]</code> rows), gave the human a clean
+&quot;reject with reason&quot; lever (<code>--iterate-do --delta</code>), and <strong>carried the reason
+forward</strong> so the rebuild started smarter. That carry-forward loop is the &quot;Plan
+with a better baseline&quot; arrow of PDCA, operating inside a single contribution.</p>
+<p>State after accept: <code>COMPLETE</code>. On to publish and the cross-cycle Act review —
+<a href="/guide/07-publish-and-act.html">step 07</a>.</p>
+<p>← <a href="/guide/05-check.html">05 Check</a> · <a href="/guide/">Index</a> · next: <a href="/guide/07-publish-and-act.html">07 Publish &amp; Act →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

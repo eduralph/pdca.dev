@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 Repository Integration — PDCA Harness</title>
+<meta name="description" content="this repo?">
+<meta property="og:title" content="05 Repository Integration — PDCA Harness">
+<meta property="og:description" content="this repo?">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Quality-cycle model</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<!-- Vendored snapshot of the canonical PDCA spec. Obsidian [[wikilinks]] converted to relative Markdown links. The authoritative living source is the project wiki; re-vendor when it changes. -->
+<blockquote>
+<p>The generic PDCA quality cycle (docs 01–04, 06) is project-agnostic by design. To <strong>run</strong> it against a specific repository, that repository MUST provide a small set of concretizations — a <strong>repository-integration specification</strong> that slots into the generic cycle and supplies the project-specific details the cycle's beats need at runtime.</p>
+<p>This doc enumerates <strong>only what is strictly repo-specific</strong>. Anything the generic cycle docs already cover — the model, the artifact shape, the orchestration, the per-beat rules — is <em>not</em> in the integration. The integration is the project's answer to a small set of &quot;which / where / how&quot; questions the generic docs deliberately leave open. Living document.</p>
+</blockquote>
+<h2>What the integration is, and what it is not</h2>
+<p><strong>The integration IS</strong> the project's answer to questions of the form:</p>
+<ul>
+<li><em>Which</em> tracker / branches / fixtures / rules / templates apply to
+this repo?</li>
+<li><em>Where</em> do the cycle's gates and artifacts live in this project?</li>
+<li><em>How</em> are the project's specific scripts and runners invoked?</li>
+</ul>
+<p><strong>The integration IS NOT</strong> a restatement of the generic cycle. It does not redefine Plan/Do/Check/Act, does not re-document the artifact shape (<a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a>), does not re-state the per-beat rules (<a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a>), does not re-describe the tier × home decomposition (<a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a>). When the integration needs to refer to those, it cites them.</p>
+<p>The integration's relationship to the generic docs is <strong>read by</strong>, not <strong>replace</strong>:</p>
+<ul>
+<li>Plan reads it for repo-specific inputs (P11 instantiation).</li>
+<li>Check reads it for the active conformance ruleset and gate homes (C11 instantiation).</li>
+<li>Act maintains it as part of the process baseline (A6 append-only, per <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> §Precondition).</li>
+</ul>
+<p>Conflict resolution between the integration and the generic docs follows <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> §Precondition R3: <strong>generic wins on shape; integration wins on instantiation.</strong></p>
+<h2>What the integration MUST cover</h2>
+<p>Each item below is strictly repo-specific — the generic cycle docs cannot answer it without becoming useless for other projects. Each item names the rule(s) it instantiates so the integration with the rest of the doc set is explicit.</p>
+<h3>1. Tracker integration</h3>
+<p>Instantiates the project's tracker mechanics. Read by Plan during triage and by the writer of <code>tracker-comment.md</code> (always required per <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> §<a href="http://SUMMARY.md">SUMMARY.md</a> §8). Integration MUST declare:</p>
+<ul>
+<li><strong>Tracker system and URL</strong> (e.g. MantisBT at <code>gramps-project.org/bugs</code>; GitHub Issues at <code>org/repo</code>; Jira project key).</li>
+<li><strong>Issue-ID format</strong> as it appears in briefs, commits, and PRs (e.g. <code>13418</code>, <code>#13418</code>, <code>MANT-13418</code>, <code>gh-12345</code>).</li>
+<li><strong>Cross-link form into the tracker from a commit or PR</strong> — the project's actual citation pattern (e.g. <code>p:gramps:nnnn:</code> for Gramps' Mantis instance; <code>Fixes #nnnn</code> for GitHub Issues).</li>
+<li><strong>Status field names and the per-disposition mapping</strong> — which tracker statuses correspond to which cycle dispositions (acknowledged / confirmed / feedback / assigned / resolved → cycle Plan-time and Check-time states).</li>
+<li><strong>Per-release field</strong> (e.g. &quot;Fixed in version&quot;) the cycle updates on a fix.</li>
+<li><strong>The project's tracker-comment voice and template path</strong> — the template <code>agent-work/templates/tracker-comment.md.tpl</code> for the testbed; one per project. Cite the specific path.</li>
+</ul>
+<h3>2. Branch-target rules</h3>
+<p>Instantiates <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> P4. Integration MUST declare:</p>
+<ul>
+<li><strong>The per-area branch map</strong> (e.g. core fixes → <code>maintenance/gramps61</code>; addon fixes → <code>maintenance/gramps60</code> + forward cherry-pick; testbed → <code>main</code>).</li>
+<li><strong>Override convention</strong> — where reviewer-specific override instructions are recorded when they exist (typically the PR review thread).</li>
+<li><strong>Cross-version cherry-pick rules</strong> if the project has them (direction, label, who picks).</li>
+<li><strong>The master-vs-maintenance rule</strong> for this project's release model (cite the project's own statement of it).</li>
+</ul>
+<h3>3. Reproduction fixtures and runners</h3>
+<p>Instantiates <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> P1 (the canonical reproduction). Integration MUST declare:</p>
+<ul>
+<li><strong>The canonical fixture path</strong> (e.g. <code>example.gramps</code> for Gramps).</li>
+<li><strong>The project-specific runner script(s) and their commands</strong> — the actual scripts the cycle invokes, <strong>with paths</strong>:
+<ul>
+<li>Reproduction: e.g. <code>agent-work/scripts/ubuntu/run-interface.sh</code>, <code>agent-work/scripts/windows/run-unit.sh</code> (testbed Linux/Windows splits).</li>
+<li>Verification: the project's test runner (<code>make test</code>, <code>pytest</code>, <code>cargo test</code>, <code>./make.py test</code>, etc.).</li>
+</ul>
+</li>
+<li><strong>Platform variants</strong> if the project supports multiple platforms (Linux containerized vs Windows MSYS2; macOS notes if any).</li>
+<li><strong>What counts as &quot;successful repro&quot;</strong> in this project — exit code, log marker, screenshot, UI assertion.</li>
+</ul>
+<h3>4. Conformance ruleset — bound to 04 and 06</h3>
+<p>This section is the most load-bearing integration point with the rest of the doc set. The integration does NOT re-document the tier × home decomposition (that is <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a>). The integration's job is to <strong>answer 04's matrix</strong> for this repo and <strong>bind it to</strong> <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> C11 (Check applies the per-repo conformance ruleset at the homes the integration designates).</p>
+<p>For each Tier 1–5 (<a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> §5/5/1 × tooling-shape matrix), integration MUST declare:</p>
+<ul>
+<li><strong>The project's written ruleset</strong> that Tier consumes — point at the project's own contributor guidelines, addon-dev doc, PEP, RFC, code-of-conduct, etc. The integration does not RESTATE the rules; it cites the document that owns them.</li>
+<li><strong>The home</strong> for that Tier in this repo (<a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> §Homes — where each gate lives): upstream CI, local dev-tooling mirror or staging, fork-local hooks, fork PR CI, or Check's reviewer / sign-off.</li>
+<li><strong>The single-sourced invocation command</strong> the driver runs and CI runs (the same impl, per <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> §Single-sourcing). Cite the <em>script or module path</em> explicitly.</li>
+<li><strong>Any project-specific extension rules</strong> prefixed per the integration's repo prefix (e.g. <code>gramps-T1-gpr-fields</code>). These tighten or add to the generic Tier rules without weakening any.</li>
+</ul>
+<p>For Tier 5 (judgment), the integration names the project's reviewer contract: which model family runs the reviewer, the <code>AGENTS.md</code> / <code>.claude/agents/reviewer.md</code> config, and its subagent scope (the harness ships these; the integration only records the chosen reviewer family — see <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Do).</p>
+<p><strong>The conformance ruleset entry is the integration's &quot;this is what 04's matrix means in this project&quot; answer.</strong> A reader of <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> should be able to come here and find, for each cell of 04's matrix, the concrete file path and command this project uses.</p>
+<h3>5. Upstream-isn't-ahead routine</h3>
+<p>Instantiates <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> P8. Integration MUST declare:</p>
+<ul>
+<li><strong>What &quot;upstream&quot; is</strong> for this project — canonical URL, relevant branches, fork relationship.</li>
+<li><strong>The project-specific search routine</strong> — which trackers to consult, which PR search patterns work, tokenization gotchas. Gramps' is recorded in <code>CLAUDE.md</code> as the search-by-affected-file-path rule; cite the equivalent for this project.</li>
+<li><strong>The merged-history check command</strong> — the actual <code>git log</code> or <code>gh search</code> invocation the cycle uses.</li>
+</ul>
+<h3>6. Brief and design-proposal templates</h3>
+<p>Instantiates <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> §PLAN (the brief shape) and <a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Solution-approach design (the design-proposal shape) for this project. Integration MUST declare:</p>
+<ul>
+<li><strong>The brief template path(s)</strong> the project's scaffolder reads from (e.g. <code>agent-work/templates/SUMMARY.md.tpl</code>, <code>agent-work/templates/exit-brief.md.tpl</code>, <code>agent-work/templates/increment-brief.md.tpl</code> in the testbed).</li>
+<li><strong>The design-proposal template path</strong> if the project supports design-shaped Plans (a GEPS template, an RFC template, etc.). &quot;[planned]&quot; if none yet.</li>
+<li><strong>Any required project-specific frontmatter or sections</strong> the brief MUST include beyond the generic spec.</li>
+</ul>
+<h3>7. Bundle and act-log paths</h3>
+<p>Instantiates <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> §Bundle layout. Integration MUST declare:</p>
+<ul>
+<li><strong>Bundle root and ID format</strong> (e.g. <code>agent-work/results/&lt;batch&gt;/issue_&lt;mantis-id&gt;/</code> in the testbed).</li>
+<li><strong>The Act log path</strong> (e.g. <code>process/act-log.md</code>) — or &quot;[planned]&quot; with a recommended path if not yet established.</li>
+<li><strong>Iterate archive</strong> — the harness preserves a rejected attempt in <code>iteration-v&lt;N&gt;/</code> in the bundle (the brief is archived with it on iterate-to-Plan). This is fixed harness behavior, not an integration choice.</li>
+</ul>
+<h3>8. Committing and PR conventions</h3>
+<p>Instantiates Tier 4 (<a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a>). Integration MUST declare:</p>
+<ul>
+<li><strong>Commit-message format</strong> — subject length, wrap column, trailer format, required references.</li>
+<li><strong>PR description format</strong> — the project's expected sections (the testbed's <code>CLAUDE.md</code> has &quot;Root cause / Fix / Verified against / Test&quot;).</li>
+<li><strong>Enforcement mechanism</strong> — which checks fire via commit-msg hook (fork-local), which via fork PR CI, which catch at human review.</li>
+</ul>
+<h3>9. Repo-specific scripts and tooling</h3>
+<p>The integration MUST list <strong>the project-specific code the cycle invokes</strong>. These scripts are themselves repo-specific (a different project will have different scripts implementing the same cycle roles), so they belong in the integration rather than the generic docs. Integration MUST declare each as <strong>role → script path + invocation + status</strong>:</p>
+<ul>
+<li><strong>Tracker scrape / handoff generator</strong> — e.g. in the testbed, <code>agent-work/scripts/make_handoff.py</code> scrapes MantisBT and emits draft briefs. A project with a different tracker (Jira, GitHub Issues) needs its own scraper at the same role.</li>
+<li><strong>Tracker-comment template</strong> — <code>agent-work/templates/tracker-comment.md.tpl</code> is the testbed's; per-tracker conventions differ in voice and required fields.</li>
+<li><strong>Per-platform repro runners</strong> — already listed under item 3; cross-reference there.</li>
+<li><strong>Conformance gate runners</strong> — the actual scripts that 04's matrix points at (validator, semgrep, suite runner, hooks). Already listed under item 4; cross-reference there.</li>
+<li><strong>Corpus / extraction tools</strong> — e.g. <code>agent-work/dev-tooling/claude-commands/extract_corpus.py</code> for the testbed, which reads frozen bundles. Optional per-project.</li>
+<li><strong>Any other cycle-specific code</strong> the project maintains — layout linters, addon validators, build helpers used by Check, etc.</li>
+</ul>
+<p><strong>This list IS the integration's accountability for cycle code.</strong> Items not on the list are either (a) generic cycle code that lives in the quality-cycle docs / driver (out of scope for the integration), or (b) missing — i.e. <strong>[planned]</strong>, which the integration should mark honestly so the next Act review can see the gap.</p>
+<h3>10. Maintainer and governance specifics</h3>
+<p>Integration MUST declare:</p>
+<ul>
+<li><strong>Who reviews</strong> — solo / team / per-area reviewer assignment.</li>
+<li><strong>The project's ready-mark gate</strong> — who marks PRs ready and what convention precedes the mark (e.g. the testbed's &quot;Eduard re-reads with fresh eyes&quot; rule).</li>
+<li><strong>External-contribution flow differences</strong> — fork PR vs same-owner branch PR if they materially differ.</li>
+<li><strong>The MAINTAINERS file</strong> or equivalent.</li>
+</ul>
+<h3>11. Per-repo P- / D- / C- / A- extensions (if any)</h3>
+<p>Integration MAY add repo-prefixed rules that tighten or add to a
+generic rule for this project (e.g. <code>gramps-P1</code>, <code>testbed-C7</code>).
+If the integration adds any:</p>
+<ul>
+<li><strong>Declare the prefix convention</strong> for this project.</li>
+<li><strong>List the rules</strong>, one per section per beat (P-, D-, C-, A-).</li>
+<li><strong>Acknowledge non-weakening</strong> — the rules tighten or add only;
+none deletes or weakens a generic rule
+(<a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> §Precondition).</li>
+</ul>
+<p>If no extensions, the section says so.</p>
+<h2>Optional items the integration SHOULD cover</h2>
+<p>Brief list — these aid the cycle's usability without being load-bearing:</p>
+<ul>
+<li><strong>Integration maturity status per item</strong> (which items are fully
+specified vs partial vs not yet — so Act can see the gaps).</li>
+<li><strong>Project-specific dispositions</strong> beyond the generic set.</li>
+<li><strong>Testing platform matrix</strong> (which platforms a fix is
+&quot;verified&quot; against — used by <code>SUMMARY.md</code> §7 to be honest
+about coverage).</li>
+<li><strong>Agent files</strong> — pointers to the leaf subagents (<code>.claude/agents/*.md</code>:
+planner, builder, reviewer, signoff, publisher, act) and <code>AGENTS.md</code>
+(the cross-vendor reviewer).</li>
+</ul>
+<h2>Discovery — where the integration lives</h2>
+<p>The cycle's scaffolder MUST be pointed at a <strong>single entry point</strong>
+that either contains the integration or links to its parts. Common
+choices: <code>docs/INTEGRATION.md</code> (the harness default), <code>CLAUDE.md</code>,
+<code>AGENTS.md</code>. A
+structured <code>integration/</code> directory works as long as one entry point
+delegates to the others.</p>
+<p>The format (Markdown, JSON, YAML, structured directory) is the
+project's choice; consistency within one project matters more than
+the format choice.</p>
+<h2>Maintenance</h2>
+<p>Per <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> §Precondition: the integration is
+process-baseline material maintained by Act. Updates land as
+act-log entries (A6 append-only). A1 (no Act mid-cycle) applies —
+a &quot;quick fix to the rules&quot; mid-Do is iterate-to-Plan plus a §10
+Act candidate, not an in-place integration edit.</p>
+<h2>Worked example — the Gramps testbed integration</h2>
+<blockquote>
+<p><strong>Illustrative, not normative.</strong> This is <em>one</em> project's instantiation, captured at
+an earlier snapshot. The <code>agent-work/...</code> paths below are the Gramps testbed's as of
+that snapshot — it has since reorganized its tooling under <code>engine/</code>, <code>triage/</code>, and
+<code>scripts/</code> — and the tracker/branch/fixture specifics (Mantis, <code>example.gramps</code>,
+doc-16, the gramps maintenance branches) are gramps's, not the harness's. A different
+project answers each item its own way. The <strong>generic harness pieces</strong> this table once
+marked <code>[planned]</code> — the driver, the leaf subagents, the design-proposal template, the
+act-log tooling — now <strong>ship <code>[built]</code></strong> (see <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>); only the
+project-specific scrapers/runners/rulesets remain the project's to provide.</p>
+</blockquote>
+<p>The testbed's integration lived across <code>CLAUDE.md</code>, <code>agent-work/</code>, and
+<code>agent-work/dev-tooling/</code>. Concrete answers, item by item:</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Where this integration's answer lives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Tracker integration</strong></td>
+<td><code>CLAUDE.md</code> §&quot;Bug tracker (MantisBT)&quot; — URL, <code>p:gramps:nnnn:</code> link form, status meanings, &quot;Fixed in version&quot; rule. Comment voice and template: <code>agent-work/templates/tracker-comment.md.tpl</code>.</td>
+</tr>
+<tr>
+<td><strong>2. Branch-target rules</strong></td>
+<td><code>CLAUDE.md</code> §&quot;Upstream fix workflow&quot; — core → <code>maintenance/gramps61</code>; addon → <code>maintenance/gramps60</code> + forward cherry-pick; testbed → <code>main</code>. Override via PR review thread.</td>
+</tr>
+<tr>
+<td><strong>3. Reproduction fixtures and runners</strong></td>
+<td>Fixture: <code>example.gramps</code>. Runners: <code>agent-work/scripts/ubuntu/run-interface.sh</code>, <code>agent-work/scripts/ubuntu/run-unit.sh</code>, <code>agent-work/scripts/ubuntu/run-addon-unit.sh</code>, <code>agent-work/scripts/windows/run-unit.sh</code>, <code>agent-work/scripts/windows/run-addon-unit.sh</code>. Documented in <code>CLAUDE.md</code> §&quot;Reproduce against <code>example.gramps</code> first&quot; + §Local runs.</td>
+</tr>
+<tr>
+<td><strong>4. Conformance ruleset</strong></td>
+<td>The tier × home matrix is filled in <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> §&quot;Worked example — Gramps testbed <code>agent-work/dev-tooling/</code>&quot;. Project ruleset cited: doc-16 (addon-dev guidelines) for Family A; gramps core has no equivalent written ruleset yet (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Per repo notes this).</td>
+</tr>
+<tr>
+<td><strong>5. Upstream-isn't-ahead routine</strong></td>
+<td><code>CLAUDE.md</code> §&quot;Pre-flight: check upstream isn't ahead&quot; — search-by-affected-file-path rule, GitHub tokenization caveat (&quot;<code>latex in:title</code> does NOT match 'Latexdoc'&quot;), <code>git log upstream/maintenance/gramps60 -- &lt;Addon&gt;/</code> for addons.</td>
+</tr>
+<tr>
+<td><strong>6. Brief / design-proposal templates</strong></td>
+<td><code>agent-work/templates/SUMMARY.md.tpl</code>; <code>agent-work/templates/exit-brief.md.tpl</code>; <code>agent-work/templates/increment-brief.md.tpl</code>. Design-proposal template: <strong>[planned]</strong> (GEPS 049 was authored upstream, not via this cycle — see <a href="/spec/07-case-study-ci-hardening.html">07 - Case Study - CI Hardening</a> §Parallel example).</td>
+</tr>
+<tr>
+<td><strong>7. Bundle and act-log paths</strong></td>
+<td>Triage bundles: <code>agent-work/results/&lt;batch&gt;/issue_&lt;mantis-id&gt;/</code> (current convention; some historical batches under <code>agent-work/batches/&lt;batch&gt;/results/</code>). CI-hardening bundles (testbed self-improvement cycle): <code>agent-work/results/ci-hardening/ci-&lt;slug&gt;/</code> (consolidated from former root <code>/results/</code>). Act log: <strong>[planned]</strong> as <code>agent-work/act-log.md</code> or <code>process/act-log.md</code>; current practice is to log Act outcomes in batch exit briefs. Iterate archive: rejected attempts preserved in <code>iteration-v&lt;N&gt;/</code> per <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Driver skeleton.</td>
+</tr>
+<tr>
+<td><strong>8. Committing and PR conventions</strong></td>
+<td><code>CLAUDE.md</code> §&quot;PR description format&quot; — Root cause / Fix / Verified against / Test. Enforcement: human review today; commit-msg hook <strong>[planned]</strong> (Tier 4 greenfield per <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a>).</td>
+</tr>
+<tr>
+<td><strong>9. Repo-specific scripts and tooling</strong></td>
+<td>See expanded table below.</td>
+</tr>
+<tr>
+<td><strong>10. Maintainer and governance</strong></td>
+<td><code>CLAUDE.md</code> §&quot;Eduard's review gate&quot; — Eduard opens fork PRs as draft and re-reads with fresh eyes before marking ready; Claude commits and stops there. Solo author; no team review.</td>
+</tr>
+<tr>
+<td><strong>11. P-/D-/C-/A- extensions</strong></td>
+<td>None today. <strong>[planned]</strong> when running cycles surface project-specific tightenings.</td>
+</tr>
+</tbody>
+</table>
+<h3>Repo-specific scripts (item 9 expanded)</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Script path</th>
+<th>Invocation</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tracker scrape</td>
+<td><code>agent-work/scripts/make_handoff.py</code></td>
+<td>Run during batch start; scrapes MantisBT and emits draft briefs into <code>agent-work/results/&lt;batch&gt;/</code>. <strong>Mantis-specific</strong> — a project on Jira / GitHub Issues needs its own scraper at this role.</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Tracker-comment template</td>
+<td><code>agent-work/templates/tracker-comment.md.tpl</code></td>
+<td>Filled per disposition; written to <code>tracker-comment.md</code> in each bundle.</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Brief / exit-brief / increment-brief templates</td>
+<td><code>agent-work/templates/*.md.tpl</code></td>
+<td>Filled by the scaffolder and (for exits) by the closing step of a batch.</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Linux repro runners</td>
+<td><code>agent-work/scripts/ubuntu/run-*.sh</code></td>
+<td>Driver-invoked for reproduction and verification (T3 runtime + correctness steps 2 and 4).</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Windows repro runners</td>
+<td><code>agent-work/scripts/windows/run-*.sh</code></td>
+<td>Same role, Windows MSYS2 UCRT64.</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Family-B analyzers (core defect analysis)</td>
+<td><code>agent-work/dev-tooling/{pyright,semgrep,codeql}/</code></td>
+<td>Run on gramps core source; findings become <em>upstream</em> core PRs. <strong>Not addon conformance</strong> (<a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> §Two rule families).</td>
+<td><strong>[partial]</strong> (pyright + semgrep run; codeql reserved)</td>
+</tr>
+<tr>
+<td>Family-A addon-conformance gates</td>
+<td><code>agent-work/dev-tooling/addon-conformance/</code> (proposed layout)</td>
+<td>The Tier 1–3 mirror of upstream <code>addons-source</code> CI.</td>
+<td><strong>[planned]</strong> layout; tooling partly built (PR #820 upstream)</td>
+</tr>
+<tr>
+<td>Corpus extractor</td>
+<td><code>agent-work/dev-tooling/claude-commands/extract_corpus.py</code></td>
+<td>Reads frozen bundles for cross-cycle analysis. Accepts both <code>tracker-comment.md</code> (current) and <code>mantis-comment.md</code> (historical).</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Batch runner</td>
+<td><code>agent-work/run-batch.sh</code></td>
+<td>Entry point for a triage batch — scrape + handoff.</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Pre-commit hooks (testbed itself)</td>
+<td><code>.pre-commit-config.yaml</code></td>
+<td>Static checks on testbed code; black, ruff E9/F63/F7/F82, ast.parse.</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Pre-commit hooks (forks)</td>
+<td><code>agent-work/dev-tooling/pre-commit/</code></td>
+<td>Installed via <code>install.sh</code> into the forks; per-repo configs.</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Driver (state machine + leaf invocations)</td>
+<td><code>src/pdca_harness/</code></td>
+<td><code>pdca run</code> / <code>flow</code> / <code>gates</code> / <code>queue</code> / <code>act-index</code>. The <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Driver skeleton, now shipped.</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Reviewer subagent config</td>
+<td><code>.claude/agents/reviewer.md</code> (+ <code>AGENTS.md</code> for cross-vendor Codex)</td>
+<td>execute-only scope; build-notes withheld via sandbox.</td>
+<td><strong>[built]</strong></td>
+</tr>
+<tr>
+<td>Builder subagent config</td>
+<td><code>.claude/agents/builder.md</code></td>
+<td>builder subagent scope + the <code>builder_guard.py</code> ready-mark hook (<a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Do).</td>
+<td><strong>[built]</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The honest read of this table: the driver and the leaf subagents now ship with the
+harness (<code>[built]</code>); the integration's Family-B analyzer plumbing is mature; the
+Family-A addon-conformance mirror is the project's remaining gap. What stays the
+project's to provide is the tracker-specific scraper, the runners, and the written
+ruleset — that gap is what Act chips away at over time.</p>
+<h2>What this doc is not</h2>
+<ol>
+<li><strong>Not a restatement of the cycle.</strong> Plan/Do/Check/Act, the 5/5/1
+inside Check, the artifact bundle, the per-beat guidelines —
+those live in 01–04 and 06. The integration cites them.</li>
+<li><strong>Not the project's conformance rules.</strong> The integration says <em>which</em>
+rules apply and <em>where</em> their gates run; the rules themselves
+live in the project's contributor docs (doc 16 for Gramps
+addons; PEPs / RFCs / code-of-conduct for other projects).</li>
+<li><strong>Not the Act log.</strong> The integration is the <em>current baseline</em>; the
+Act log is the <em>history of changes to it</em>. Both are
+process-baseline material, distinct roles.</li>
+<li><strong>Not a place for generic guidance.</strong> If an item belongs in
+every project, it belongs in one of the generic docs, not
+here. The integration's discipline is &quot;if every project answers
+this the same way, the answer doesn't live in the integration.&quot;</li>
+</ol>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Result — issue &lt;id&gt; / &lt;slug&gt; — PDCA Harness</title>
+<meta name="description" content="PLAN ── writes ──▶ brief.md">
+<meta property="og:title" content="Result — issue &lt;id&gt; / &lt;slug&gt; — PDCA Harness">
+<meta property="og:description" content="PLAN ── writes ──▶ brief.md">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Quality-cycle model</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<!-- Vendored snapshot of the canonical PDCA spec. Obsidian [[wikilinks]] converted to relative Markdown links. The authoritative living source is the project wiki; re-vendor when it changes. -->
+<blockquote>
+<p>One level below <a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a>. Defines the concrete artifact each PDCA beat produces, who writes it, and the handoff contract between beats. The through-line: Do and Check assemble one <strong>result document</strong> that ends in a Check sign-off (the per-contribution verdict); Act runs <em>across</em> completed cycles' result documents to identify process deltas. Extends the <code>results/issue_&lt;id&gt;/</code> bundle pattern with the Check-layer artifacts (gate report, advisory verdict) and adds a separate process-level Act log. Living document.</p>
+</blockquote>
+<h2>Artifact flow</h2>
+<pre><code>PLAN  ── writes ──▶  brief.md                 (the contribution spec)
+                         │
+DO    ── reads brief, writes ──▶  patch.diff + test + build-notes.md
+                         │
+┌─ CHECK (one beat, three components) ──────────────────────────────┐
+│  ① gates    ── writes ──▶  check-gates.{md,json}                  │
+│  ② reviewer ── writes ──▶  check-review.md                        │
+│  ↓                                                                 │
+│  driver assembles SUMMARY.md from brief + gates + review           │
+│  ↓                                                                 │
+│  ③ sign-off completes the beat; verdict recorded in §9:           │
+│       accept          ──▶ mark PR ready / merge → cycle complete  │
+│       iterate-to-Do   ──▶ rebuild (back to DO with same brief)    │
+│       iterate-to-Plan ──▶ revise brief (back to PLAN, same cycle) │
+│       discontinue     ──▶ no transition — bundle dropped from set │
+└────────────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+         (cycle complete — bundle frozen, ready for Act review)
+                         │
+                         ▼
+ACT   ── periodically, across N completed cycles, reads their
+         bundles + each §10 Act-candidate hints, writes ──▶
+         process/act-log.md  (process deltas: ruleset/template/
+                              gates/skills adjusted)
+                         │
+                         ▼
+              improved baseline → next PLAN
+</code></pre>
+<p>The per-contribution bundle ends at Check sign-off. Act is a separate, cross-cycle pass; it does not block the contribution from shipping or closing. The bundle is the durable record Act reads from later.</p>
+<p>Each per-cycle file lives in <code>results/issue_&lt;id&gt;/</code>. The result document is <code>SUMMARY.md</code>; everything else is either its input or a ready-to-ship attachment it references. The Act log lives outside the per-issue bundle, at a project-level path (e.g. <code>process/act-log.md</code>), and cites the bundles it draws on.</p>
+<hr />
+<h2>PLAN → <code>brief.md</code> (the contribution spec)</h2>
+<p>Authored by <strong>you</strong> (or a planning chat). It is the spec plus the marching orders, drawn from the <em>current</em> process baseline (templates, ruleset, branch-target rules) that Act maintains.</p>
+<p><strong>The Plan artifact's shape scales with the work.</strong> For a one-fix contribution (the common case), Plan writes one <code>brief.md</code> against the fields below. For a coordinated multi-part contribution — an architectural change, a phased migration, a design-proposal-shaped piece of work — Plan instead writes a <strong>design proposal</strong> (e.g. <code>design.md</code>, <code>GEPS-NNN.md</code>, an RFC) that <em>itself spawns N child briefs</em>. The design proposal has its own structure (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Solution-approach design: Goals/Non-goals, Decomposition into independently-landable parts, Phased migration with safe stall points, Objections and responses, Impact assessment, De-risking, Open questions, Future Work), and goes through its own review cycle before any child brief is authored. Each spawned child brief then follows the per-fix <code>brief.md</code> spec below.</p>
+<p>Both shapes flow through the same downstream beats — Do, Check,
+Act — without modification; only the Plan-side artifact differs.</p>
+<p><strong>Required fields (one-fix <code>brief.md</code>):</strong></p>
+<ul>
+<li><strong>Spec — the defect and the success criterion.</strong> What is wrong, and the observable condition that means it is fixed. This is the thing Check verifies against; if it is vague, Check cannot adjudicate.</li>
+<li><strong>Repo + branch target, resolved.</strong> Decided here, not left to Do. (Resolve cross-repo ambiguity by reproducing if the traceback location is unclear.)</li>
+<li><strong>Scope — one logical fix.</strong> State it, and state what is explicitly out of scope, so Check can flag scope creep against a written boundary.</li>
+<li><strong>Repro instruction.</strong> Which fixture, exact steps, on the target branch. Repro-or-close is the first action.</li>
+<li><strong>Test requirement.</strong> Where the test ships and that it must fail pre-fix, pass post-fix.</li>
+<li><strong>Citations expected.</strong> Do must cite path:line on the target branch for every claim and change.</li>
+<li><strong>STOP discipline.</strong> Draft only until Check sign-off. Push and draft-PR-open MAY happen during the cycle (useful for CI feedback); MUST NOT mark ready before sign-off accepts.</li>
+<li><strong>Disposition hint, not verdict.</strong> The Plan-time triage guess (POSSIBLY-FIXED → verify first; likely-fix; likely-close). Do/Check may override it with evidence.</li>
+</ul>
+<hr />
+<h2>DO → <code>patch.diff</code> + the test + <code>build-notes.md</code></h2>
+<p>Authored by the <strong>builder</strong> (e.g. Claude Code), production only — implement, nothing else.</p>
+<ul>
+<li><strong><code>patch.diff</code></strong> — the change. MAY be committed and pushed to a feature/draft branch; MUST NOT be merged. A draft PR against the brief's branch target MAY be opened to let CI exercise the patch.</li>
+<li><strong>the test</strong> — shipped in the same change, at the location the brief named.</li>
+<li><strong><code>build-notes.md</code></strong> — the builder's rationale: why this change, what was tried, the reasoning. <strong>This file is withheld from the Check reviewer</strong> (see Independence contract). It exists for the human signing off Check, so the human can see the builder's account <em>beside</em> the independent verdict, never instead of it.</li>
+</ul>
+<p>Do also drafts the spec restatement and disposition-claimed sections of <code>SUMMARY.md</code> (it knows what it set out to do); Check appends the evidence.</p>
+<hr />
+<h2>CHECK (gates + reviewer) → <code>check-gates.{md,json}</code> + <code>check-review.md</code></h2>
+<p>The CHECK beat has three components — <strong>gates</strong>, <strong>reviewer</strong>, and <strong>sign-off</strong> — covered in the next three sub-sections of this doc. The two artifacts gates and reviewer produce (this section), the <strong><a href="http://SUMMARY.md">SUMMARY.md</a></strong> result document the driver assembles from those artifacts plus the brief (next section), and the <strong>sign-off</strong> step that completes the beat (the section after that) together describe the full CHECK beat. All three components belong to <em>one</em> CHECK beat — not three separate beats. The correctness chain, conformance stack, and validation act (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §5/5/1) run across all three components.</p>
+<p>This first sub-section covers the gates and the reviewer — two oracles of different trust.</p>
+<h3><code>check-gates.{md,json}</code> — deterministic gates</h3>
+<p>Machine-decided, every row carries its oracle and a path:line.
+Correctness chain + conformance Tiers 1–4:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+<th>Oracle</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>repro (red pre-fix)</td>
+<td>confirmed / not-repro</td>
+<td>fixture on target branch</td>
+<td>log / screenshot</td>
+</tr>
+<tr>
+<td>verification (green post-fix)</td>
+<td>pass / fail</td>
+<td>the shipped test</td>
+<td>log</td>
+</tr>
+<tr>
+<td>regression</td>
+<td>suite green / N broke</td>
+<td>existing suite</td>
+<td>junit</td>
+</tr>
+<tr>
+<td>T1 structure</td>
+<td>pass / fail</td>
+<td>structure validator (rule IDs)</td>
+<td>path:line</td>
+</tr>
+<tr>
+<td>T2 shape</td>
+<td>pass / fail</td>
+<td>semgrep (rule IDs)</td>
+<td>path:line</td>
+</tr>
+<tr>
+<td>T3 runtime</td>
+<td>pass / fail</td>
+<td>find_spec / deps-absent run</td>
+<td>log</td>
+</tr>
+<tr>
+<td>T4 contribution</td>
+<td>pass / fail</td>
+<td>commit-msg hook / branch-target / version-bump</td>
+<td>path:line</td>
+</tr>
+</tbody>
+</table>
+<p>A deterministic FAIL with auto-fixable cause (lint, format, genuinely-red test) may be auto-fixed and re-run; a deterministic FAIL that needs a decision stops and surfaces to NEEDS-HUMAN. A gate that genuinely <em>cannot run</em> its check (vs. running and failing) returns a third result, <strong><code>unverifiable</code></strong> — it does not fail <code>overall</code> but is routed to §6 NEEDS-HUMAN for the human to clear (see <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> §Gate result vocabulary and C5a/C6).</p>
+<h3><code>check-review.md</code> — advisory reviewer (decorrelated)</h3>
+<p>Produced by the <strong>advisory reviewer</strong> (different model family, e.g. Codex), from <code>{patch.diff, test, brief.md, check-gates}</code> <strong>only</strong> — never <code>build-notes.md</code>. Covers the judgment cells of Check: correctness causal-adequacy (symptom vs. root cause), conformance Tier-5 scope, and the validation act (is this the right thing). Its mandate is to execute, not opine:</p>
+<ul>
+<li>Re-runs the asserted evidence (stash the fix → confirm red; unstash → confirm green; re-run the validator and semgrep itself).</li>
+<li>Re-checks that every path:line the builder cited resolves on the target branch; drops findings that do not ground.</li>
+<li>Per item emits <code>PASS / FAIL / NEEDS-HUMAN</code> with a one-line rationale and a path:line. No free-form prose verdict.</li>
+</ul>
+<p>Advisory: it annotates, it does not gate. Deterministic gates block; the reviewer recommends; the human signs off Check.</p>
+<hr />
+<h2>CHECK (assembled result) → <code>SUMMARY.md</code> (what the human signs off)</h2>
+<p>Assembled across Do (spec + claim) and Check (evidence + verdict). Its job: let the human complete Check — <em>clear NEEDS-HUMAN, weigh the advisory verdict, sign off the disposition</em> — without re-investigating, and capture any process-improvement hints for the next Act review. Required sections:</p>
+<pre><code># Result — issue &lt;id&gt; / &lt;slug&gt;
+
+## 1. Spec (from brief.md)              ← Check verifies against THIS
+- Defect:
+- Success criterion:
+- Repo + branch target:
+- Scope (one logical fix) / out of scope:
+
+## 2. Disposition claimed               ← sign-off confirms or overrides
+- Outcome: Fixed | Already-fixed | Can't-repro | Wontfix | By-design | External
+- Confidence: high | medium | low
+- Recommendation: merge-wider | close-&lt;reason&gt; | iterate-to-&lt;beat&gt;
+
+## 3. Correctness (Check — chain)
+- reproduction / verification / regression / causal-adequacy,
+  each: result + oracle + evidence path. Causal-adequacy states the
+  root cause and WHY this is cause not symptom (or → NEEDS-HUMAN).
+
+## 4. Conformance (Check — stack)
+- T1–T4 deterministic: pass/fail + rule IDs + path:line (from check-gates).
+- T5 judgment: → see §5.
+
+## 5. Advisory review (artifact-only, decorrelated)
+- Reviewer summary, any FAILs, and the reviewer's RE-RUN results
+  (red/green confirmed independently). Produced without build-notes.
+
+## 6. NEEDS-HUMAN — items the human must clear before sign-off
+- [ ] &lt;decision only the human can make, and why a gate/reviewer couldn't&gt;
+  (empty ⇒ sign-off is a confirm; non-empty ⇒ each item cleared first)
+
+## 7. Proven / not proven                ← oracle limits, stated honestly
+- Proven by which oracle:
+- Unproven / needs manual run (e.g. specific platform, visual sign-off):
+
+## 8. Ready-to-ship attachments
+- patch.diff
+- pr-description.md      (only if a PR is warranted)
+- tracker-comment.md     (ALWAYS, every tracker item)
+- MANUAL-VERIFICATION.md (ANY manual-work outcome; also flagged at top)
+- build-notes.md         (builder rationale — for the human signing off,
+                          not the reviewer)
+
+## 9. Check sign-off                     ← human completes Check here
+- Disposition confirmed / overridden:
+- Outcome: merged-wider | closed-&lt;reason&gt; | iterated-to-Do | iterated-to-Plan | discontinued
+- Iteration delta (if iterating): &lt;what the next Do or Plan must change
+  for THIS cycle — distinct from process-level Act deltas, which go to §10;
+  on a discontinue, the rationale for discontinuing / where the work goes instead&gt;
+- By / date:
+
+## 10. Act candidates (hints for the next Act review)
+- [ ] &lt;process observation flagged for the next Act review&gt;
+      Examples:
+      - &quot;Spec-template field X was ambiguous — three Do attempts needed.&quot;
+      - &quot;No rule caught this defect class — candidate for a new Tier-2 check.&quot;
+      - &quot;The reviewer's grounding step took 3× longer than usual on this
+        repo — agent-skill candidate.&quot;
+  Empty is the common case. The next Act review collects these across
+  cycles before deciding any concrete process change.
+</code></pre>
+<p>Why these sections, mapped to the question each serves: §1 is the yardstick Check measures against; §2 is the claim sign-off ratifies or overturns; §3–4 are the verification evidence (Check's deterministic product); §5 is the decorrelated second opinion the human weighs beside the builder's claim; §6 is the heart — the items Check explicitly could not decide, requiring the human to clear them; §7 stops the human from over-trusting a green (the oracle-limit honesty); §8 means once sign-off says &quot;merge wider&quot; there is no rework; §9 records the per-contribution verdict and, on iterate, the within-cycle delta; §10 is <strong>separate</strong> — it captures <em>process</em> observations that belong to Act, not the per-contribution disposition.</p>
+<p>§9 vs §10 is the boundary the new model insists on. §9 closes the contribution. §10 is a hint feeder to a downstream Act review that operates on the <em>process</em>. Do not conflate them: a §10 entry is never required to clear before sign-off; a §9 outcome never decides what process change to make.</p>
+<hr />
+<h2>CHECK (sign-off step) → cycle closes, bundle frozen</h2>
+<p>This is the human-instrumented step that <strong>completes the CHECK beat</strong> — not a separate beat. The gates and reviewer ran unattended; the <a href="http://SUMMARY.md">SUMMARY.md</a> was assembled; the human now completes Check by reading the bundle and signing off §9.</p>
+<p>The human completes Check by reading <code>SUMMARY.md</code>:</p>
+<ol>
+<li>Read §1, then §2 — does the claimed disposition match the spec?</li>
+<li>Clear §6 (NEEDS-HUMAN) — each is a decision the gates and reviewer could not resolve: right bug? right spec? root cause or symptom-patch dressed as fix? worth doing at all?</li>
+<li>Weigh §5 (decorrelated review) against §2/§3 — does the independent re-run agree?</li>
+<li>Note §7 — is anything unproven that the disposition depends on?</li>
+<li>Fill §9:
+<ul>
+<li><strong>accept</strong> → merge wider. The push and draft-PR-open may already have happened during the cycle; accept performs the steps that were gated on sign-off: mark the PR ready, post the §8 tracker comment, merge. Cycle closes; bundle is frozen.</li>
+<li><strong>iterate-to-Do</strong> → builder re-runs against the same brief, new patch. Same cycle, new attempt. Bundle stays open until next sign-off.</li>
+<li><strong>iterate-to-Plan</strong> → human revises <code>brief.md</code>, builder re-runs against the new brief. Same cycle, revised spec. Bundle stays open.</li>
+</ul>
+</li>
+<li>Optionally fill §10 — note any process observations for the next Act review. Empty is normal.</li>
+</ol>
+<p>A frozen bundle (sign-off accept) becomes Act material. Act does not run synchronously on cycle close; cycles close, accumulate, and a periodic Act review reads across them.</p>
+<hr />
+<h2>ACT → <code>process/act-log.md</code> (process-level, cross-cycle)</h2>
+<p>Act fires periodically — after N completed cycles, on a calendar, or on-demand when a pattern surfaces. Its input is <strong>the cycles' record</strong>: their <code>SUMMARY.md</code> files (especially §6, §7, §9, §10), <code>build-notes.md</code>, <code>check-review.md</code>. Its output is <strong>deltas to the process baseline</strong>, recorded in a project-level append-only log.</p>
+<p>The log is one file (or one directory of dated entries) at a project-
+level path, separate from the per-issue bundles. Suggested name:
+<code>process/act-log.md</code>. Each entry has:</p>
+<pre><code># Act review — &lt;date&gt; — cycles considered: &lt;issue_ids&gt;
+
+## What the cycles' records exposed
+- &lt;pattern observed across one or more cycles, with §10/§7/§6 citations&gt;
+
+## Process deltas
+- Spec template: &lt;field added / clarified / removed&gt;            (file path)
+- Ruleset: &lt;rule added / retired / relaxed / tightened&gt;         (path:line)
+- Gates: &lt;check added / promoted to gating / moved to new home&gt; (path:line)
+- Agent files: &lt;.claude/agents/*.md / AGENTS.md adjustment&gt;     (path:line)
+- Orchestration: &lt;driver / state / queue change&gt;                (path:line)
+
+## How effectiveness will be judged
+- The next Do phases should not recreate &lt;specific issue&gt;.
+- Watch for it in the next K cycles' records; if it recurs, this Act
+  was not effective and the delta needs revisiting.
+</code></pre>
+<p>Each delta is <strong>concrete and located</strong> (a path, a rule ID, a template field) so a future reader — including a future Act review checking its predecessor's effectiveness — can verify both that the change was made and that the next cycles did not recreate the issue.</p>
+<p>What Act does <strong>not</strong> do:</p>
+<ul>
+<li>Re-decide any contribution's disposition. Check sign-off already closed those.</li>
+<li>Run the validator or the suite. Check did.</li>
+<li>Author the next contribution's spec. The <em>next</em> Plan does that, with Act's improved baseline as its starting point.</li>
+</ul>
+<hr />
+<h2>Independence contract (operational restatement)</h2>
+<p>The reviewer's value is decorrelation, and it is enforced by <strong>file access, not prompt wording</strong>:</p>
+<ul>
+<li><code>check-review.md</code> is generated from <code>{patch.diff, test, brief.md, check-gates}</code> only. <code>build-notes.md</code> is <strong>not</strong> in its inputs — the builder's framing must not anchor the reviewer.</li>
+<li>The reviewer has execute access (run tests, run the validator, git stash/unstash) and <strong>no write access to the fix</strong> — it physically cannot patch what it is judging.</li>
+<li><code>build-notes.md</code> joins the audit packet (§8) for the human only, after Check has run, so sign-off sees claim and independent verdict side by side.</li>
+</ul>
+<p><strong>What this contract does and does not buy.</strong> File-withholding decorrelates <strong>evidence-integrity</strong>, not <strong>fix-correctness</strong>:</p>
+<ul>
+<li><em>Defends against:</em> the builder's narrative (&quot;I tried X, ruled out Y, this is therefore root cause&quot;) anchoring the reviewer's reading of the patch. Stash → red / unstash → green confirms the shipped test fails pre-fix and passes post-fix, which the reviewer verifies by re-running, not by trusting the builder's report.</li>
+<li><em>Does NOT defend against:</em> a plausible test that never actually exercises the real bug (the green is true of the test's narrow oracle, not of the defect); a framing blind spot the brief and test <em>both</em> carry into the reviewer (<code>brief.md</code> IS in the reviewer's input set — your framing of the defect and the success criterion is shared between builder and reviewer); causal-adequacy errors (symptom vs. root cause) that survive a passing test.</li>
+</ul>
+<p>The reviewer attempts causal adequacy (correctness step 5) advisory, and may flag NEEDS-HUMAN when the evidence is insufficient. <strong>The human at sign-off is the only real check on causal adequacy</strong> — see <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> C6 (§6 must be empty before sign-off accepts). File-withholding is a useful piece of the mechanism but not the whole answer to &quot;did this fix really work.&quot;</p>
+<p>How this is enforced mechanically by the driver is the subject of <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Independence is enforced by the orchestrator.</p>
+<hr />
+<h2>Bundle layout</h2>
+<p>Per-cycle (<code>results/issue_&lt;id&gt;/</code>):</p>
+<pre><code>results/issue_&lt;id&gt;/
+  brief.md               # PLAN  — current contribution spec         (you)
+  iteration-v1/          # a prior REJECTED attempt, archived intact on
+  iteration-v2/          #         iterate (patch.diff, build-notes.md,
+  ...                    #         SUMMARY.md, check-*, the test — plus
+                         #         brief.md on iterate-to-Plan); only
+                         #         present once an iterate fired (see [03 -
+                         #         Cycle Automation](03-cycle-automation.md) §Driver skeleton)
+  patch.diff             # DO    — the change                        (builder)
+  &lt;test file&gt;            # DO    — ships with the patch              (builder)
+  build-notes.md         # DO    — rationale, withheld from reviewer (builder)
+  check-gates.md|json    # CHECK — deterministic gate results        (gates)
+  check-review.md        # CHECK — advisory verdict, artifact-only   (reviewer)
+  SUMMARY.md             # DO+CHECK — RESULT DOC, ends in §9 sign-off (assembled)
+  pr-description.md       # attachment, if PR warranted
+  tracker-comment.md      # attachment, ALWAYS
+  MANUAL-VERIFICATION.md  # attachment, any manual-work outcome
+  commit-msg.txt         # CHECK/publish — contribution artifact      (publisher)
+  publish.json           # CHECK/publish — record of the opened draft PR (driver)
+</code></pre>
+<p>Iterate-archive discipline: an iterate <strong>moves</strong> the previous attempt into <code>iteration-v&lt;N&gt;/</code> (N = next available integer) rather than deleting it — a rejected attempt is preserved, not lost. iterate-to-Do archives the Do+Check downstream and the bundle-local test, leaving <code>brief.md</code> for the rebuild (state → PLANNED); iterate-to-Plan archives <code>brief.md</code> too (state → UNPLANNED, the human re-authors). Both first fold the prior attempt's sign-off rationale + failing gates into the brief's <code>## Iteration N — carry-forward</code> block, so the next beat (which reads <code>brief.md</code>) isn't blind. The accumulating <code>iteration-v1/</code>, <code>iteration-v2/</code>, … match the case study's CLAUDE_CODE_BRIEF v1/v2/v3 sequence (<a href="/spec/07-case-study-ci-hardening.html">07 - Case Study - CI Hardening</a> §Turn 2).</p>
+<p>Project-level (one location for all cycles' process-level work):</p>
+<pre><code>process/
+  act-log.md             # ACT  — append-only log of process deltas (you)
+  spec-template.md       # the current brief.md template Act maintains
+  ruleset/               # the current conformance ruleset (Tiers 1–4)
+</code></pre>
+<p>The leaf instruction files Act also maintains live at <code>.claude/agents/*.md</code> (the
+six subagents: planner, builder, reviewer, signoff, publisher, act) plus <code>AGENTS.md</code>
+for the cross-vendor reviewer.</p>
+<p>The minimal per-cycle bundle is <code>SUMMARY.md</code>, <code>patch.diff</code>, <code>pr-description.md</code>, <code>tracker-comment.md</code>, <code>MANUAL-VERIFICATION.md</code>. The operational layer above adds <code>brief.md</code> (names the Plan artifact explicitly), <code>build-notes.md</code> (separates builder rationale for the independence contract), and the two <code>check-*</code> artifacts (makes Check's product auditable rather than implicit), and reframes <code>SUMMARY.md</code> as ending in <strong>Check sign-off</strong> (§9), with §10 as a lightweight feeder to the <em>project-level</em> Act log.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">GPLv3 · driven by Claude</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

@@ -81,6 +81,7 @@ Act — without modification; only the Plan-side artifact differs.</p>
 <ul>
 <li><strong>Spec — the defect and the success criterion.</strong> What is wrong, and the observable condition that means it is fixed. This is the thing Check verifies against; if it is vague, Check cannot adjudicate.</li>
 <li><strong>Repo + branch target, resolved.</strong> Decided here, not left to Do. (Resolve cross-repo ambiguity by reproducing if the traceback location is unclear.)</li>
+<li><strong>Onto branch</strong> <em>(optional)</em>. <code>&lt;remote&gt;/&lt;branch&gt;</code> of an existing open PR's head. When set, the fix is a commit <strong>stacked onto that PR</strong> rather than a new PR: Check tests against that branch (<code>$PDCA_BASE</code>) and publish commits onto and pushes to it (issue #54). Use it for a series of fixes each contributing to one already-open PR.</li>
 <li><strong>Scope — one logical fix.</strong> State it, and state what is explicitly out of scope, so Check can flag scope creep against a written boundary.</li>
 <li><strong>Repro instruction.</strong> Which fixture, exact steps, on the target branch. Repro-or-close is the first action.</li>
 <li><strong>Test requirement.</strong> Where the test ships and that it must fail pre-fix, pass post-fix.</li>

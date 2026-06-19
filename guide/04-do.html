@@ -143,6 +143,26 @@ probe.</li>
 to run.</p>
 <p>The bundle is now <code>BUILT</code>. The driver moves straight into Check — <a href="/guide/05-check.html">step
 05</a> — with no pause.</p>
+<h2>The close-disposition fast path</h2>
+<p>Not every briefed bundle should be built. When a Plan concludes a <strong>close / no-fix</strong>
+outcome — a duplicate, a not-reproducible report, a by-design behaviour, an upstream
+issue, or a macOS-only manual check — there is nothing for the builder to write. The
+two model leaves (builder + reviewer) are the engine's only token spend, so authoring
+and judging a &quot;nothing to build&quot; rationale is pure waste.</p>
+<p>The driver reads the brief's <strong>Disposition hint</strong>. If it matches a configured close
+class (<code>[driver].close_dispositions</code> in <code>pdca.toml</code> — default: <code>likely-close</code>,
+<code>wontfix</code>, <code>by-design</code>, <code>duplicate</code>, <code>not-reproducible</code>, <code>manual-verification</code>), Do
+<strong>skips both leaves</strong>: instead of a <code>patch.diff</code> it writes a <code>close-disposition</code>
+marker (the bundle's Do artifact) and a <code>build-notes.md</code> breadcrumb recording <em>why</em>
+no patch exists. Check then records an N/A gate matrix (no patch to verify, no gate
+command runs) and routes a <strong>confirm-the-close</strong> item into SUMMARY §6. The bundle
+halts at <code>AWAITING_SIGNOFF</code> like any other — the human <a href="/guide/06-signoff.html">signs off</a> on
+the close, and the C6 guard blocks accept until they consciously confirm it.</p>
+<p>It is a <strong>hint, not a gate</strong>. If the close was wrong, the human reopens to a fix path
+(iterate-to-Do); that archives the close marker and the <em>next</em> pass runs the real
+builder. A <code>manual-verification</code> close also seeds a <code>MANUAL-VERIFICATION.md</code> stub for
+the human to fill in. This is what makes a mixed-disposition <code>batch</code> safe: close
+bundles drive themselves to sign-off cheaply alongside the ones that get built.</p>
 <p>← <a href="/guide/03-plan.html">03 Plan</a> · <a href="/guide/">Index</a> · next: <a href="/guide/05-check.html">05 Check →</a></p>
 
     </article>

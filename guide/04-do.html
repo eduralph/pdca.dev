@@ -151,8 +151,8 @@ two model leaves (builder + reviewer) are the engine's only token spend, so auth
 and judging a &quot;nothing to build&quot; rationale is pure waste.</p>
 <p>The driver reads the brief's <strong>Disposition hint</strong>. If it matches a configured close
 class (<code>[driver].close_dispositions</code> in <code>pdca.toml</code> — default: <code>likely-close</code>,
-<code>wontfix</code>, <code>by-design</code>, <code>duplicate</code>, <code>not-reproducible</code>, <code>manual-verification</code>), Do
-<strong>skips both leaves</strong>: instead of a <code>patch.diff</code> it writes a <code>close-disposition</code>
+<code>wontfix</code>, <code>by-design</code>, <code>duplicate</code>, <code>not-reproducible</code>, <code>manual-verification</code>,
+<code>upstream</code>, <code>external</code>), Do <strong>skips both leaves</strong>: instead of a <code>patch.diff</code> it writes a <code>close-disposition</code>
 marker (the bundle's Do artifact) and a <code>build-notes.md</code> breadcrumb recording <em>why</em>
 no patch exists. Check then records an N/A gate matrix (no patch to verify, no gate
 command runs) and routes a <strong>confirm-the-close</strong> item into SUMMARY §6. The bundle

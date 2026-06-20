@@ -51,6 +51,22 @@ single Mantis CSV row for the issue id:</p>
 writing <code>results/issue_11589/brief.md</code>. You can also seed a brief directly
 (<code>pdca init-issue 11589 --from-brief path/to/brief.md</code>) when you've written it by
 hand.</p>
+<h3>Planning a specific id list in one session</h3>
+<p><code>pdca flow --from-csv</code> briefs from a tracker CSV (the planner chooses the issues);
+<code>pdca batch &lt;ids&gt;</code> drives an explicit id list but, by default, refuses an un-briefed
+one. To <strong>plan + drive a specific set</strong> — e.g. bundles you seeded from per-bundle
+triage notes, not the CSV — add the Plan pre-pass:</p>
+<pre><code class="language-bash">make batch IDS=&quot;11589 12030 12044&quot; PLAN=1 LANES=6   # or: pdca batch &lt;ids&gt; --plan --lanes 6
+</code></pre>
+<p><code>--plan</code> briefs every UNPLANNED id in the list in <strong>one shared interactive session</strong>,
+then drives exactly those ids through Do+Check. Ids the planner chooses to skip are
+left alone; <code>--from-csv</code> overrides the Plan source.</p>
+<p>Each bundle's tracker thread can be fetched automatically: set <code>[tracker].notes_cmd</code>
+in <code>pdca.toml</code> to your scrape tooling (a <code>{id}</code> shell template that writes
+<code>issue_&lt;id&gt;/notes.json</code>; <code>$PDCA_BUNDLE</code> is the bundle dir). The harness runs it before
+any Plan beat when <code>notes.json</code> is absent, so the planner has the comment thread
+without you scraping by hand. It's best-effort — a failure just falls back to the
+CSV / asking you.</p>
 <h2>What a real brief looks like</h2>
 <p>This is the <strong>actual</strong> brief the planner produced for gramps issue 11589, a
 PluginManager bug. Read it as a checklist of what a good spec contains — every

@@ -152,6 +152,15 @@ INTEGRATION §2&quot;, &quot;addon convention per INTEGRATION §3&quot;. That's 
 <a href="/guide/01-render-and-integrate.html">step 01</a>: the planner resolves abstract questions
 (&quot;which branch? where does the test go?&quot;) against your repo's concretizations
 instead of guessing.</p>
+<h3>The Plan can be a pointer</h3>
+<p>If your project already plans through its own artifacts — an ADR, an enhancement
+proposal, a normative spec under change control — you don't restate that here. Use
+<code>templates/plan-pointer.md.tpl</code>: a thin brief that <strong>references</strong> the host document
+(<code>- **Planning artifact:** docs/adr/0042-thing.md</code>) and carries only the few fields the
+driver parses (slug, success criterion, branch target, test file). Do reads the
+referenced artifact as the authoritative plan and cites it; the rest of the cycle is
+unchanged. This lets PDCA wrap a host's existing planning process instead of imposing
+its own document shape.</p>
 <h2>STOP discipline</h2>
 <p>Every brief carries the rule that the cycle never ships before sign-off:</p>
 <blockquote>

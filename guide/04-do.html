@@ -52,6 +52,16 @@ argv = [&quot;claude&quot;, &quot;-p&quot;, &quot;--agent&quot;, &quot;builder&q
 <p>The narrow <code>--allowedTools</code> is deliberate: the builder may read, edit, and run
 git/python — it cannot, say, open a PR. STOP discipline (<a href="/guide/03-plan.html">step 03</a>)
 is enforced by what the leaf <em>can't do</em>, not just by instruction.</p>
+<h3>Isolated in a worktree (issue #94)</h3>
+<p>Do (and Check's gates) run against a dedicated <strong>git worktree</strong> off the target's
+base, not the host's primary checkout — so a cycle never leaves the live checkout
+dirty or collides with your own work there. The harness creates/resets it per cycle
+(per lane slot) and exposes its path as <strong><code>$PDCA_WORKTREE</code></strong>: the builder is granted
+access to it automatically, and bundle-scoped gate commands target it too. On by
+default (<code>[driver].worktree</code>); best-effort — a target that isn't a worktree-capable
+git checkout falls back to editing in place. (This isolation is what publish's
+stash/restore worked around before; with it, serial cycles get the same clean-tree
+guarantee lanes already had.)</p>
 <h2>What Do produces</h2>
 <p>Three artifacts land in the bundle:</p>
 <table>

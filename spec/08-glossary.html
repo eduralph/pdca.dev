@@ -218,14 +218,14 @@ No model in the control path. Resumable, idempotent, inspectable.</li>
 sign-off → publish) → Act as one run. <strong><code>flow_batch</code></strong> does it for several issues from
 one Plan session.</li>
 <li><strong>Batch</strong> — N issues processed together: scrape → draft briefs → one human Plan session →
-<code>pdca batch</code> (unattended Do+Check) → <code>pdca queue</code> (cheap-first sign-off).</li>
+<code>pdca flow &lt;ids…&gt;</code> (unattended Do+Check) → <code>pdca queue</code> (cheap-first sign-off).</li>
 <li><strong>Batch selection</strong> — the deliberate, Plan-front choice of <em>which</em> issues go in a batch:
 start from a real pool, profile it (status/severity/<strong>age</strong>/component), pick the
 <strong>batch character</strong> (fix-oriented vs hygiene/long-tail), drop non-defects, pre-disposition
 into buckets, size to the natural set.</li>
 <li><strong>Maturity ladder (L1–L4)</strong> — L1 scripted handoff (project-provided scraper) · L2
-unattended per-issue body (<code>pdca run</code>) · L3 batch + sign-off queue (<code>pdca batch</code>/<code>queue</code>)
-· L4 Act tooling (<code>pdca act-index</code>/<code>act-log</code>).</li>
+unattended per-issue body (<code>pdca run</code>) · L3 batch + sign-off queue (<code>pdca flow &lt;ids…&gt;</code>/<code>queue</code>)
+· L4 Act tooling (<code>pdca act index</code>/<code>act log</code>).</li>
 <li><strong>Maturity tags</strong> — <code>[built]</code> (ships and runs) · <code>[partial]</code> (ships, needs per-project
 wiring) · <code>[project-provided]</code> (not shipped; the project supplies it) · <code>[planned]</code>
 (designed, not yet implemented).</li>
@@ -269,9 +269,9 @@ auto-fixed and re-run; a FAIL needing a human call goes to §6 NEEDS-HUMAN.</li>
 <ul>
 <li><strong>Process baseline</strong> — what Plan inherits from prior Act: the brief template, the
 conformance ruleset, the branch-target rules, the agent files. Act improves it.</li>
-<li><strong>Act review / Act index / act-log</strong> — the cross-cycle pass: <code>pdca act-index</code> surfaces
-frozen-bundle §6/§7/§10 + recurring signals; the human decides deltas; <code>pdca act-log</code>
-scaffolds the dated, <strong>append-only</strong>, <strong>concrete-and-located</strong> entry.</li>
+<li><strong>Act review / Act index / act-log</strong> — the cross-cycle pass: <code>pdca act index</code> surfaces
+frozen-bundle §6/§7/§10 + recurring signals; the human decides deltas; <code>pdca act log</code>
+scaffolds the dated, <strong>append-only</strong>, <strong>concrete-and-located</strong> entry (in <code>act-log.md</code>).</li>
 <li><strong>Integration / per-repo specification</strong> — the project's answer to the &quot;which / where /
 how&quot; the generic cycle leaves open (tracker, branches, fixtures, ruleset, templates,
 paths, scripts, governance). Lives in <code>docs/INTEGRATION.md</code>; <strong>generic wins on shape,

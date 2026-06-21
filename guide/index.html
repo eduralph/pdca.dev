@@ -136,12 +136,13 @@ shows the real gramps-testbed-v2 artifact it produces.</p>
 </table>
 <h2>The whole cycle in one command</h2>
 <p>Once a repo is integrated, a maintainer rarely types the per-beat commands. The
-front door is the <code>Makefile</code>:</p>
-<pre><code class="language-bash">make flow ID=13636      # Plan → Do → Check → sign-off → publish, for one issue
-make flow CSV=issues.csv   # one Plan session can brief SEVERAL issues, then build + sign off all
-make status             # every bundle and its state
+front door is the <strong>console script</strong> (<code>pdca</code>, named per the project):</p>
+<pre><code class="language-bash">pdca flow 13636               # Plan → Do → Check → sign-off → publish, for one issue
+pdca flow 13636 13637 13638   # several ids → batch; unbriefed are auto-planned
+pdca flow --from-csv issues.csv   # one Plan session briefs SEVERAL from the export, then drives all
+pdca status                   # every bundle and its state (also the bare `pdca`)
 </code></pre>
-<p>The per-beat detail in steps 03–07 is what <code>make flow</code> orchestrates for you —
+<p>The per-beat detail in steps 03–07 is what <code>pdca flow</code> orchestrates for you —
 worth understanding once, even though you'll mostly drive from the top.</p>
 <h2>Prerequisites (for a live run)</h2>
 <p>The offline rehearsal in <a href="/guide/02-rehearse-offline.html">step 02</a> needs only Python

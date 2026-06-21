@@ -173,7 +173,7 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
 </tr>
 </tbody>
 </table>
-<p>After render, the vertical slice runs immediately on stubs (<code>make rehearse ID=TOY</code>, or the <code>init-issue</code>/<code>run</code>/<code>status</code> sequence the post-copy message prints). That offline-green slice is your proof the machinery landed before you write a single project-specific line.</p>
+<p>After render, the vertical slice runs immediately on stubs (<code>pdca flow TOY --rehearse</code>, or the <code>init-issue</code>/<code>run</code>/<code>status</code> sequence the post-copy message prints). That offline-green slice is your proof the machinery landed before you write a single project-specific line.</p>
 <h2>Step 2 — Fill <code>pdca.toml</code> — <em>[render-time] + [project-provided]</em></h2>
 <p>Render seeds <code>pdca.toml</code> from your answers; you then complete the project-specific runtime config. The sections:</p>
 <p><strong><code>[project]</code> / <code>[paths]</code> / <code>[tracker]</code></strong> — mostly your render answers. Two fields you set by hand:</p>

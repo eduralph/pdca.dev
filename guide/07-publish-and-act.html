@@ -43,10 +43,10 @@ closes the PDCA loop by improving the <em>process</em>, not the contribution.</p
 <hr />
 <h2>Publish — contribute the accepted fix</h2>
 <p>Once a bundle is <code>COMPLETE</code>, publish opens it as a <strong>draft</strong> PR on the target
-branch from the brief. In <code>make flow</code> this runs automatically on an accept; you
+branch from the brief. In <code>pdca flow</code> this runs automatically on an accept; you
 can also run it standalone:</p>
-<pre><code class="language-bash">make publish ID=11589           # open the draft PR
-make publish ID=11589 DRY=1     # print the git/gh plan without pushing
+<pre><code class="language-bash">pdca publish 11589              # open the draft PR
+pdca publish 11589 --dry-run    # print the git/gh plan without pushing
 </code></pre>
 <p>It writes <code>publish.json</code> into the bundle and uses the project's PR conventions
 from INTEGRATION §8. For gramps that's a four-section body (Root cause / Fix /
@@ -67,8 +67,8 @@ record.</p>
 <p>Plan/Do/Check operate on <strong>one contribution</strong>. <strong>Act</strong> operates on the <strong>process
 itself</strong>, across <em>many</em> completed cycles, on its own cadence (every N cycles, or
 weekly — <em>not</em> per-cycle). It's touch point #3.</p>
-<pre><code class="language-bash">pdca act-index                              # read-only: frozen cycles + recurring signals
-pdca act-log --date 2026-06-12 --append     # scaffold a dated entry into process/act-log.md
+<pre><code class="language-bash">pdca act index                              # read-only: frozen cycles + recurring signals
+pdca act log --date 2026-06-12 --append     # scaffold a dated entry into process/act-log.md
 </code></pre>
 <p>Act reads the <code>COMPLETE</code> bundles' SUMMARYs — especially §6 (what needed a human),
 §7 (what stayed unproven), and §10 (Act candidates the cycle flagged) — looking

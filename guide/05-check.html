@@ -120,6 +120,16 @@ hands it over as <strong><code>$PDCA_TARGET</code></strong> (read-only; for a <c
 <code>--add-dir</code>). The reviewer grounds every citation there and is told <strong>not</strong> to wander
 into other checkouts on the machine — without this it can't ground, or hunts the
 filesystem for &quot;the target&quot; (issue #75).</p>
+<h3>Optional advisory reviewers (a second lens)</h3>
+<p>The <code>reviewer</code> judges fix <em>adequacy</em>. For other lenses — correctness bugs the patch
+introduces, reuse/simplification/efficiency cleanups — add <strong>advisory reviewer leaves</strong>
+(issue #64): an open <code>[[leaves.advisory]]</code> list in <code>pdca.toml</code>, each a role-distinct,
+model-agnostic (<code>family</code> + <code>argv</code>) leaf. Each writes <code>check-advisory-&lt;id&gt;.md</code>; its
+<code>- NEEDS-HUMAN —</code> findings fold into §6 like the reviewer's. They are <strong>always advisory</strong>
+(never gate). Condition one on a brief field with <code>when = { field = …, substring = … }</code>
+(e.g. run a deeper review only when the brief says so) — the way gate targets condition
+on the bundle. A shipped <code>code-review</code> agent realizes the correctness+cleanup lens for a
+<code>claude</code> instance; <code>family = &quot;codex&quot;</code> swaps the vendor.</p>
 <h2>3. Assembly — the SUMMARY the human signs</h2>
 <p>The driver folds brief + gates + review into <code>SUMMARY.md</code>, a 10-section document.
 The two sections that drive the human decision are <strong>§6 NEEDS-HUMAN</strong> (what you

@@ -66,6 +66,21 @@ in <code>pdca.toml</code> to your scrape tooling (a <code>{id}</code> shell temp
 any Plan beat when <code>notes.json</code> is absent, so the planner has the comment thread
 without you scraping by hand. It's best-effort — a failure just falls back to the
 CSV / asking you.</p>
+<h3>Composing several sources</h3>
+<p>A good brief often draws on more than the ticket — a linked design doc, an accepted
+proposal, a spec section, a CSV row. Declare a list of <code>[[plan.source]]</code> providers in
+<code>pdca.toml</code> and each contributes context into the bundle's <code>sources/</code> dir before Plan,
+so the planner briefs from the <strong>full</strong> picture, not one scrape (issue #102). Built-in
+types: <code>github</code> (<code>gh</code>), <code>gitlab</code> (<code>glab</code>), <code>csv</code>, <code>file</code> (a path/glob, <code>{id}</code>
+interpolated), and <code>command</code> (the escape hatch — exactly <code>notes_cmd</code>, run with
+<code>$PDCA_BUNDLE</code> / <code>$PDCA_SOURCES</code> set). Each is best-effort; the legacy <code>notes_cmd</code> still
+runs alongside them. For example, &quot;the GitHub issue <strong>and</strong> its linked ADR&quot;:</p>
+<pre><code class="language-toml">[[plan.source]]
+type = &quot;github&quot;
+[[plan.source]]
+type = &quot;file&quot;
+path = &quot;docs/adr/*{id}*.md&quot;
+</code></pre>
 <h2>What a real brief looks like</h2>
 <p>This is the <strong>actual</strong> brief the planner produced for gramps issue 11589, a
 PluginManager bug. Read it as a checklist of what a good spec contains — every

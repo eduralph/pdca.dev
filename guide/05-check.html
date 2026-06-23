@@ -115,11 +115,15 @@ It re-runs the asserted evidence (stash → confirm red, unstash → confirm gre
 re-checks that cited <code>path:line</code>s exist on the target branch, and flags scope
 creep. Its output, <code>check-review.md</code>, is <strong>advisory</strong> — it annotates, it never
 gates. The blocking path contains no LLM at all.</p>
-<p>The reviewer runs in an isolation sandbox (only <code>{patch.diff, brief.md, check-gates.json}</code> are present), so the driver resolves the brief's target checkout and
-hands it over as <strong><code>$PDCA_TARGET</code></strong> (read-only; for a <code>claude</code> reviewer also via
-<code>--add-dir</code>). The reviewer grounds every citation there and is told <strong>not</strong> to wander
-into other checkouts on the machine — without this it can't ground, or hunts the
-filesystem for &quot;the target&quot; (issue #75).</p>
+<p>The reviewer runs in an isolation sandbox (only <code>{patch.diff, brief.md, check-gates.json}</code> are present), so the driver hands it a read-only grounding target as
+<strong><code>$PDCA_TARGET</code></strong> (for a <code>claude</code> reviewer also via <code>--add-dir</code>). That target is the
+<strong>per-cycle worktree</strong> (<a href="/guide/04-do.html">step 04</a>) — pinned to the <em>same</em> base the gates ran
+against and carrying the patch — so a stale or unreadable sibling checkout can't drift
+the reviewer's grounding (issue #120); when worktree isolation is off it falls back to
+the brief's target checkout, freshly fetched (refs only — never resetting your working
+tree). The reviewer grounds every citation there and is told <strong>not</strong> to wander into
+other checkouts on the machine — without this it can't ground, or hunts the filesystem
+for &quot;the target&quot; (issue #75).</p>
 <h3>Optional advisory reviewers (a second lens)</h3>
 <p>The <code>reviewer</code> judges fix <em>adequacy</em>. For other lenses — correctness bugs the patch
 introduces, reuse/simplification/efficiency cleanups — add <strong>advisory reviewer leaves</strong>

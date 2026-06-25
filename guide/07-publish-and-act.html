@@ -62,6 +62,13 @@ Verified against / Test), and — because 11589 touches an addon — an <code>##
 ready — the harness never does. gramps' governance makes this explicit
 (INTEGRATION §10): <em>&quot;Eduard opens fork PRs as draft, marks ready himself; builder
 commits and stops — no push/PR-open/ready-mark without explicit instruction.&quot;</em></p>
+<p>This holds for a <strong>batch</strong>, too. A multi-id <code>pdca flow</code> runs the batch as dependency
+waves (<a href="/spec/09-parallel-lanes.html">09 parallel lanes</a>); in the
+default <code>stack</code> mode each wave's accepted work is folded onto a run-scoped integration
+branch the next wave builds on, and each dependent opens a <strong>stacked</strong> draft PR — the
+harness still never merges, so you review and merge the stack bottom-up yourself. Only the
+opt-in <code>[driver].wave_mode = &quot;merge&quot;</code> (own-repo / CD, where you hold merge rights on the
+base) relaxes this, <code>gh pr merge</code>-ing each wave before the next builds.</p>
 <p>In gramps' git history you can see cycles land this way — each result bundle gets
 a branch and a PR:</p>
 <pre><code>c52c6a4 Merge pull request #105 from eduralph/results/issue-46-graphview-import

@@ -62,6 +62,29 @@ default (<code>[driver].worktree</code>); best-effort — a target that isn't a 
 git checkout falls back to editing in place. (This isolation is what publish's
 stash/restore worked around before; with it, serial cycles get the same clean-tree
 guarantee lanes already had.)</p>
+<h3>The harness checkout is not isolated — don't do git maintenance under a live flow (issue #130)</h3>
+<p>Worktree isolation protects the <strong>target</strong> repo. It does <strong>not</strong> protect the
+<strong>harness checkout</strong> — the repo that holds <code>results/issue_&lt;id&gt;/</code> bundle state <em>and</em>
+the <code>pdca_harness</code> code a running flow imports. While a <code>pdca flow</code> is live (e.g.
+parked at the interactive sign-off leaf), ordinary git maintenance in that checkout
+silently corrupts in-flight state:</p>
+<ul>
+<li><strong><code>git stash -u</code> clobbers the bundle.</strong> A flow's <code>results/issue_&lt;id&gt;/</code> is
+long-lived <strong>untracked</strong> working-tree files (it isn't committed as it goes); a
+stash sweeps them into a stale snapshot while the flow keeps advancing the
+on-disk bundle — a later <code>stash pop</code> overwrites newer Check artifacts with older
+Do ones.</li>
+<li><strong>A branch switch or <code>copier update</code> rewrites <code>src/pdca_harness/*.py</code> under the
+running interpreter.</strong> The live process pinned the old modules in memory, but any
+<code>python -m pdca_harness …</code> <strong>subprocess</strong> it spawns afterward picks up the new
+code — a mixed-version cycle.</li>
+</ul>
+<p>The discipline is just #94's own principle turned on the harness repo: <strong>do
+harness-repo maintenance (version bumps, <code>copier update</code>, bundle-recording commits)
+in a separate <code>git worktree</code> of the harness repo</strong> — never branch-switch,
+<code>copier update</code>, or <code>git stash</code> the live checkout while a flow runs. (An advisory
+<code>pdca</code> flow-lock that refuses such maintenance while a flow is held is planned as a
+follow-up; until then this is operator discipline.)</p>
 <h2>What Do produces</h2>
 <p>Three artifacts land in the bundle:</p>
 <table>

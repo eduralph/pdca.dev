@@ -131,6 +131,12 @@ production itself; only the human's T5 judgment caught it:</p>
 <strong>ruleset</strong> (a written rule), the <strong>gates</strong> (a new/promoted check), the <strong>agent
 files</strong> (<code>.claude/agents/*.md</code>), or the <strong>orchestration</strong> (driver/state). Each is
 a permanent improvement to the baseline every future cycle starts from.</p>
+<p><strong>Closing the loop — the process-delta ledger.</strong> A delta is only worth anything if it
+<em>works</em>. Act keeps a <code>process/act-ledger.json</code>: each recurring signal it surfaces is
+tracked <code>open</code>; once you land the fix you run <code>pdca act resolve &quot;&lt;signal&gt;&quot; --location &lt;path:line&gt;</code> to mark it <strong>applied</strong>; and on a later review Act flags any applied delta
+whose miss <strong>recurs</strong> in a cycle frozen after the applied date — a loud &quot;⚠ Ineffective
+deltas&quot; section in <code>act index</code> / the <code>act log</code> scaffold. So Act audits its own
+prescriptions instead of writing them and forgetting.</p>
 <hr />
 <h2>The loop, closed</h2>
 <pre><code>Plan ─► Do ─► Check ─► (sign-off) ──► COMPLETE ──► publish (draft PR)

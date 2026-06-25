@@ -92,6 +92,11 @@ pre-existing failure is tagged <code>[baseline]</code> (ignore — not your fix'
 <em>new</em> failure is <code>[delta]</code> (your fix may have caused it). You'll see a <code>[delta]</code>
 bite in <a href="/guide/06-signoff.html">step 06</a>.</p>
 </blockquote>
+<p><strong>Promoting a check.</strong> A new gate should earn the right to block. Give a check
+<code>promote_after = N</code> and run <code>pdca gates --promotions</code>: it lists the advisory checks that
+have <strong>passed in their N most-recent frozen cycles</strong> — earned promotion from advisory to
+gating. It's a hint; you flip <code>gating = true</code> yourself (nothing is auto-mutated). That is
+the Act &quot;promote a check&quot; delta, with a concrete trigger (issue #156).</p>
 <h3>Delegating to a host runner</h3>
 <p>If your project already single-sources its gates in its own runner (<code>cargo xtask</code>,
 <code>make</code>, <code>just</code>, …), don't re-declare them in <code>pdca.toml</code> — <strong>delegate</strong>. Set a runner

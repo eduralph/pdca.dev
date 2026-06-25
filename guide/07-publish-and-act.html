@@ -127,6 +127,11 @@ production itself; only the human's T5 judgment caught it:</p>
 - Spec template (applied): brief Test file field now reminds that the test must
   drive the production path, not a parallel copy. (templates/brief.md.tpl)
 </code></pre>
+<p>That second delta is now also a <strong>mechanical</strong> check you can wire in: the reference
+<code>scripts/checks/test_exercises_production.py</code> (a <code>[[gates.checks]]</code> example, issue #154)
+asserts each <em>added</em> test file imports the production package and declares itself
+UNVERIFIABLE → §6 when it can't — promoting &quot;test the production path&quot; from a human-only
+T5 judgment to a deterministically-surfaced one.</p>
 <p>Act deltas land in five places: the <strong>spec template</strong> (a brief field), the
 <strong>ruleset</strong> (a written rule), the <strong>gates</strong> (a new/promoted check), the <strong>agent
 files</strong> (<code>.claude/agents/*.md</code>), or the <strong>orchestration</strong> (driver/state). Each is

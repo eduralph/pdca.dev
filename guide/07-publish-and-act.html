@@ -76,6 +76,12 @@ f1092ca results(46): record published GraphView import-safety cycle
 </code></pre>
 <p>That's one full cycle, <a href="/guide/03-plan.html">steps 03–07</a>, from tracker issue to merged
 record.</p>
+<p><strong>Undoing one.</strong> If a landed fix turns out wrong, <code>pdca revert &lt;id&gt;</code> undoes the
+contribution from its recorded <code>publish.json</code>: a <strong>merged</strong> PR gets a draft <strong>revert PR</strong>
+(reverse-applying the bundle's own <code>patch.diff</code> onto the base — no guessing the merge
+commit), and an <strong>open</strong> one is <strong>withdrawn</strong> (<code>gh pr close --delete-branch</code>). It matters
+most under the opt-in <code>wave_mode = &quot;merge&quot;</code>, where the harness lands waves itself; STOP
+discipline holds — the revert PR opens as a draft for you to merge (issue #158).</p>
 <hr />
 <h2>Act — improve the process, not the contribution</h2>
 <p>Plan/Do/Check operate on <strong>one contribution</strong>. <strong>Act</strong> operates on the <strong>process

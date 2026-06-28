@@ -52,6 +52,37 @@ argv = [&quot;claude&quot;, &quot;-p&quot;, &quot;--agent&quot;, &quot;builder&q
 <p>The narrow <code>--allowedTools</code> is deliberate: the builder may read, edit, and run
 git/python — it cannot, say, open a PR. STOP discipline (<a href="/guide/03-plan.html">step 03</a>)
 is enforced by what the leaf <em>can't do</em>, not just by instruction.</p>
+<h3>Choosing the Do model per bundle (issues #134/#167)</h3>
+<p><code>[leaves.builder]</code> is the default executor, but the right backend often depends on the
+bundle — a high-blast-radius fix wants a frontier model, a privacy-sensitive one must
+stay on a local backend, an easy one can run cheap. Declare <strong>builder variants</strong> and the
+driver (<code>select_builder</code>) picks one <strong>per bundle</strong>, from that bundle's brief:</p>
+<pre><code class="language-toml">[[leaves.builder_variant]]                 # routed by a brief field
+model = &quot;frontier&quot;
+when  = { field = &quot;difficulty&quot;, substring = &quot;high&quot; }
+argv  = [&quot;claude&quot;, &quot;-p&quot;, &quot;--agent&quot;, &quot;builder&quot;, &quot;--model&quot;, &quot;opus&quot;, &quot;...&quot;]
+
+[[leaves.builder_variant]]                 # named, for an explicit pick
+model = &quot;local&quot;
+argv  = [&quot;local-build&quot;, &quot;...&quot;]
+</code></pre>
+<p>Two ways to select, both resolved per bundle:</p>
+<ul>
+<li><strong><code>when</code> routing (#134)</strong> — the first variant whose <code>when = {field, substring}</code>
+matches a brief field wins (<code>Difficulty: high</code> → the frontier variant). Default-open:
+an absent/non-matching field keeps the default, so a missing tag never silently
+<em>reduces</em> capability.</li>
+<li><strong>Explicit <code>Do model:</code> (#167)</strong> — a brief can name a backend directly with
+<code>- **Do model:** &lt;name&gt;</code>, matched to a variant's <code>model</code>. This <em>overrides</em> the <code>when</code>
+routing — pin a specific bundle (e.g. force a sensitive fix onto <code>local</code> regardless of
+difficulty).</li>
+</ul>
+<p>Because the backend is resolved per bundle, different bundles <strong>in the same wave</strong> run on
+different models concurrently — which also spreads load across providers' rate limits. A
+variant's <code>argv</code> is the whole command, so it carries the model <em>and</em> any effort/reasoning
+flags. On top of either pick, the <strong>escalation ladder</strong> (<code>[[leaves.builder_escalation]]</code>,
+#135) still overrides on <em>iterate</em>, so a bundle that keeps failing climbs to a stronger
+backend regardless of its self-rating.</p>
 <h3>Isolated in a worktree (issue #94)</h3>
 <p>Do (and Check's gates) run against a dedicated <strong>git worktree</strong> off the target's
 base, not the host's primary checkout — so a cycle never leaves the live checkout
@@ -210,7 +241,7 @@ bundles drive themselves to sign-off cheaply alongside the ones that get built.<
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
       </nav>
-      <div class="foot-meta">GPLv3 · Agentic AI · model agnostic</div>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>
   </footer>
 </div>

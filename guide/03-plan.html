@@ -84,6 +84,26 @@ type = &quot;github&quot;
 type = &quot;file&quot;
 path = &quot;docs/adr/*{id}*.md&quot;
 </code></pre>
+<h3>Ordering and routing the batch</h3>
+<p>When a batch has <strong>dependencies</strong>, you don't run it by hand in waves — you <em>declare</em> the
+shape and the driver schedules it. Optional brief fields, set at Plan:</p>
+<ul>
+<li><strong><code>Depends on:</code> / <code>Conflicts with:</code></strong> — the batch runs as dependency <strong>waves</strong>
+(<a href="/spec/09-parallel-lanes.html">09 parallel lanes</a>): a bundle
+lands in a later wave than its prerequisites and builds on their <em>accepted</em> result (the
+wave driver folds each wave onto the base the next builds on — no human merge between
+them). <code>Conflicts with</code> puts two file-overlapping bundles in different waves.
+(<code>Depends on (merged)</code> / <code>Stacks on</code> still parse but are deprecated — in the wave model
+they are just <code>Depends on</code>.)</li>
+<li><strong><code>Difficulty:</code> / <code>Do model:</code></strong> — route this bundle's Do to the right backend
+(<a href="/guide/04-do.html">step 04</a>): <code>Difficulty</code> feeds the <code>when</code> routing (and the iterate escalation
+ladder); <code>Do model</code> pins a backend by name. So different bundles in one wave can build
+on different models.</li>
+</ul>
+<p>Declaring the constraints is a Plan judgment — the planner sets them from the batch's real
+dependency/conflict structure; an unschedulable graph (a cycle, or a dep that is neither in
+the batch nor already COMPLETE) is rejected up front. <code>pdca waves &lt;ids…&gt;</code> prints the
+computed wave plan without building.</p>
 <h2>What a real brief looks like</h2>
 <p>This is the <strong>actual</strong> brief the planner produced for gramps issue 11589, a
 PluginManager bug. Read it as a checklist of what a good spec contains — every
@@ -200,7 +220,7 @@ the Do beat — <a href="/guide/04-do.html">step 04</a>.</p>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
       </nav>
-      <div class="foot-meta">GPLv3 · Agentic AI · model agnostic</div>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>
   </footer>
 </div>

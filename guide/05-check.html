@@ -179,6 +179,10 @@ questions.</p>
 is unchecked.</strong> That's the <code>C6</code> guard. It's why §6 items above are <code>- [x]</code> — the
 human worked them before accepting. (<code>--iterate-*</code> and <code>--discontinue</code> are <em>not</em>
 guarded — you can redirect or abandon a bundle with §6 still open.)</p>
+<p>A <strong>gating</strong> gate that hard-FAILS (<code>overall = fail</code>, not just an advisory row) also lands
+in §6 (issue #166), so the guard blocks accept on a red gate too — you clear it with a
+conscious override, <code>--iterate</code>, or <code>--discontinue</code>, never by it slipping silently to
+COMPLETE.</p>
 <p>State: <code>AWAITING_SIGNOFF</code>. Your move — <a href="/guide/06-signoff.html">step 06</a>.</p>
 <p>← <a href="/guide/04-do.html">04 Do</a> · <a href="/guide/">Index</a> · next: <a href="/guide/06-signoff.html">06 Sign-off →</a></p>
 
@@ -194,7 +198,7 @@ guarded — you can redirect or abandon a bundle with §6 still open.)</p>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
       </nav>
-      <div class="foot-meta">GPLv3 · Agentic AI · model agnostic</div>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>
   </footer>
 </div>

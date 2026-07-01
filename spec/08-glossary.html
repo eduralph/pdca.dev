@@ -37,7 +37,7 @@
     <article class="prose">
 <!-- Vendored snapshot of the canonical PDCA spec. Obsidian [[wikilinks]] converted to relative Markdown links. The authoritative living source is the project wiki; re-vendor when it changes. -->
 <blockquote>
-<p>A reference index of the terms used across docs 00–07. Each entry is a one-line
+<p>A reference index of the terms used across docs 00–10. Each entry is a one-line
 definition; the doc that <em>owns</em> the term (where it is defined and treated in full)
 is named in parentheses. This glossary does not restate the model — it points back
 into it. When a term and a doc disagree, the doc wins.</p>
@@ -86,6 +86,13 @@ they never decide control flow. There are <strong>six</strong>, all steps within
 <li><strong>Interactive vs headless</strong> — interactive leaves hand the terminal to a seeded REPL
 (Plan, sign-off, publish, Act); headless leaves run autonomously and write a doc (Do,
 reviewer). <code>PDCA_LEAVES_MODE=stub</code> forces every leaf offline.</li>
+<li><strong>Per-bundle model routing</strong> — the builder backend is chosen <em>per bundle</em>, not fixed:
+<code>select_builder</code> picks one from the brief. A <code>[[leaves.builder_variant]]</code> whose
+<code>when = {field, substring}</code> matches routes (e.g. <code>Difficulty: high</code> → a frontier model);
+a brief may instead pin one by name with <strong><code>Do model:</code></strong>; a <code>[[leaves.builder_escalation]]</code>
+ladder climbs by attempt number so a repeatedly-failing bundle gets a stronger backend.
+Each layer is default-open, so a parallel wave can run different bundles on different
+backends (<a href="/spec/03-cycle-automation.html">03</a>).</li>
 </ul>
 <h2>The bundle and its artifacts</h2>
 <p>(doc <a href="/spec/02-cycle-artifacts.html">02</a>)</p>
@@ -135,6 +142,8 @@ Act review.</li>
 <li><strong>COMPLETE</strong> — §9 accepted; the bundle is frozen.</li>
 <li><strong>ITERATE_DO</strong> — §9 = iterate-to-Do; driver clears Do+Check artifacts → PLANNED.</li>
 <li><strong>ITERATE_PLAN</strong> — §9 = iterate-to-Plan; driver archives the attempt (incl. brief) → UNPLANNED.</li>
+<li><strong>DISCONTINUED</strong> — §9 = discontinue; <strong>terminal</strong>, no transition and no archive: the bundle
+is deliberately abandoned and dropped from the active set (independent of §6 / the C6 guard).</li>
 <li><strong>iterate-to-Do</strong> — the fix was wrong, the spec right: rebuild against the same brief.</li>
 <li><strong>iterate-to-Plan</strong> — the spec was wrong: re-author the brief (old attempt archived to <code>iteration-v&lt;N&gt;/</code>).</li>
 </ul>
@@ -185,7 +194,11 @@ that <em>tighten</em> a generic one, never weaken it (<a href="/spec/06-quality-
 <li><strong>Sign-off (Check sign-off)</strong> — the human step completing Check: clear §6, weigh the
 advisory review, record §9. The model <em>proposes</em> (a one-token decision); the driver
 <em>records</em> it under the C6 guard.</li>
-<li><strong>Sign-off decision</strong> — exactly one of <code>accept</code> · <code>iterate-do</code> · <code>iterate-plan</code>.</li>
+<li><strong>Sign-off decision</strong> — exactly one of <code>accept</code> · <code>iterate-do</code> · <code>iterate-plan</code> · <code>discontinue</code>.</li>
+<li><strong>Discontinue</strong> — the sign-off decision that deliberately abandons a bundle (→ DISCONTINUED):
+no transition, no archive, independent of §6. For work that on inspection doesn't fit the
+cycle (e.g. handled out-of-band by hand); the human records why / where the work went instead.
+Formerly named <strong>park</strong> (<a href="/spec/02-cycle-artifacts.html">02</a>, <a href="/spec/03-cycle-automation.html">03</a>).</li>
 <li><strong>Disposition</strong> — the cycle's final verdict: fixed / already-fixed / can't-reproduce /
 wontfix / by-design / external / merged-wider / closed-<reason>.</li>
 <li><strong>Confirm-and-close</strong> — closing a cycle <em>without</em> a fix (doesn't reproduce, already
@@ -205,6 +218,11 @@ mechanics, stopping at the draft. In <code>pdca flow</code> it runs on every acc
 to skip); offline it dry-runs.</li>
 <li><strong>draft PR</strong> — the contribution artifact publish opens; it is never marked ready or
 merged by the harness — that is the human's sign-off disposition.</li>
+<li><strong>Stack mode / <code>Onto branch:</code></strong> — a publish variant: when the brief declares an
+<code>Onto branch: &lt;remote&gt;/&lt;branch&gt;</code>, publish commits the fix onto that <em>existing</em> PR's branch
+instead of opening a new PR — the same branch is the test base (<code>$PDCA_BASE</code>), commit base,
+and push target (a fix tested against a PR can only land on that PR). Refuses if the patch
+no longer applies or no open PR has that head (<a href="/spec/02-cycle-artifacts.html">02</a>, <a href="/spec/03-cycle-automation.html">03</a>).</li>
 <li><strong>issue trailer</strong> — the commit/PR line linking to the issue (<code>[tracker].issue_trailer</code>,
 e.g. <code>Fixes #&lt;id&gt;</code>); the T4 gate enforces it.</li>
 </ul>
@@ -215,8 +233,8 @@ e.g. <code>Fixes #&lt;id&gt;</code>); the T4 gate enforces it.</li>
 state, run the next beat's leaf, write the artifact, advance, STOP at AWAITING_SIGNOFF.
 No model in the control path. Resumable, idempotent, inspectable.</li>
 <li><strong>Flow / <code>pdca flow</code></strong> — the continuous orchestrator: Plan → Do → Check(gates → review →
-sign-off → publish) → Act as one run. <strong><code>flow_batch</code></strong> does it for several issues from
-one Plan session.</li>
+sign-off → publish) → Act as one run. <code>pdca flow &lt;ids…&gt;</code> (or <code>--from-csv</code>) runs it for
+several issues from one Plan session, as an ordered sequence of <strong>dependency waves</strong>.</li>
 <li><strong>Batch</strong> — N issues processed together: scrape → draft briefs → one human Plan session →
 <code>pdca flow &lt;ids…&gt;</code> (unattended Do+Check) → <code>pdca queue</code> (cheap-first sign-off).</li>
 <li><strong>Batch selection</strong> — the deliberate, Plan-front choice of <em>which</em> issues go in a batch:
@@ -250,6 +268,33 @@ by id; a Plan-beat judgment that prevents integration conflicts up front (<a hre
 patches at the <strong>merge boundary</strong>: the repo-scoped working-tree gate (<code>gates.run_working_tree</code>,
 single-sourced with CI) over the merged tree + draft-PR conflict surfacing. Catches what
 a per-fix gate (clean base, blind to other lanes) cannot (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong>Dependency wave</strong> — a batch handed to <code>pdca flow</code> runs as an ordered sequence of waves
+(<code>waves.compute_waves</code>); each wave holds only mutually-independent work that builds in
+parallel, is signed off + published, then folded onto the integration branch the next wave
+builds on. No declared fields ⇒ a single wave (the prior sort-by-name pool). <code>pdca waves</code>
+prints the plan; <code>pdca status</code> flags <code>[blocked-by: &lt;ids&gt;]</code> (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong><code>Depends on:</code> / <code>Conflicts with:</code></strong> — the brief fields the wave scheduler reads.
+<code>Depends on:</code> is the topological edge (the dependent lands in a <em>later</em> wave, on the
+integration branch carrying its prereqs' diffs); <code>Conflicts with:</code> is an undirected
+shared-resource relation that forces the pair into <em>different</em> waves. A cycle or a missing
+prerequisite is a <strong>hard error rejected before any build</strong> (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong><code>Depends on (merged)</code> / <code>Stacks on</code></strong> — <em>deprecated, still parsed</em>; both fold into a plain
+<code>Depends on</code> edge. Author <code>Depends on</code> (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong>Integration branch</strong> — the run-scoped branch a wave's accepted patches are folded onto so
+the next wave builds on them within one run (one per <code>(repo, base)</code> target); carries the diff
+forward with <strong>no merge by the harness</strong> (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong>wave_mode (<code>stack</code> / <code>merge</code>)</strong> — how a wave's work reaches the next base (<code>[driver].wave_mode</code>):
+<strong><code>stack</code></strong> (default, fork-safe) folds onto a push-only integration branch and cuts each
+dependent off it — an own-repo PR is a clean increment-only <strong>stacked PR</strong> <code>--base</code>d on the
+branch, a fork PR opens against the upstream base carrying the <em>cumulative</em> diff; in stack
+mode the harness <strong>never merges</strong> (you merge the PR stack bottom-up). <strong><code>merge</code></strong> (own-repo /
+CD only, needs merge rights) instead <strong><code>gh pr merge</code>s each non-final wave</strong> so the next wave
+builds on the genuinely-merged base (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong>Overlap audit</strong> — a post-Do check flagging two same-wave bundles whose patches touch a
+shared file but declared no <code>Conflicts with</code> — a likely planner omission (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong>regate_between_waves</strong> — opt-in (<code>[driver].regate_between_waves</code>): re-run the repo-scoped
+gates over the folded integration tip before the next wave builds, so a combination red though
+each fix was green <em>alone</em> STOPs the run (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
 </ul>
 <h2>Discipline and guardrails</h2>
 <p>(docs <a href="/spec/01-the-quality-cycle.html">01</a>, <a href="/spec/03-cycle-automation.html">03</a>, <a href="/spec/06-quality-cycle-guidelines.html">06</a>)</p>
@@ -272,6 +317,10 @@ conformance ruleset, the branch-target rules, the agent files. Act improves it.<
 <li><strong>Act review / Act index / act-log</strong> — the cross-cycle pass: <code>pdca act index</code> surfaces
 frozen-bundle §6/§7/§10 + recurring signals; the human decides deltas; <code>pdca act log</code>
 scaffolds the dated, <strong>append-only</strong>, <strong>concrete-and-located</strong> entry (in <code>act-log.md</code>).</li>
+<li><strong>Process-delta ledger</strong> — <code>process/act-ledger.json</code> tracks each recurring signal Act
+surfaces: <code>open</code> when first seen, <strong>applied</strong> via <code>pdca act resolve &quot;&lt;signal&gt;&quot; --location &lt;path:line&gt;</code> once the fix lands, and re-flagged <strong>ineffective</strong> if the same miss recurs in a
+cycle frozen <em>after</em> the applied date (a &quot;⚠ Ineffective deltas&quot; section in <code>act index</code> / the
+<code>act log</code> scaffold) — so Act audits whether its own prescriptions worked (<a href="/spec/03-cycle-automation.html">03</a>).</li>
 <li><strong>Integration / per-repo specification</strong> — the project's answer to the &quot;which / where /
 how&quot; the generic cycle leaves open (tracker, branches, fixtures, ruleset, templates,
 paths, scripts, governance). Lives in <code>docs/INTEGRATION.md</code>; <strong>generic wins on shape,

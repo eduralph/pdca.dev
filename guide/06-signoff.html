@@ -97,6 +97,12 @@ all share one word. Use it for work that, on inspection, doesn't fit the cycle
 of §6.</p>
 </blockquote>
 <h2>The simple case — accept</h2>
+<p>Before you accept a bundle whose §6 carries a <strong>visual / GUI / validation</strong> row, run the
+fix by hand: <code>pdca try &lt;id&gt;</code> launches the patched build from the bundle's worktree
+(<a href="/guide/05-check.html#trying-the-build-by-hand--pdca-try-id">step 05</a>) so you can drive the app and
+confirm the fix does the right thing — the one check no gate and no headless reviewer can
+make for you. Record the outcome in a Manual-verification note, tick the §6 item, then sign
+off. (Needs <code>[manual_test].cmd</code> set; a docs-only or headless-testable fix won't need it.)</p>
 <p>For issue 11589 (<a href="/guide/03-plan.html">steps 03–05</a>), the gates proved correctness and the
 four §6 items were all cleared, so the maintainer accepted. The real
 <code>results/issue_11589/SUMMARY.md</code> §9:</p>

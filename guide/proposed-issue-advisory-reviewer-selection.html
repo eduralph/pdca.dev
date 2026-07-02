@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Driver suggests a different-vendor advisory reviewer for the build model that ran — PDCA Harness</title>
+<meta name="description" content="Check&#x27;s independence rests on cross-vendor decorrelation : the">
+<meta property="og:title" content="Driver suggests a different-vendor advisory reviewer for the build model that ran — PDCA Harness">
+<meta property="og:description" content="Check&#x27;s independence rests on cross-vendor decorrelation : the">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Driver suggests a different-vendor advisory reviewer for the build model that ran</h1>
+<h2>Context</h2>
+<p>Check's independence rests on <strong>cross-vendor decorrelation</strong> (INTEGRATION §4): the
+reviewer should be a <em>different</em> family from the builder that produced the patch. Today
+that pairing is fixed at config-render time — <code>[leaves.reviewer].family</code> and each
+<code>[[leaves.advisory]].family</code> are static strings — while the builder family is <em>not</em> fixed
+per bundle. <code>select_builder()</code> already resolves the Do backend three ways (explicit
+<code>- **Do model:** &lt;name&gt;</code> pin #167, difficulty <code>when</code> routing #134, and the escalation
+ladder #135), so the same run can build one bundle with Codex and the next with Claude.
+When that happens, a statically-configured reviewer can land <strong>same-vendor as the
+builder</strong>, silently weakening the independence Check relies on.</p>
+<h2>What I want</h2>
+<p>The decorrelation should be the <strong>driver's</strong> job, not the human's. Once the build model is
+resolved for a bundle, the driver looks at which vendor built it and <strong>suggests an advisory
+reviewer from a different vendor</strong> — automatically, per bundle. Codex built it → suggest a
+Claude reviewer; Claude built it → suggest a Codex reviewer. No per-brief edits, no
+hand-mirrored config for each direction.</p>
+<h2>Current behaviour</h2>
+<ul>
+<li>The reviewer/advisory family is chosen at config-render time and never reacts to the
+builder that actually ran.</li>
+<li><code>[[leaves.advisory]].when = {field, substring}</code> conditions an advisory on <strong>brief fields
+only</strong>, so it can't react to the <em>resolved</em> builder vendor (which may come from routing
+or escalation, not from any brief field).</li>
+<li>Approximating this today means hand-maintaining two mirrored advisory entries keyed on a
+<code>Do model</code> string — brittle, and it breaks the moment #134/#135 picks the backend instead
+of the brief.</li>
+</ul>
+<h2>Proposed behaviour</h2>
+<p>Give the driver a <strong>vendor-complement selection</strong> step for the advisory reviewer:</p>
+<ol>
+<li>Configure a small <strong>pool</strong> of advisory reviewer backends, one per vendor/family
+(e.g. one Claude entry, one Codex entry) sharing the same review <code>role</code>.</li>
+<li>After <code>select_builder()</code> resolves the build model, the driver reads its <code>family</code>
+(the resolved fact, recorded on the bundle — see below) and <strong>selects/suggests</strong> a
+pool entry whose <code>family</code> differs from the builder's.</li>
+<li>If more than one different-vendor entry qualifies, pick deterministically (config
+order); if none is configured, fall back rather than skip — a same-vendor review still
+beats no review — and note the fallback in SUMMARY §6.</li>
+</ol>
+<p>Sketch (illustrative — exact schema TBD):</p>
+<pre><code class="language-toml"># A vendor-keyed advisory pool the driver draws a *complement* from.
+[[leaves.advisory]]
+id = &quot;review-claude&quot;
+family = &quot;claude&quot;
+role = &quot;correctness bugs + reuse/simplification/efficiency cleanups&quot;
+argv = [&quot;claude&quot;, &quot;-p&quot;, &quot;--agent&quot;, &quot;code-review&quot;, &quot;--permission-mode&quot;, &quot;acceptEdits&quot;, &quot;--allowedTools&quot;, &quot;Read,Bash,Grep,Glob&quot;]
+
+[[leaves.advisory]]
+id = &quot;review-codex&quot;
+family = &quot;codex&quot;
+role = &quot;correctness bugs + reuse/simplification/efficiency cleanups&quot;
+argv = [&quot;codex&quot;, &quot;exec&quot;, &quot;--config&quot;, &quot;AGENTS.md&quot;]
+
+# Opt into driver-driven vendor complement (vs. today's static / when-gated behaviour):
+[leaves.advisory_selection]
+mode = &quot;vendor-complement&quot;   # driver picks a pool entry whose family != resolved builder
+</code></pre>
+<p>The key move is that <strong>the driver derives the choice from the resolved builder vendor</strong>,
+so the human declares vendors <em>once</em> and both directions (&quot;codex→claude&quot; and
+&quot;claude→codex&quot;) fall out automatically — including when the builder was chosen by
+difficulty routing or escalation, not by <code>Do model</code>.</p>
+<h2>Why &quot;suggests&quot;</h2>
+<p>This should default to a suggestion the driver applies, but stay observable/overridable —
+surface the chosen pairing (and any same-vendor fallback) in SUMMARY §6 so a human can see
+whether decorrelation actually held for a given bundle. Decorrelation is a soft preference,
+not a hard invariant to enforce by skipping review.</p>
+<h2>Design notes / open questions</h2>
+<ul>
+<li><strong>Source of the resolved builder vendor:</strong> <code>select_builder()</code> resolves it during Do; the
+advisory runs during Check. <code>loop-telemetry.json</code> already records which backend ran each
+pass — reuse that as the source of truth so Check reads a recorded fact, not a
+re-derivation.</li>
+<li><strong>Selection policy when the pool has &gt;1 complement:</strong> config order? explicit priority?
+round-robin for extra decorrelation across bundles?</li>
+<li><strong>Interaction with existing <code>when</code>:</strong> vendor-complement selection and brief-field <code>when</code>
+gating should compose (a pool entry can still be <code>when</code>-gated off for a bundle).</li>
+<li><strong>Relationship to the primary <code>[leaves.reviewer]</code>:</strong> does the same complement logic apply
+to the primary reviewer, or only to the advisory pool? (Recommend advisory first; the
+primary reviewer's family is a bigger blast radius.)</li>
+</ul>
+<h2>Acceptance criteria</h2>
+<ul>
+<li>With a two-vendor advisory pool and <code>mode = &quot;vendor-complement&quot;</code>, a Codex-built bundle
+runs the Claude advisory and a Claude-built bundle runs the Codex advisory — no per-brief
+edits — including when the builder came from #134 routing or #135 escalation.</li>
+<li>The resolved builder family is recorded on the bundle and is the source the driver reads.</li>
+<li>When no different-vendor entry is configured, the driver falls back (does not skip) and
+records a same-vendor note in SUMMARY §6.</li>
+<li>Advisory stays strictly advisory — never gates; <code>- NEEDS-HUMAN —</code> findings still route to
+§6.</li>
+<li>Docs updated: <code>template/pdca.toml.jinja</code> advisory block + docs/05-check.md, stating the
+decorrelation intent (INTEGRATION §4) where the config lives.</li>
+</ul>
+<h2>Test plan</h2>
+<ul>
+<li>Unit: given a recorded builder family of <code>codex</code>, the driver selects the <code>claude</code> pool
+entry; given <code>claude</code>, it selects <code>codex</code>; given a single-vendor pool, it falls back and
+emits the §6 note.</li>
+<li>Unit: builder resolved via <code>Do model</code>, via difficulty routing, and via escalation each
+yield the correct complementary advisory.</li>
+<li>Offline suite stays green:
+<code>cd template &amp;&amp; PYTHONPATH=src python3 -m unittest discover -s tests</code>.</li>
+</ul>
+<h2>Related</h2>
+<ul>
+<li>#64 (optional advisory reviewers — the open list this extends)</li>
+<li>#167 (<code>Do model</code> explicit builder pin), #134 (difficulty-routed variants),
+#135 (escalation ladder) — the reasons the builder vendor isn't knowable from the brief</li>
+<li>INTEGRATION §4 (cross-vendor decorrelation is the default and the ideal)</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

@@ -394,9 +394,9 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
 <td><code>fix/bug-{id}-{slug}</code> / <code>enhancement/{id}-{slug}</code></td>
 </tr>
 <tr>
-<td>Builder / reviewer</td>
+<td>Builder / reviewer / interactive family</td>
 <td>render-time</td>
-<td><code>claude</code> / <code>codex</code> by default; <strong>running</strong> config takes the same-vendor <code>claude</code> reviewer fallback + sandbox</td>
+<td>per-leaf: <code>builder_family</code> (<code>claude</code>/<code>codex</code>), <code>reviewer_family</code> (cross-vendor, ≠ builder), <code>interactive_family</code> for Plan/Sign-off/Publish/Act. Codex is a full alternative across all leaves.</td>
 </tr>
 <tr>
 <td>Gating gate</td>

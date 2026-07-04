@@ -159,18 +159,20 @@ none — and files the lapse as a §6 <code>NEEDS-HUMAN</code> so you can see de
 <p>Some §6 rows are irreducibly a <strong>run-it-yourself</strong> call — a GUI/visual repro, or the
 validation act (&quot;is this the right thing?&quot;) for a change no headless test can exercise. The
 gates can't decide those, and the reviewer is headless and sandboxed, so it can't hand you a
-live app. <code>pdca try &lt;id&gt;</code> closes that gap: it launches the <strong>patched build</strong> from the
-bundle's per-cycle worktree (the tree Do edited, carrying the patch — the same one the gates
-and reviewer used), handing you the terminal so you can drive the app and see the fix for
-yourself. It runs the project's <code>[manual_test].cmd</code> (e.g. <code>python -m gramps</code>) from
+live app. <code>pdca try &lt;id&gt;</code> closes that gap: it <strong>materializes the patched build on demand
+from the bundle's <code>patch.diff</code></strong> — reconstructing the tree off the target base (the same diff
+the gates and reviewer used) — and hands you the terminal so you can drive the app and see the
+fix for yourself. It runs the project's <code>[manual_test].cmd</code> (e.g. <code>python -m gramps</code>) from
 <code>$PDCA_WORKTREE</code> with the <code>PDCA_*</code> env exported, and imposes no timeout — you quit the app to
-return. It's <strong>advisory</strong>: it decides nothing and mutates nothing (edits you make while
-testing are reset on the next Do); you record what you saw in a Manual-verification note and
-carry it into the §9 sign-off (<a href="/guide/06-signoff.html">step 06</a>). It's <strong>bundle-specific</strong>: because a
-lane's worktree is reset-and-reused, if a <em>later</em> bundle's Do has taken it over, <code>pdca try</code>
-refuses rather than launch the wrong build under this bundle's name — re-run this bundle's Do
-to reload its patch. Needs <code>[driver].worktree</code> on and a configured <code>[manual_test].cmd</code>;
-otherwise it prints a one-line hint and changes nothing.</p>
+return. It's <strong>advisory</strong>: it decides nothing and mutates nothing in the bundle (edits you
+make while testing are reset the next time a tree is staged); you record what you saw in a
+Manual-verification note and carry it into the §9 sign-off (<a href="/guide/06-signoff.html">step 06</a>).
+Because it rebuilds from <code>patch.diff</code> rather than reading whatever Do last left in the shared,
+reset-reused worktree, it works for <strong>any built/parked bundle in turn</strong> — exactly the
+batch-then-review cadence, where you <code>pdca try</code> each bundle as you sign it off. (One
+constraint: don't <code>pdca try</code> while a lane's Do is mid-build on the same worktree — a non-issue
+in batch-then-review, where building is already done.) Needs <code>[driver].worktree</code> on and a
+configured <code>[manual_test].cmd</code>; otherwise it prints a one-line hint and changes nothing.</p>
 <h2>3. Assembly — the SUMMARY the human signs</h2>
 <p>The driver folds brief + gates + review into <code>SUMMARY.md</code>, a 10-section document.
 The two sections that drive the human decision are <strong>§6 NEEDS-HUMAN</strong> (what you

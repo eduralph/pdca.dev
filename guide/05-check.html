@@ -129,6 +129,32 @@ the brief's target checkout, freshly fetched (refs only — never resetting your
 tree). The reviewer grounds every citation there and is told <strong>not</strong> to wander into
 other checkouts on the machine — without this it can't ground, or hunts the filesystem
 for &quot;the target&quot; (issue #75).</p>
+<h4>Runtime tests that bind a loopback socket</h4>
+<p>That isolation sandbox is a <em>temp working directory</em>, not an OS jail. The jail a leaf
+actually runs under is <strong>Claude Code's own</strong> (bubblewrap + seccomp on Linux), and by
+default it refuses <code>bind()</code> on a loopback socket — so a runtime test that does
+<code>TcpListener::bind(&quot;127.0.0.1:0&quot;)</code> (a loopback-gRPC server, a test HTTP listener) panics
+with <code>Operation not permitted</code> <em>before its assertion runs</em>. Compile and non-socket unit
+legs pass; only the socket-backed path fails, so C2/C4/T3 can never earn an automated
+red→green (issue #261).</p>
+<p>The rendered project's <code>.claude/settings.json</code> therefore sets:</p>
+<pre><code class="language-json">{ &quot;sandbox&quot;: { &quot;network&quot;: { &quot;allowLocalBinding&quot;: true } } }
+</code></pre>
+<p>and the driver <strong>seeds that one setting into the leaf's temp cwd</strong>, because Claude Code
+loads project settings relative to the subprocess cwd — the same walk-up that finds
+<code>.claude/agents</code>.</p>
+<p>Deliberately <em>only</em> <code>sandbox.network.allowLocalBinding</code> travels. Not <code>permissions</code> (whose
+allow-list carries <code>Edit</code>/<code>Write</code>), and not the rest of the <code>sandbox</code> block — in particular
+not <code>sandbox.excludedCommands</code>, recommended just below for your <strong>gates</strong>, which makes a
+command bypass the sandbox <em>entirely</em>: carrying it into the reviewer's cwd would let the
+reviewer run your test runner unconfined. The reviewer's surface stays exactly what its
+agent <code>tools:</code> grants, plus the one capability a socket-backed Check needs.</p>
+<p>This covers the <strong>reviewer and advisory leaves</strong>. It does <em>not</em> cover the <strong>gates</strong>: gate
+commands are plain subprocesses of <code>pdca</code>, so they inherit whatever sandbox the operator's
+own shell already has. If you launch <code>pdca flow</code> from inside a sandboxed agent shell, a
+gate that binds loopback still fails. Run <code>pdca</code> from an unsandboxed shell, or exempt the
+test runner via <code>sandbox.excludedCommands</code> in your own settings (that exemption stays in
+<em>your</em> settings — the driver never seeds it into a leaf).</p>
 <h3>Optional advisory reviewers (a second lens)</h3>
 <p>The <code>reviewer</code> judges fix <em>adequacy</em>. For other lenses — correctness bugs the patch
 introduces, reuse/simplification/efficiency cleanups — add <strong>advisory reviewer leaves</strong>

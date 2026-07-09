@@ -96,6 +96,60 @@ all share one word. Use it for work that, on inspection, doesn't fit the cycle
 (handled out-of-band, duplicate, won't-fix) — a deliberate abandon, independent
 of §6.</p>
 </blockquote>
+<h3>Auto-iterate — when the driver presses <code>--iterate-do</code> for you</h3>
+<p>A big Do usually lands with a few implementation defects the reviewer or the adversary
+catches: a logic slip, a test that wouldn't have gone red, a failing gate. Each one parks
+the bundle here and asks you to press <code>--iterate-do</code> — the one decision the driver could
+have made itself. Your judgment is owed to <em>architectural</em> questions, not to bugs.</p>
+<p>Set <code>[driver].auto_iterate = true</code> (or <code>--auto-iterate</code> / <code>PDCA_AUTO_ITERATE=1</code>) and, when
+<strong>every</strong> open §6 item is implementation-level, the driver records <code>iterate-do</code> and rebuilds
+unattended (issue #264). The split is not a new taxonomy — it is the <code>kind</code> the 5/5/1
+already carries (<a href="/guide/05-check.html">step 05</a>):</p>
+<table>
+<thead>
+<tr>
+<th>§6 item</th>
+<th>Kind</th>
+<th>Who resolves it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>C2</code> reproduction, <code>C4</code> verification, <code>T1</code>–<code>T4</code></td>
+<td>gate</td>
+<td><strong>the builder</strong> — auto-iterate rebuilds</td>
+</tr>
+<tr>
+<td><code>C5</code> causal adequacy, <code>T5</code> judgment, validation</td>
+<td>judgment</td>
+<td><strong>you</strong> — it halts</td>
+</tr>
+<tr>
+<td><code>C1</code> spec, <code>C3</code> change</td>
+<td>input</td>
+<td><strong>you</strong> — it halts</td>
+</tr>
+<tr>
+<td>a gate that could not <em>run</em> (<code>unverifiable</code>)</td>
+<td>—</td>
+<td><strong>you</strong> — a rebuild can't conjure the mechanic</td>
+</tr>
+<tr>
+<td>an external dependency, an unregistered doctor row</td>
+<td>—</td>
+<td><strong>you</strong> — someone must install it</td>
+</tr>
+<tr>
+<td>an advisory bullet without an <code>[impl]</code> tag</td>
+<td>—</td>
+<td><strong>you</strong> — unmarked means unclassified</td>
+</tr>
+</tbody>
+</table>
+<p>One judgment item disqualifies the whole bundle: you have to look at it anyway, so there is
+nothing to save by rebuilding first. It <strong>never</strong> accepts, <strong>never</strong> ticks a <code>- [ ]</code>, and is
+bounded by <code>max_auto_iters</code> rounds per bundle — after which the bundle halts here for you,
+exactly as before. Off by default.</p>
 <h2>The simple case — accept</h2>
 <p>Before you accept a bundle whose §6 carries a <strong>visual / GUI / validation</strong> row, run the
 fix by hand: <code>pdca try &lt;id&gt;</code> launches the patched build from the bundle's worktree

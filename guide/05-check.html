@@ -179,21 +179,49 @@ unsandboxed_commands = [&quot;cargo xtask fdb-conformance&quot;, &quot;cargo xta
 <p>Every other Bash line the leaf writes stays fully confined. Empty (the default) means no
 exemption at all, and a Docker-backed leg goes on deferring to a human.</p>
 <p><strong>&quot;Only those&quot; is enforced, not merely intended</strong> — and a list of names on its own enforces
-nothing. It takes two things, because there are two ways out of the sandbox that the list
-doesn't cover:</p>
-<ol>
-<li><strong>The escape hatch.</strong> The harness seeds <code>allowUnsandboxedCommands: false</code> beside the list.
+nothing. It takes three things, because there are three ways the boundary evaporates that the
+list doesn't cover:</p>
+<ol start="0">
+<li>
+<p><strong>No sandbox at all</strong> — two ways, both closed by seeding <code>enabled: true</code> <em>and</em>
+<code>failIfUnavailable: true</code>.</p>
+<p><code>sandbox.enabled</code> <strong>defaults to false</strong>, and (2) below deliberately drops your <em>user-scope</em>
+settings — which is exactly where an operator's <code>sandbox.enabled: true</code> normally lives. So
+without seeding it, bounding the exemption would <strong>remove the very sandbox it claims to
+bound</strong>, and every command would escape.</p>
+<p>And the sandbox does not fail closed on its own: if <code>enabled</code> is true but its dependencies
+(<code>bubblewrap</code>, <code>socat</code>) are missing, Claude Code <em>disables</em> it, warns, and runs every command
+unconfined. <code>failIfUnavailable</code> — which has effect <strong>only when <code>enabled</code> is true</strong> — makes
+the leaf <strong>refuse to start</strong> instead. A bounded exemption on top of no sandbox is not
+bounded; it is nothing. <code>pdca doctor</code> checks the same dependencies <em>before</em> a run (they are
+<strong>required</strong> rows); this catches the operator who skipped it.</p>
+</li>
+<li>
+<p><strong>The escape hatch.</strong> The harness seeds <code>allowUnsandboxedCommands: false</code> beside the list.
 Claude Code defaults that key to <strong>true</strong>, and while it is true the model may retry <em>any</em>
 sandbox-denied command with the <code>dangerouslyDisableSandbox</code> parameter and have it run
-unconfined. With it false, that parameter is ignored outright.</li>
-<li><strong>Scope concatenation.</strong> The leaf runs with <code>--setting-sources project</code>, so it loads <em>only</em>
+unconfined. With it false, that parameter is ignored outright.</p>
+</li>
+<li>
+<p><strong>Scope concatenation.</strong> The leaf runs with <code>--setting-sources project</code>, so it loads <em>only</em>
 the settings the harness seeds. Array-valued settings <strong>concatenate</strong> across scopes (user →
 project → local → managed), and the union is <strong>monotonic</strong> — no scope, not even managed
 policy, can remove what a lower one added. So your own <code>~/.claude/settings.json</code>
 <code>excludedCommands</code> (your <em>interactive</em> exemptions — a broad <code>docker *</code>) would merge straight
 into the leaf, and nothing the harness writes could subtract them. The list would be a
-<em>floor</em>, not a ceiling. The only fix is to not load that scope.</li>
+<em>floor</em>, not a ceiling. The only fix is to not load that scope.</p>
+</li>
 </ol>
+<blockquote>
+<p><strong>The one scope the harness cannot bound: enterprise managed policy.</strong> <code>--setting-sources</code>
+excludes <em>user</em> and <em>local</em> settings, but Claude Code <strong>always</strong> loads managed policy
+(<code>managed-settings.json</code>) regardless. Since array settings only ever concatenate, a managed
+policy carrying <code>sandbox.excludedCommands</code> widens the leaf's exemption and <strong>nothing the
+harness can do will narrow it</strong> — the list stays a ceiling with respect to <em>your</em> settings,
+but not with respect to <em>your organisation's</em>. That is by design on Claude Code's side:
+managed policy is meant to outrank everything. If your org sets one, read it before relying
+on the boundary below. The harness cannot, and does not, override it.</p>
+</blockquote>
 <blockquote>
 <p><strong>The cost of (2).</strong> The leaf no longer reads your user-scope settings at all. If your <strong>auth</strong>
 lives there (<code>apiKeyHelper</code>, or <code>env.ANTHROPIC_API_KEY</code>), move it into the environment or the

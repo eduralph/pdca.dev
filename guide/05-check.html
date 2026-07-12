@@ -143,12 +143,29 @@ red→green (issue #261).</p>
 <p>and the driver <strong>seeds that one setting into the leaf's temp cwd</strong>, because Claude Code
 loads project settings relative to the subprocess cwd — the same walk-up that finds
 <code>.claude/agents</code>.</p>
-<p>Deliberately <em>only</em> <code>sandbox.network.allowLocalBinding</code> travels. Not <code>permissions</code> (whose
-allow-list carries <code>Edit</code>/<code>Write</code>), and not the rest of the <code>sandbox</code> block — in particular
-not <code>sandbox.excludedCommands</code>, recommended just below for your <strong>gates</strong>, which makes a
+<p>What travels is an <strong>allow-list of named <code>sandbox.network</code> keys</strong> — never a copy of the
+<code>sandbox</code> block, and never <code>permissions</code> (whose allow-list carries <code>Edit</code>/<code>Write</code>). In
+particular <code>sandbox.excludedCommands</code>, recommended just below for your <strong>gates</strong>, makes a
 command bypass the sandbox <em>entirely</em>: carrying it into the reviewer's cwd would let the
-reviewer run your test runner unconfined. The reviewer's surface stays exactly what its
-agent <code>tools:</code> grants, plus the one capability a socket-backed Check needs.</p>
+reviewer run your test runner unconfined, so it is never seeded however you configure it.
+Widening the seed means adding a key to that list, deliberately.</p>
+<h4>Letting the reviewer settle prior art mechanically (opt-in)</h4>
+<p>The reviewer's prior-art check (<code>T4</code> contribution / <code>T5</code> judgment) spans merged history <em>and</em>
+the <strong>closed/rejected-PR corpus</strong>. Merged history is local (<code>git log --all -- &lt;paths&gt;</code>), but
+the closed corpus needs <code>gh pr list --state closed</code> → <code>api.github.com</code>. The sandbox blocks
+network by default, so that half can't be settled and the check is correctly forced
+NEEDS-HUMAN on <strong>every</strong> bundle — a standing per-bundle tax on a check that could be
+mechanical (issue #277).</p>
+<p>The shipped <code>.claude/settings.json</code> documents the grant but leaves it <strong>off</strong>:</p>
+<pre><code class="language-json">{ &quot;sandbox&quot;: { &quot;network&quot;: { &quot;allowLocalBinding&quot;: true, &quot;allowedDomains&quot;: [] } } }
+</code></pre>
+<p>Opt in by naming the hosts:</p>
+<pre><code class="language-json">&quot;allowedDomains&quot;: [&quot;github.com&quot;, &quot;api.github.com&quot;]
+</code></pre>
+<p>An <strong>empty list seeds nothing</strong> — that is what &quot;off&quot; means here — so this is an explicit
+choice, not a default. Scoped to the hosts you name; <code>deniedDomains</code> is carried too.</p>
+<p>This is the <strong>claude</strong> family only. A <code>codex</code> leaf runs under <code>codex exec --sandbox workspace-write</code>, which grants no scoped network at all — its prior-art check stays
+NEEDS-HUMAN unless you widen that leaf's own <code>argv</code> in <code>pdca.toml</code>.</p>
 <p>This covers the <strong>reviewer and advisory leaves</strong>. It does <em>not</em> cover the <strong>gates</strong>: gate
 commands are plain subprocesses of <code>pdca</code>, so they inherit whatever sandbox the operator's
 own shell already has. If you launch <code>pdca flow</code> from inside a sandboxed agent shell, a

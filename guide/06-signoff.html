@@ -101,10 +101,12 @@ of §6.</p>
 catches: a logic slip, a test that wouldn't have gone red, a failing gate. Each one parks
 the bundle here and asks you to press <code>--iterate-do</code> — the one decision the driver could
 have made itself. Your judgment is owed to <em>architectural</em> questions, not to bugs.</p>
-<p>Set <code>[driver].auto_iterate = true</code> (or <code>--auto-iterate</code> / <code>PDCA_AUTO_ITERATE=1</code>) and, when
-<strong>every</strong> open §6 item is implementation-level, the driver records <code>iterate-do</code> and rebuilds
-unattended (issue #264). The split is not a new taxonomy — it is the <code>kind</code> the 5/5/1
-already carries (<a href="/guide/05-check.html">step 05</a>):</p>
+<p>Set <code>[driver].auto_iterate = true</code> (or <code>--auto-iterate</code> / <code>PDCA_AUTO_ITERATE=1</code>) and, when the
+reviewer has found implementation defects and <strong>nothing you must see first</strong>, the driver
+records <code>iterate-do</code> and rebuilds unattended (issue #264). So Do→Check keeps iterating while
+the reviewer keeps finding things only Do can fix, and hands over to you once they are gone.
+The split is not a new taxonomy — it is the <code>kind</code> the 5/5/1 already carries
+(<a href="/guide/05-check.html">step 05</a>):</p>
 <table>
 <thead>
 <tr>
@@ -120,7 +122,7 @@ already carries (<a href="/guide/05-check.html">step 05</a>):</p>
 <td><strong>the builder</strong> — auto-iterate rebuilds</td>
 </tr>
 <tr>
-<td><code>C5</code> causal adequacy, <code>T5</code> judgment, validation</td>
+<td><code>C5</code> causal adequacy, <code>T5</code> judgment</td>
 <td>judgment</td>
 <td><strong>you</strong> — it halts</td>
 </tr>
@@ -144,10 +146,24 @@ already carries (<a href="/guide/05-check.html">step 05</a>):</p>
 <td>—</td>
 <td><strong>you</strong> — unmarked means unclassified</td>
 </tr>
+<tr>
+<td><code>Validation — fitness-to-purpose</code></td>
+<td><strong>standing</strong></td>
+<td><strong>you, at sign-off</strong> — but it does <em>not</em> veto a rebuild</td>
+</tr>
 </tbody>
 </table>
-<p>One judgment item disqualifies the whole bundle: you have to look at it anyway, so there is
-nothing to save by rebuilding first. It <strong>never</strong> accepts, <strong>never</strong> ticks a <code>- [ ]</code>, and is
+<p>One <em>situational</em> judgment item disqualifies the whole bundle: you have to look at it anyway,
+so there is nothing to save by rebuilding first.</p>
+<blockquote>
+<p><strong>The standing row.</strong> The reviewer emits <code>Validation — fitness-to-purpose</code> as NEEDS-HUMAN on
+<strong>every</strong> cycle, by design — validation is your call, always. That makes it a <em>constant</em>, and
+a constant is not evidence that you must look <em>right now</em>. So it does not block a rebuild —
+while still rendering in §6 and still blocking <code>accept</code> until you clear it. Counting it as an
+ordinary blocker meant this feature could <strong>never fire on a real bundle</strong>: every review
+artifact carries that row, so before v0.54.0 auto-iterate was dead code (issue #293).</p>
+</blockquote>
+<p>It <strong>never</strong> accepts, <strong>never</strong> ticks a <code>- [ ]</code>, and is
 bounded by <code>max_auto_iters</code> rounds per bundle — after which the bundle halts here for you,
 exactly as before. Off by default.</p>
 <h2>The simple case — accept</h2>

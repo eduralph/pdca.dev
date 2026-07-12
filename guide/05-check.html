@@ -164,8 +164,10 @@ mechanical (issue #277).</p>
 </code></pre>
 <p>An <strong>empty list seeds nothing</strong> — that is what &quot;off&quot; means here — so this is an explicit
 choice, not a default. Scoped to the hosts you name; <code>deniedDomains</code> is carried too.</p>
-<p>This is the <strong>claude</strong> family only. A <code>codex</code> leaf runs under <code>codex exec --sandbox workspace-write</code>, which grants no scoped network at all — its prior-art check stays
-NEEDS-HUMAN unless you widen that leaf's own <code>argv</code> in <code>pdca.toml</code>.</p>
+<p>Domain scoping is <strong>claude</strong> only. A <code>codex</code> leaf has no <code>allowedDomains</code> equivalent — its
+<code>--sandbox workspace-write</code> denies the network wholesale — so it takes the all-or-nothing
+<code>network_access</code> grant described under <a href="#docker-backed-conformance-gates-opt-in">Docker gates</a>
+below, which reaches <code>api.github.com</code> too and settles its prior-art check the same way.</p>
 <h4>Docker-backed conformance gates (opt-in)</h4>
 <p>A conformance gate that brings up a live cluster (<code>docker compose</code> → etcd / TiKV / FDB) is
 <strong>denied the Docker socket inside the leaf sandbox — even on a Docker-capable host</strong>. The
@@ -250,8 +252,50 @@ far more than <code>cargo xtask fdb-conformance</code> does.</p>
 own <code>.claude/settings.json</code> <code>sandbox.excludedCommands</code> — that is <em>your</em> gate workaround, and a
 leaf must not silently acquire whatever you exempted for CI. A leaf's exemption is declared
 once, deliberately, in <code>pdca.toml</code>.</p>
-<p>Claude family only, again: a <code>codex</code> leaf's <code>--sandbox workspace-write</code> denies the socket too,
-and needs a broader sandbox mode in that leaf's own <code>argv</code>.</p>
+<h4>The codex leaf reaches Docker a different way</h4>
+<p>Everything above is the <strong>claude</strong> shape. A <code>codex</code> leaf's <code>--sandbox workspace-write</code> denies
+the Docker socket too, but it cannot take <em>any</em> of it: it does not read the settings the
+harness seeds, so it can neither be given a per-command exemption nor be confined to one. The
+harness therefore <strong>refuses</strong> <code>unsandboxed_commands</code> on codex rather than hand out an unbounded
+grant, and points you here.</p>
+<p>Its denial is <strong>not a filesystem denial</strong> — a relayed socket in a directory codex <em>can</em> write
+is refused just the same. It is the seccomp/network layer. So no path grant fixes it, and only
+one thing does:</p>
+<pre><code class="language-toml">[leaves.sandbox]
+network_access = true       # codex: open the leaf's socket/network layer
+</code></pre>
+<p>The driver then passes <code>-c sandbox_workspace_write.network_access=true</code> to codex leaves. That
+reaches the Docker socket <strong>and</strong> <code>api.github.com</code>, so it settles the prior-art check
+(<a href="#letting-the-reviewer-settle-prior-art-mechanically-opt-in">above</a>) at the same time.</p>
+<p><strong>The two grants have different shapes, and neither is strictly tighter.</strong> Read them together:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>what escapes</th>
+<th>what stays confined</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>claude</strong> — <code>unsandboxed_commands</code></td>
+<td>a <strong>named command</strong>, fully (filesystem too)</td>
+<td>every <em>other</em> command</td>
+</tr>
+<tr>
+<td><strong>codex</strong> — <code>network_access</code></td>
+<td>the <strong>socket/network layer</strong>, for <em>every</em> command (no per-domain scoping)</td>
+<td>the <strong>filesystem</strong>, for every command</td>
+</tr>
+</tbody>
+</table>
+<p>So they are deliberately <strong>separate keys</strong>. <code>unsandboxed_commands</code> promises <em>&quot;only these
+commands leave the sandbox&quot;</em> — a promise codex's grant would not keep, since it frees the
+network for every command the leaf writes. Naming a command therefore never implies the network
+grant; you opt into each explicitly.</p>
+<p>Both are moot against a <strong>root-owned</strong> daemon, mind: anything that can talk to that socket can
+start a container with <code>-v /:/host</code>, so the filesystem confinement codex retains buys little
+there. The rootless hardening above is the real answer for either family.</p>
 <p>This covers the <strong>reviewer and advisory leaves</strong>. It does <em>not</em> cover the <strong>gates</strong>: gate
 commands are plain subprocesses of <code>pdca</code>, so they inherit whatever sandbox the operator's
 own shell already has. If you launch <code>pdca flow</code> from inside a sandboxed agent shell, a

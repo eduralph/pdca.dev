@@ -166,6 +166,64 @@ mechanical (issue #277).</p>
 choice, not a default. Scoped to the hosts you name; <code>deniedDomains</code> is carried too.</p>
 <p>This is the <strong>claude</strong> family only. A <code>codex</code> leaf runs under <code>codex exec --sandbox workspace-write</code>, which grants no scoped network at all — its prior-art check stays
 NEEDS-HUMAN unless you widen that leaf's own <code>argv</code> in <code>pdca.toml</code>.</p>
+<h4>Docker-backed conformance gates (opt-in)</h4>
+<p>A conformance gate that brings up a live cluster (<code>docker compose</code> → etcd / TiKV / FDB) is
+<strong>denied the Docker socket inside the leaf sandbox — even on a Docker-capable host</strong>. The
+runtime leg skips, its evidence can never be earned at Check, and it defers to a human-run
+confirmer on <em>every</em> bundle. That is the harness failing at its own purpose: the maintainer
+becomes the bottleneck for a check that ought to be mechanical (issue #276).</p>
+<p>Name the commands that need Docker, and <strong>only those</strong> run outside the sandbox:</p>
+<pre><code class="language-toml">[leaves.sandbox]
+unsandboxed_commands = [&quot;cargo xtask fdb-conformance&quot;, &quot;cargo xtask etcd-conformance&quot;]
+</code></pre>
+<p>Every other Bash line the leaf writes stays fully confined. Empty (the default) means no
+exemption at all, and a Docker-backed leg goes on deferring to a human.</p>
+<p><strong>&quot;Only those&quot; is enforced, not merely intended</strong> — and a list of names on its own enforces
+nothing. It takes two things, because there are two ways out of the sandbox that the list
+doesn't cover:</p>
+<ol>
+<li><strong>The escape hatch.</strong> The harness seeds <code>allowUnsandboxedCommands: false</code> beside the list.
+Claude Code defaults that key to <strong>true</strong>, and while it is true the model may retry <em>any</em>
+sandbox-denied command with the <code>dangerouslyDisableSandbox</code> parameter and have it run
+unconfined. With it false, that parameter is ignored outright.</li>
+<li><strong>Scope concatenation.</strong> The leaf runs with <code>--setting-sources project</code>, so it loads <em>only</em>
+the settings the harness seeds. Array-valued settings <strong>concatenate</strong> across scopes (user →
+project → local → managed), and the union is <strong>monotonic</strong> — no scope, not even managed
+policy, can remove what a lower one added. So your own <code>~/.claude/settings.json</code>
+<code>excludedCommands</code> (your <em>interactive</em> exemptions — a broad <code>docker *</code>) would merge straight
+into the leaf, and nothing the harness writes could subtract them. The list would be a
+<em>floor</em>, not a ceiling. The only fix is to not load that scope.</li>
+</ol>
+<blockquote>
+<p><strong>The cost of (2).</strong> The leaf no longer reads your user-scope settings at all. If your <strong>auth</strong>
+lives there (<code>apiKeyHelper</code>, or <code>env.ANTHROPIC_API_KEY</code>), move it into the environment or the
+leaf will fail to start. It fails loudly, and the error lands in the bundle's <code>*.error.log</code>.</p>
+</blockquote>
+<p>Both ride <em>with</em> the exemption: an instance that names no command keeps today's behaviour
+exactly, rather than having a policy imposed on it. And this is <strong>claude-family only</strong> — a
+family that cannot be confined to the harness's own settings (codex) cannot have a bounded
+exemption, so the harness <strong>refuses</strong> the grant there rather than hand out an unbounded one.</p>
+<p><strong>Why a named command, and not a socket grant.</strong> The sandbox schema <em>does</em> offer
+<code>allowAllUnixSockets</code>, which would reach the Docker socket too — but it hands <strong>every</strong>
+command the leaf runs access to <strong>every</strong> unix socket. And the Docker socket on a root-owned
+daemon is effectively root on the host: anything that can talk to it can start a container
+with <code>-v /:/host</code>. Check which you have:</p>
+<pre><code class="language-bash">ls -l /var/run/docker.sock      # root:docker  → the daemon runs as root
+</code></pre>
+<p>The reviewer leaf has <code>Bash</code>. Giving it a root-adjacent socket for <em>any</em> command it cares to
+write is a far larger grant than letting <em>one command you wrote</em> run unconfined. So the
+harness does not seed <code>allowAllUnixSockets</code> at all — it is not in the allow-list, and setting
+it has no effect on a leaf.</p>
+<p><strong>Hardening.</strong> A <strong>rootless</strong> daemon (podman, or rootless <code>dockerd</code>) makes socket access
+user-level instead of root-level, which de-fangs this entire class of risk. Prefer it where
+you can. Match the command precisely, too — this is a capability, so <code>docker *</code> hands the leaf
+far more than <code>cargo xtask fdb-conformance</code> does.</p>
+<p><strong>The exemption list is harness-owned, on purpose.</strong> The driver never inherits your project's
+own <code>.claude/settings.json</code> <code>sandbox.excludedCommands</code> — that is <em>your</em> gate workaround, and a
+leaf must not silently acquire whatever you exempted for CI. A leaf's exemption is declared
+once, deliberately, in <code>pdca.toml</code>.</p>
+<p>Claude family only, again: a <code>codex</code> leaf's <code>--sandbox workspace-write</code> denies the socket too,
+and needs a broader sandbox mode in that leaf's own <code>argv</code>.</p>
 <p>This covers the <strong>reviewer and advisory leaves</strong>. It does <em>not</em> cover the <strong>gates</strong>: gate
 commands are plain subprocesses of <code>pdca</code>, so they inherit whatever sandbox the operator's
 own shell already has. If you launch <code>pdca flow</code> from inside a sandboxed agent shell, a

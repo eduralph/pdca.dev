@@ -58,10 +58,13 @@ an accepted-but-unpublished cycle is visible at a glance.</p>
 <p>It writes <code>publish.json</code> into the bundle and uses the project's PR conventions
 from INTEGRATION §8. For gramps that's a four-section body (Root cause / Fix /
 Verified against / Test), and — because 11589 touches an addon — an <code>## Affected addon</code> section that @-mentions the addon's maintainer (INTEGRATION §10).</p>
-<p><strong>STOP discipline holds to the end:</strong> the PR opens as a <em>draft</em>. A human marks it
-ready — the harness never does. gramps' governance makes this explicit
-(INTEGRATION §10): <em>&quot;Eduard opens fork PRs as draft, marks ready himself; builder
-commits and stops — no push/PR-open/ready-mark without explicit instruction.&quot;</em></p>
+<p><strong>STOP discipline holds to the end:</strong> the PR opens as a <em>draft</em>, and on the normal
+single-cycle and <code>stack</code>-mode paths a human marks it ready — the harness never does. gramps'
+governance makes this explicit (INTEGRATION §10): <em>&quot;Eduard opens fork PRs as draft, marks
+ready himself; builder commits and stops — no push/PR-open/ready-mark without explicit
+instruction.&quot;</em> The one carve-out is the opt-in <code>wave_mode = &quot;merge&quot;</code> below, where the driver
+readies and merges each <em>non-final</em> wave's PRs to advance the base; even there the <strong>final</strong>
+wave's PR stays a draft for your ready-mark.</p>
 <p>This holds for a <strong>batch</strong>, too. A multi-id <code>pdca flow</code> runs the batch as dependency
 waves (<a href="/spec/09-parallel-lanes.html">09 parallel lanes</a>); in the
 default <code>stack</code> mode each wave's accepted work is folded onto a run-scoped integration

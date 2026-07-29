@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 07 — Cross-cutting: size, iteration, and parallel execution — PDCA Harness</title>
+<meta name="description" content="← 06 Act · Index">
+<meta property="og:title" content="Step 07 — Cross-cutting: size, iteration, and parallel execution — PDCA Harness">
+<meta property="og:description" content="← 06 Act · Index">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Step 07 — Cross-cutting: size, iteration, and parallel execution</h1>
+<p>← <a href="/guide/06-act.html">06 Act</a> · <a href="/guide/">Index</a></p>
+<p>Everything through <a href="/guide/06-act.html">step 06</a> is one contribution moving
+linearly through Plan → Do → Check → sign-off → Publish → Act. Three mechanisms
+don't fit that line — they modify <em>how</em> the beats run rather than being a beat
+themselves, and each one touches more than one of them:</p>
+<ul>
+<li><strong>Size &amp; split</strong> — estimates a brief's size before Do spends anything, and a
+deterministic path (owned by Plan, backstopped by the driver) to decompose
+one that's too big.</li>
+<li><strong>Iteration &amp; carry-forward</strong> — what actually happens on disk when a bundle
+iterates, whether a human triggered it or the driver did.</li>
+<li><strong>Parallel lanes &amp; housekeeping</strong> — running several cycles at once, and the
+maintenance that keeps a long-running instance from silting up.</li>
+</ul>
+<p>This step gathers them in one place rather than splitting each across every
+beat it touches.</p>
+<hr />
+<h2>Size &amp; split</h2>
+<p><a href="/guide/03-plan.html#entry-and-exit-the-guards-around-plan">Step 03</a> already covers the
+<strong>size guard</strong> — the pre-dispatch check that can warn before Do. This section is
+about the decomposition it warns you toward, and — the important part —
+<strong>splitting is owned by the Plan beat itself, not a maintenance task you run
+afterward.</strong> The planner leaf's own runtime prompt tells it: <em>&quot;If this slice
+turns out to be several slices, SPLIT IT IN THIS BEAT — a split produces
+briefs, and briefs are yours. You do not leave the session to file issues by
+hand.&quot;</em> The planner runs <code>pdca split</code> and <code>pdca split --accept</code> itself, inline,
+with the human right there in the same interactive Plan session — the same
+session that's already open to co-author <code>brief.md</code> in the first place.</p>
+<h3>The process</h3>
+<div class="mermaid">
+flowchart TD
+    subgraph ENTRY_P[&quot;Entry P — the default path: inside the Plan session itself&quot;]
+        P1[&quot;Planner + human co-author brief.md&quot;] --&gt; P2{&quot;planner judges:&lt;br/&gt;one slice, or several?&quot;}
+        P2 --&gt;|&quot;one&quot;| P3[&quot;Writes brief.md normally — Plan ends, bundle PLANNED&quot;]
+        P2 --&gt;|&quot;several&quot;| P4[&quot;Planner runs pdca split &amp;lt;id&amp;gt; itself,&lt;br/&gt;inline, without leaving the session&quot;]
+    end
+
+    subgraph ENTRY_A[&quot;Entry A — backstop: state PLANNED, before Do dispatches&quot;]
+        A1[&quot;brief.md exists, was never split&quot;] --&gt; A2[&quot;Size estimate: structural score&lt;br/&gt;+ a freshly-paid [leaves.sizer] verdict&quot;]
+        A2 --&gt; A3{&quot;combined band?&quot;}
+        A3 --&gt;|&quot;ok / watch&quot;| A4[&quot;No action — Do dispatches&quot;]
+        A3 --&gt;|&quot;oversized&quot;| A5{&quot;splittable?&quot;}
+        A5 --&gt;|&quot;no — patch-only, coherent&quot;| A6[&quot;Warn: expect a large patch —&lt;br/&gt;Do dispatches anyway&quot;]
+        A5 --&gt;|&quot;yes&quot;| A7[&quot;Remedy: consider pdca split first&quot;]
+    end
+
+    subgraph ENTRY_B[&quot;Entry B — backstop: state BUILT, before Check dispatches&quot;]
+        B1[&quot;patch.diff exists&quot;] --&gt; B2[&quot;Size estimate: structural score&lt;br/&gt;+ the STORED sizer verdict (read free, not re-paid)&quot;]
+        B2 --&gt; B3{&quot;combined band?&quot;}
+        B3 --&gt;|&quot;ok / watch&quot;| B4[&quot;No action — Check dispatches&quot;]
+        B3 --&gt;|&quot;oversized&quot;| B5{&quot;splittable?&quot;}
+        B5 --&gt;|&quot;no — patch-only, coherent&quot;| B6[&quot;Warn: expect a large patch —&lt;br/&gt;Check dispatches anyway&quot;]
+        B5 --&gt;|&quot;yes&quot;| B7[&quot;Remedy: iterate-plan at sign-off,&lt;br/&gt;re-plan lands back at Entry P&quot;]
+    end
+
+    P4 --&gt; S1[&quot;splitter leaf drafts split-proposal.md&lt;br/&gt;(starts from the sizer's proposed_seams, if any)&quot;]
+    A7 -.-&gt;|&quot;human or planner runs it directly&quot;| S1
+    B7 -.-&gt;|&quot;iterate-plan archives the attempt first&quot;| S1
+    S1 --&gt; S2[&quot;Human reads the proposal with the planner —&lt;br/&gt;still the same session, for Entry P&quot;]
+    S2 --&gt; S3[&quot;pdca split &amp;lt;id&amp;gt; --accept&lt;br/&gt;files one sub-issue per child, or reuses --ids;&lt;br/&gt;materializes child bundles&quot;]
+    S3 --&gt; S4[&quot;Parent: close-disposition = split,&lt;br/&gt;routes straight to sign-off&quot;]
+    S3 --&gt; S5[&quot;Children: Depends on / Conflicts with&lt;br/&gt;rewritten to real ids, scheduled into waves&quot;]
+</div>
+<p><strong>Entry P is the default; Entries A and B are backstops, not the primary path.</strong>
+The pre-dispatch size guard from step 03 still runs — once at <code>PLANNED</code> before
+Do, once at <code>BUILT</code> before Check, on the same &quot;splittable?&quot; logic either way —
+but its job now is to catch a brief that reached the driver <em>without</em> having
+been split already: one seeded by hand (<code>--from-brief</code>), one planned by a
+minimal or stub planner, or a session where a human judged it fine at the time
+and turned out to be wrong. Both backstops feed the <em>same</em> <code>pdca split</code> /
+<code>--accept</code> mechanics Entry P uses — there's one decomposition path, just two
+ways of arriving at it.</p>
+<p><strong>Within any entry, the same question decides split-or-not:</strong> <code>splittable</code> is
+set membership over the <em>readouts</em>, not the combined band — only if the churn
+signal or the model's &quot;independently shippable outcomes&quot; verdict is itself
+oversized, or the patch-size signal isn't the <em>sole</em> thing that fired, is a
+split even offered. A brief that's oversized purely on predicted patch size —
+a large but coherent change — gets a different message entirely (&quot;expect a
+large patch,&quot; not &quot;split this&quot;), because splitting a coherent change produces
+artificial seams, not a real decomposition.</p>
+<p><strong>The two backstops differ because the beat does.</strong> At Entry A the bundle is
+still just a brief, so <code>pdca split</code> runs directly. At Entry B a patch already
+exists, and splitting means authoring new briefs — Plan's beat, not something
+you do to a bundle mid-build — so the route back is <code>iterate-plan</code> at sign-off:
+that archives the rejected attempt (Do's output isn't discarded, the same as
+any other iterate — <a href="#iteration--carry-forward">below</a>) and returns the bundle
+to <code>PLANNED</code>, landing right back at Entry P for the re-plan.</p>
+<h3>The estimate</h3>
+<p><code>pdca size [&lt;ids…&gt;]</code> is read-only — it decides nothing, writes nothing, and is
+safe to run against a live queue at any time:</p>
+<pre><code class="language-bash">pdca size 13636        # one bundle
+pdca size               # every briefed bundle
+</code></pre>
+<p>Each bundle prints a band (<code>ok</code> / <code>watch</code> / <code>oversized</code>) plus the reasons that
+fired — the reasons matter more than the band, because &quot;3 conflicts declared&quot;
+and &quot;predicts a large patch&quot; call for different responses, and a bare band hides
+which one it was.</p>
+<p>The estimate has <strong>two independent signals</strong>, combined by deterministic code
+(never a model deciding alone):</p>
+<ol>
+<li>
+<p><strong>Structural</strong> — stdlib only, always available offline. A weighted score over
+five brief features, calibrated against 86 settled bundles of a real instance:</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Weight</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>conflicts_with</code></td>
+<td>3</td>
+<td>strongest churn signal (ρ 0.32)</td>
+</tr>
+<tr>
+<td><code>difficulty_high</code></td>
+<td>3</td>
+<td><code>Difficulty: high</code> declared</td>
+</tr>
+<tr>
+<td><code>ext_deps</code></td>
+<td>3</td>
+<td>external dependency tokens — highest single-feature precision</td>
+</tr>
+<tr>
+<td><code>brief_bytes</code></td>
+<td>3</td>
+<td>brief size above a 12 KB cutoff</td>
+</tr>
+<tr>
+<td><code>is_plan_pointer</code></td>
+<td><strong>−2</strong></td>
+<td>a brief pointing at a host planning artifact converges <em>better</em> — the one de-escalating term</td>
+</tr>
+</tbody>
+</table>
+<p>The score sorts into two separate readouts, because they answer different
+questions: <strong>churn</strong> (how many sign-off rounds this will take) and <strong>patch
+size</strong> (how big the diff will be). A large-but-coherent change scores high on
+patch size and low on churn — that's not a split candidate, it's just a big
+diff — so both bands are reported and kept distinct rather than collapsed into
+one number.</p>
+</li>
+<li>
+<p><strong>Model</strong> — the optional <code>[leaves.sizer]</code> leaf answers the one question
+structure demonstrably cannot: <em>how many independently shippable outcomes does
+this brief describe?</em> Its verdict folds in through <strong>escalate-only</strong>
+combination — it can raise a band structure scored low, never lower one a
+structural signal raised. A model that could downgrade would be a single point
+of failure over a signal that at least fails predictably. Its prompt is
+explicit that it only <em>proposes</em> seams — <code>proposed_seams</code> in its JSON verdict
+— and does not cut them: &quot;the split is authored in PLAN, by the human.&quot; When a
+split does happen, the splitter leaf reads this stored verdict as a starting
+point rather than re-paying a model to rediscover what the sizer already
+found — never re-invoked, just re-read.</p>
+</li>
+</ol>
+<p><strong>Nothing here gates</strong>, and that's a calibrated decision, not an oversight: the
+best structural rule reaches 50% recall at 62% precision against ≥3 rounds —
+nearly one wrong flag for every right one. <code>[driver].size_guard = &quot;hold&quot;</code> is
+accepted but silently treated as <code>&quot;warn&quot;</code> for exactly this reason (see step 03).
+Retune the weights and cutoffs per-instance under <code>[driver.sizing]</code> in
+<code>pdca.toml</code> if your own corpus disagrees with the defaults above.</p>
+<h3>The split</h3>
+<p><code>pdca split</code> is the deterministic decomposition path — two verbs, because the
+second is meaningless without the first — and, per the process above, the
+planner leaf is normally the one typing both, from inside the Plan session:</p>
+<pre><code class="language-bash">pdca split 13636             # drafts split-proposal.md (the splitter leaf)
+pdca split 13636 --accept    # files one tracker issue per child, then materializes them
+</code></pre>
+<p>The <strong>splitter leaf</strong> writes prose into <code>split-proposal.md</code>; everything after
+that is plain code, no model. Each child is delimited by an HTML comment —
+<code>&lt;!-- pdca:child child-1 --&gt;</code> … <code>&lt;!-- pdca:end child-1 --&gt;</code> — deliberately not a
+Markdown construct, because a child's body is a <strong>full draft brief</strong> and may
+legitimately contain <code>##</code> headings, <code>---</code> rules, or a <code>- **Slug:**</code> line that
+would collide with any Markdown-shaped delimiter.</p>
+<p><code>--accept</code> with <strong>no <code>--ids</code></strong> now files the child issues itself — one <code>gh issue create --parent</code> per child, each a real tracker sub-issue of the parent —
+rather than making anyone leave the Plan session to file them by hand and come
+back with the numbers. <code>--ids &lt;id&gt;[,&lt;id&gt;…]</code> still exists for a human who's
+already filed them, and is <em>required</em> on a tracker <code>pdca</code> can't reach that way
+(a non-GitHub tracker fails closed with the exact fallback command printed, not
+a silent skip). Either way, acceptance is <strong>transactional</strong>: everything is
+validated <em>before</em> a single issue is filed or a file written — a tracker issue
+can't be un-created, so filing three of them for a proposal that then fails to
+parse is the one order that must never happen — and the bundle writes are
+staged, moved into place only once every child succeeds. The proposal's own
+<code>Depends on</code> / <code>Conflicts with</code> fields reference siblings by their
+proposal-local label (<code>child-2</code>); acceptance rewrites those to the real
+(possibly just-filed) ids, so the batch schedules into
+<a href="#waves-in-execution">waves</a> correctly from the first <code>pdca flow</code> on the
+children.</p>
+<p>The parent bundle doesn't just sit there afterward — it's marked via the same
+<a href="/guide/04-do.html#the-close-disposition-fast-path">close-disposition fast path</a> a
+duplicate or wontfix uses (<code>close-disposition</code> = <code>split</code>), so it routes straight
+to sign-off with a <code>build-notes.md</code> explaining the work moved to its children,
+rather than pretending it still needs a builder. Reopening it (<code>iterate-to-Do</code>)
+archives the split marker and re-enables the real Do+Check band, same as any
+other close disposition.</p>
+<hr />
+<h2>Iteration &amp; carry-forward</h2>
+<p><a href="/guide/05-check.html#signing-off--the-four-dispositions">Step 05</a> covers the human
+decision — <code>--iterate-do</code> / <code>--iterate-plan</code> — and the state machine
+(<a href="/guide/00-introduction.html">step 00</a>) shows
+<code>ITERATE_DO</code> / <code>ITERATE_PLAN</code> as transient states the driver resolves on its
+own. This section is the mechanics common to <em>every</em> iterate, however it's
+triggered.</p>
+<h3>What actually happens on disk</h3>
+<p>Two things happen, in order, whenever a bundle iterates:</p>
+<ol>
+<li><strong>Carry-forward</strong> — before anything is archived, the driver appends a new
+<code>## Iteration &lt;N&gt; — carry-forward</code> heading to the <em>live</em> <code>brief.md</code>, folding
+in whatever context is available: the §9 sign-off rationale, and every
+<em>failing</em> gate line — gating <strong>and</strong> advisory, since an iterate is often
+driven by an advisory red rather than a gating one — plus an explicit
+instruction not to re-attempt the rejected approach unchanged. This is
+best-effort and never breaks the transition: a bundle with no recorded
+rationale still iterates, just without extra context.</li>
+<li><strong>Archive</strong> — the previous attempt's artifacts move into <code>iteration-v&lt;N&gt;/</code>
+(never deleted): everything downstream of the brief (<code>patch.diff</code>,
+<code>build-notes.md</code>, gate results, <code>SUMMARY.md</code>, the rubric snapshot), the
+advisory review files and error-log tails, and any test file the brief
+shipped <em>inside</em> the bundle. <code>iterate-to-Plan</code> additionally archives
+<code>brief.md</code> itself (with the carry-forward note now baked into it) plus the
+Plan-advisory artifacts, which is what actually drops the bundle back to
+<code>UNPLANNED</code> for you to re-author.</li>
+</ol>
+<p>One deliberate wrinkle ties this back to <a href="#size--split">Size &amp; split</a>: the
+structural size estimate measures the brief <strong>above</strong> that carry-forward
+heading, never the file as it stands after several iterations. Measuring the
+raw file would leak the outcome into the predictor — an iterating bundle's brief
+is larger <em>because</em> it churned, not because it started large — so the same
+heading both mechanisms use is the one place they have to agree.</p>
+<h3>The iteration budget</h3>
+<p><code>[driver].max_passes</code> (default <code>20</code>) bounds how many build→sign-off passes one
+<code>pdca flow</code> run gives a bundle before it stops driving it — not silently: the
+bundle is named on stderr with a <code>pdca flow &lt;id&gt;</code> resume hint, and its accepted
+siblings still publish. Raise it in <code>pdca.toml</code> rather than editing anything.</p>
+<h3>Auto-iterate: the driver deciding for itself</h3>
+<p>Every implementation defect the reviewer catches — a logic slip, a weak test, a
+red gate — parks a bundle at <code>AWAITING_SIGNOFF</code> and asks a human to press
+<code>iterate-do</code>, which is a decision the driver is often positioned to make itself.
+<code>[driver].auto_iterate</code> (default <code>false</code> — opt in) lets it: when Check's §6 has
+<strong>at least one mechanically-checkable (&quot;IMPL&quot;) finding and nothing else you'd
+need to see first</strong>, the driver writes <code>iterate-do</code> and rebuilds, unattended.</p>
+<p>The eligibility split rides on the same <code>input | gate | judgment</code> tag every §6
+item already carries: the <code>gate</code> cells (C2 reproduction, C4 verification,
+T1–T4 conformance) are IMPL — a rebuild can plausibly fix them; the <code>judgment</code>
+cells (C5 causal adequacy, T5, the validation act) and the <code>input</code> cells (C1
+spec, C3 change) stay HUMAN. One exception makes this fire at all in practice:
+the reviewer's <code>Validation — fitness-to-purpose</code> row is hard-coded to
+NEEDS-HUMAN on <em>every</em> cycle by design, so it's a constant, carries no signal,
+and doesn't veto a rebuild — though it's still rendered in §6 and you still have
+to clear it to accept.</p>
+<p>Three guarantees hold by construction, worth knowing before you flip it on:</p>
+<ul>
+<li><strong>It only ever writes <code>iterate-do</code>.</strong> Never accept, never discontinue — those
+stay authored solely by a human's <code>pdca signoff</code>, going through the same
+C6-guarded decision path either way.</li>
+<li><strong>It never ticks a §6 box.</strong> An auto-iterate archives the whole SUMMARY,
+unticked, into <code>iteration-v&lt;N&gt;/</code>; the rebuild produces a fresh §6 from
+scratch.</li>
+<li><strong>It's bounded.</strong> <code>[driver].max_auto_iters</code> (default <code>3</code>) automatic rounds per
+bundle, tracked in <code>auto-iterate.json</code> — deliberately <em>not</em> archived, so the
+count survives across rebuilds instead of resetting every iterate. On
+exhaustion the bundle halts at <code>AWAITING_SIGNOFF</code> for you, same as always,
+never dropped.</li>
+</ul>
+<p>gramps runs <code>auto_iterate = true</code> with the default <code>max_auto_iters = 3</code>.</p>
+<hr />
+<h2>Parallel lanes &amp; housekeeping</h2>
+<h3>Lanes</h3>
+<p><code>[driver].lanes</code> (default <code>1</code> — strictly serial) sizes a worker pool for the
+<strong>unattended Do+Check band only</strong> — Plan, sign-off, publish, and Act stay
+serial regardless. A pool of N runs N bundles concurrently in one workspace;
+each worker is pinned to a fixed slot <code>0..N-1</code>, exposed to every gate command as
+<code>$PDCA_LANE</code>. Any gate that touches a shared mutable resource — a target
+checkout it applies/reverts, a container, a port — <strong>must</strong> namespace that
+resource by <code>$PDCA_LANE</code> (<code>--name app-l$PDCA_LANE</code>, a <code>repo-lane$PDCA_LANE</code>
+checkout) or two lanes collide. Override per-run without touching <code>pdca.toml</code>:
+<code>PDCA_LANES=N</code> or <code>--lanes N</code> on <code>pdca flow</code>. Several standalone <code>pdca flow &lt;id&gt;</code>
+processes can also share one workspace this way — each auto-claims a free lane
+via a lockfile, or is pinned explicitly with <code>PDCA_LANE=k</code>.</p>
+<p>Each cycle's Do+Check runs in a dedicated git worktree off the target's base
+(<code>[driver].worktree</code>, default <code>true</code>) so the primary checkout is never mutated
+in place — exposed as <code>$PDCA_WORKTREE</code>, and gate commands should target that,
+not the primary checkout. <code>[driver].overflow</code> (default <code>0</code>) caps a pool of
+throwaway worktrees for the exceptional case: an out-of-cadence gate re-read
+against a lane another bundle currently owns spins up a fresh throwaway tree
+instead of clobbering that lane.</p>
+<p>Before any lane spawns, the harness verifies the resources they need actually
+exist — the same <code>per_lane</code> <code>[[doctor.checks]]</code> rows from
+<a href="/guide/01-render-and-integrate.html#pdca-doctor--verify-prerequisites-change-nothing">step 01</a>
+run automatically, or a <code>lane_preflight</code> command covers a resource that isn't
+expressible as a doctor row. Either way, a missing lane aborts the whole run
+<em>before</em> it produces a pile of false-red bundles, not partway through. gramps
+runs <code>lanes = 6</code>, backed by <code>make worktrees LANES=6</code> provisioning the sibling
+checkouts those doctor rows check for.</p>
+<h3>Waves in execution</h3>
+<p><a href="/guide/03-plan.html#ordering-and-routing-the-batch">Step 03</a> covers <em>declaring</em> the
+shape — <code>Depends on</code> / <code>Conflicts with</code> on the brief. This is what the driver
+does with that declaration once a batch actually runs: bundles in the same wave
+build in parallel; each wave's <em>accepted</em> result then becomes the base the next
+wave builds on, via <code>[driver].wave_mode</code>:</p>
+<ul>
+<li><strong><code>&quot;stack&quot;</code></strong> (default, fork-safe) — folds each wave's accepted patches onto a
+run-scoped integration branch the next wave builds on, and opens every PR as a
+stacked PR. Push-only, so it works from a fork with no merge rights, and it
+keeps STOP discipline — the harness never merges anything; you merge the PR
+stack bottom-up with a merge commit (never squash, or the stack's history
+breaks).</li>
+<li><strong><code>&quot;merge&quot;</code></strong> (own-repo / continuous-delivery only) — actually <code>gh pr merge</code>s
+each non-final wave's PRs, so the next wave builds on a genuinely merged base.
+Needs merge rights on the base remote and relaxes STOP discipline for the
+batch; fails closed if a PR turns out non-mergeable. <code>[driver].merge_method</code>
+picks the merge strategy (<code>&quot;merge&quot;</code> / <code>&quot;squash&quot;</code> / <code>&quot;rebase&quot;</code>).</li>
+</ul>
+<p><code>[driver].regate_between_waves</code> (default <code>false</code>) optionally re-runs your
+repo-scoped gates over each folded integration tip before the next wave builds
+on it — catching a combination that's red even though every fix in it was green
+alone. gramps runs the default <code>wave_mode = &quot;stack&quot;</code> with <code>merge_method = &quot;merge&quot;</code> for when a human merges the stack.</p>
+<h3>Housekeeping: sweep &amp; cleanup</h3>
+<p>Two maintenance commands, on two different axes — one is disk footprint, the
+other is tracker sync — and neither should run mid-flow (both can race a live
+session):</p>
+<p><strong><code>pdca sweep</code></strong> reclaims the harness's <em>own</em> worktree/build footprint — lane
+worktrees, integration worktrees, orphaned overflow trees — never bundle
+artifacts, never the primary checkout. It runs automatically at the
+publish/freeze boundary (once a run's waves complete) and on demand:</p>
+<pre><code class="language-bash">pdca sweep             # per [driver].sweep_worktrees
+pdca sweep --dry-run    # report what would be reclaimed, touch nothing
+pdca sweep --remove     # remove lane worktrees too, not just their build state
+</code></pre>
+<p><code>[driver].sweep_worktrees</code> sets the automatic behaviour: <code>&quot;clean&quot;</code> (default —
+strip build state via <code>git clean -fdxq</code> + <code>reset --hard</code>, keep the checkouts
+warm; remove integration/overflow trees outright since they never get reused
+anyway), <code>&quot;remove&quot;</code> (lane worktrees go too — Do / <code>pdca try</code> recreate on
+demand), or <code>&quot;off&quot;</code> (never sweep automatically; <code>pdca sweep</code> still works
+explicitly). This exists because it's a real failure mode, not a hypothetical
+one: a long-running instance let its lane build dirs (<code>target/</code>, <code>node_modules/</code>,
+…) accumulate past 200 GB, and <em>gating</em> gates started false-redding with <code>Disk quota exceeded</code> — an environment fault that read, at first, like a real
+regression in the patch.</p>
+<p><strong><code>pdca cleanup</code></strong> reconciles bundle state against the <strong>issue tracker</strong> instead
+— a different drift entirely: an issue closed by decision in-thread while its
+bundle still sits pending, a bundle frozen <code>COMPLETE</code> while its issue stays
+open, a PR merged while sign-off is still outstanding. Dry-run by default;
+<code>--apply</code> executes:</p>
+<pre><code class="language-bash">pdca cleanup            # report every discrepancy, change nothing
+pdca cleanup --apply    # execute the matched actions below
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Local state</th>
+<th>Remote state</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>briefless (notes-only)</td>
+<td>issue CLOSED</td>
+<td>writes <code>notes.json</code>'s <code>resolved</code> record → bundle reads <code>RESOLVED</code> (<a href="/guide/00-introduction.html">step 00</a>)</td>
+</tr>
+<tr>
+<td><code>AWAITING_SIGNOFF</code></td>
+<td>issue CLOSED</td>
+<td>records §9 <code>discontinue</code> (the same primitive as <code>pdca signoff --discontinue</code>)</td>
+</tr>
+<tr>
+<td>mid-flight (<code>PLANNED</code>/<code>BUILT</code>/<code>CHECKED</code>/iterating)</td>
+<td>issue CLOSED</td>
+<td><strong>report only</strong> — fabricating a §9 for in-flight work isn't auditable</td>
+</tr>
+<tr>
+<td>not <code>COMPLETE</code></td>
+<td>PR MERGED</td>
+<td><strong>report only, always</strong> — never auto-writes an accept past the C6 guard</td>
+</tr>
+<tr>
+<td><code>COMPLETE</code> with a merged PR</td>
+<td>issue OPEN</td>
+<td>comments + closes the issue</td>
+</tr>
+<tr>
+<td><code>COMPLETE</code> (close/no-fix) or <code>DISCONTINUED</code></td>
+<td>issue OPEN</td>
+<td>comments + closes the issue</td>
+</tr>
+<tr>
+<td><code>COMPLETE</code> with an unmerged PR</td>
+<td>issue OPEN</td>
+<td><strong>report only</strong> — stays open until the PR actually merges</td>
+</tr>
+</tbody>
+</table>
+<p>This is where the <code>RESOLVED</code> state from <a href="/guide/00-introduction.html">step 00</a> actually
+gets <strong>written</strong> in practice — Plan never fabricates it, <code>pdca cleanup</code> is the
+one command that does, and only for a bundle that never entered a cycle. Every
+write here goes through the same three primitives regardless: the <code>notes.json</code>
+merge, <code>signoff.record</code> + a normal driver run, or a <code>gh issue</code> comment/close —
+nothing here invents a fourth path to a verdict. <code>gh</code> missing or unauthenticated
+aborts the whole command before any write.</p>
+<hr />
+<p>You now have the full picture: the linear cycle from <a href="/guide/00-introduction.html">step 00</a>
+through <a href="/guide/06-act.html">step 06</a>, plus the three mechanisms that cut across it.
+From here, <a href="/guide/01-render-and-integrate.html">render the harness into your own project</a>
+if you haven't, or go back to the <a href="/spec/">reference spec</a>
+for the full reasoning behind any of it.</p>
+<p>← <a href="/guide/06-act.html">06 Act</a> · <a href="/guide/">Index</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+<script src="/assets/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral"});</script>
+</body>
+</html>

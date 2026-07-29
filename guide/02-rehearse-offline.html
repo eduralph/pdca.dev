@@ -78,7 +78,7 @@ PYTHONPATH=src python -m pdca_harness.cli status
 builder/reviewer leaves emit canned artifacts and the gates report canned passes,
 so the bundle sails to <code>AWAITING_SIGNOFF</code> — the driver's &quot;your turn, human&quot; stop.
 From there you record a verdict exactly as you would on a real cycle (this is
-<a href="/guide/06-signoff.html">step 06</a>):</p>
+<a href="/guide/05-check.html#signing-off--the-four-dispositions">step 05</a>):</p>
 <pre><code class="language-bash">PYTHONPATH=src python -m pdca_harness.cli signoff TOY --accept     # → COMPLETE
 # or try the others to watch the state machine archive + loop:
 PYTHONPATH=src python -m pdca_harness.cli signoff TOY --iterate-do    # → archives, back to PLANNED

@@ -93,12 +93,23 @@ fix's control, doesn't get swept under the rug <em>or</em> block a good fix — 
 as an explicit NEEDS-HUMAN item for a person to adjudicate. The gating path that
 decides &quot;can this be accepted?&quot; contains <strong>no LLM at all</strong> — it reads only
 deterministic gate results.</p>
+<p><strong>AI coding best practices, codified — not tribal knowledge.</strong> The harness bakes
+in discipline that's usually left to an individual's habits: implement against a
+written spec, not vibes (the brief); prove correctness with a test that's
+red-before/green-after, not a model's say-so; scope the builder's tools narrowly
+so it can edit and run tests but never merge or open a PR unsupervised
+(<a href="/guide/04-do.html">step 04</a>); decorrelate the reviewer from the builder — a different
+model family, no visibility into the builder's notes — so review isn't the same
+blind spot checking itself (<a href="/guide/05-check.html">step 05</a>); and ship every fix as a
+<em>draft</em> PR by default, so a human is always the one who makes it live
+(<a href="/guide/05-check.html#publishs-stop-discipline-and-batches">step 05</a>). None of it
+depends on a maintainer remembering to ask for it on any given contribution.</p>
 <p><strong>The process gets better over time.</strong> The <strong>Act</strong> beat turns recurring
 misses — something a maintainer caught at review that no gate owned — into
 permanent improvements: a new gate, a new brief field, a tightened rule. Each
 future cycle starts from a better baseline. (The walkthrough shows a real
 example: a maintainer's review comment about a translation-manifest rule became a
-proposed deterministic gate — see <a href="/guide/07-publish-and-act.html">step 07</a>.)</p>
+proposed deterministic gate — see <a href="/guide/06-act.html">step 06</a>.)</p>
 <p><strong>Scale without losing rigor.</strong> Because state lives in files (not a database), the
 driver is <strong>idempotent and resumable</strong>, and one Plan session can brief <em>several</em>
 issues that then build unattended and queue up for a fast, cheap-first sign-off
@@ -175,22 +186,22 @@ project-specific parts are yours.</p>
 <tr>
 <td><strong>Sign-off + C6 guard</strong></td>
 <td>Four dispositions; <code>--accept</code> is refused while any NEEDS-HUMAN item is open</td>
-<td><a href="/guide/06-signoff.html">06</a></td>
+<td><a href="/guide/05-check.html">05</a></td>
 </tr>
 <tr>
 <td><strong>Iterate carry-forward</strong></td>
 <td>A rejection archives the attempt and folds the <em>reason</em> into the next build</td>
-<td><a href="/guide/06-signoff.html">06</a></td>
+<td><a href="/guide/05-check.html">05</a></td>
 </tr>
 <tr>
 <td><strong>Draft-PR publish</strong></td>
 <td>Contribute the accepted fix as a <em>draft</em> — a human marks it ready (except non-final wave PRs under opt-in <code>wave_mode = &quot;merge&quot;</code>)</td>
-<td><a href="/guide/07-publish-and-act.html">07</a></td>
+<td><a href="/guide/05-check.html">05</a></td>
 </tr>
 <tr>
 <td><strong>Cross-cycle Act loop</strong></td>
 <td>Periodic review that turns recurring misses into spec/gate/rule deltas</td>
-<td><a href="/guide/07-publish-and-act.html">07</a></td>
+<td><a href="/guide/06-act.html">06</a></td>
 </tr>
 <tr>
 <td><strong>Console-script front door</strong></td>
@@ -216,17 +227,31 @@ gates block a sign-off; <strong>advisory</strong> ones only inform.</li>
 <code>iterate-plan</code>, or <code>discontinue</code>.</li>
 </ul>
 <p>The states a bundle moves through:</p>
-<pre><code>UNPLANNED → PLANNED → BUILT → CHECKED → AWAITING_SIGNOFF → COMPLETE
-  (no brief) (brief)  (patch) (gates+    (SUMMARY ready,    (accepted,
-                               review)    driver STOPS)      frozen)
-                                              │
-                                 iterate-do → PLANNED  (rebuild, same brief)
-                               iterate-plan → UNPLANNED (re-spec)
-                                discontinue → DISCONTINUED (abandon)
-</code></pre>
-<p>The four <strong>halted</strong> states — <code>UNPLANNED</code>, <code>AWAITING_SIGNOFF</code>, <code>COMPLETE</code>,
-<code>DISCONTINUED</code> — are where the driver hands control back to a human or stops.
-Everything else it advances through on its own.</p>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --&gt; UNPLANNED
+    UNPLANNED --&gt; PLANNED: brief authored (Plan)
+    PLANNED --&gt; BUILT: patch.diff written (Do)
+    BUILT --&gt; CHECKED: gates + review done (Check)
+    CHECKED --&gt; AWAITING_SIGNOFF: SUMMARY assembled — driver STOPS
+    UNPLANNED --&gt; RESOLVED: tracker settles it first — no cycle ever ran
+
+    AWAITING_SIGNOFF --&gt; COMPLETE: accept
+    AWAITING_SIGNOFF --&gt; PLANNED: iterate-do (rebuild, same brief)
+    AWAITING_SIGNOFF --&gt; UNPLANNED: iterate-plan (re-spec)
+    AWAITING_SIGNOFF --&gt; DISCONTINUED: discontinue
+
+    COMPLETE --&gt; [*]
+    DISCONTINUED --&gt; [*]
+    RESOLVED --&gt; [*]
+</div>
+<p>The five <strong>halted</strong> states — <code>UNPLANNED</code>, <code>AWAITING_SIGNOFF</code>, <code>COMPLETE</code>,
+<code>DISCONTINUED</code>, <code>RESOLVED</code> — are where the driver hands control back to a human or
+stops. Everything else it advances through on its own. <code>RESOLVED</code> is the newest of
+the five: a briefless bundle whose tracker item was closed (duplicate, wontfix,
+fixed elsewhere) <em>before</em> anyone authored a brief — so it exits the pending set
+without ever entering a cycle, distinct from <code>DISCONTINUED</code> (a human explicitly
+abandoned a bundle that <em>did</em> run one).</p>
 <hr />
 <h2>Is this for you?</h2>
 <p>The harness fits when you are <strong>funnelling AI-generated contributions into a real
@@ -260,6 +285,7 @@ limited attention all matter.</p>
 
 <!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
      contain a diagram; empty otherwise. -->
-
+<script src="/assets/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral"});</script>
 </body>
 </html>

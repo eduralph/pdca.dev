@@ -40,7 +40,7 @@
 <p>One level below <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a>. How the PDCA cycle runs as a pipeline. Core principle: <strong>automate where the work is mechanical (Do, plus Check's gates and reviewer), instrument where the work is human (Plan, Check's sign-off step, Act), never automate the human work away.</strong> The pipeline runs unattended from the brief to the sign-off queue (where Check stops for the human) and resumes only when the human signs off Check; Act fires later, on a cadence, across batches of completed cycles. Living document.</p>
 </blockquote>
 <blockquote>
-<p><strong>Continuous-flow extension.</strong> Beyond the unattended <code>pdca run</code>, the driver can run the whole cycle as one continuous, Claude-driven flow — <code>pdca flow &lt;id&gt; [--from-csv …] [--no-publish] [--no-act]</code> (or batch: <code>pdca flow --from-csv …</code>, one Plan session → several issues; Act runs by default after COMPLETE, <code>--no-act</code> to skip). This lifts the model from <strong>two</strong> leaves to <strong>six</strong>, <em>without</em> moving any control flow into a model: the planner (Plan — interactive, turns the human's documents into <code>brief.md</code>), the sign-off and act leaves (interactive) instrument the human steps the principle above keeps human, and the publisher opens the draft PR on accept (Check's closing step); Do (builder) and Check's reviewer stay <strong>headless</strong>. The state transitions, the gates, and the <strong>C6 accept-guard remain deterministic code</strong> — a leaf only fills an artifact. Leaves are configured in <code>pdca.toml</code> (<code>[leaves.*]</code>: <code>mode = stub|command</code>, <code>interactive</code>); set <code>PDCA_LEAVES_MODE=stub</code> to force the offline placeholders (CI / <code>make</code>).</p>
+<p><strong>Continuous-flow extension.</strong> Beyond the unattended <code>pdca run</code>, the driver can run the whole cycle as one continuous, Claude-driven flow — <code>pdca flow &lt;id&gt; [--from-csv …] [--no-publish] [--no-act]</code> (or batch: <code>pdca flow --from-csv …</code>, one Plan session → several issues; Act runs by default after COMPLETE, <code>--no-act</code> to skip). This lifts the model from <strong>two</strong> leaves to <strong>eight</strong>, <em>without</em> moving any control flow into a model: the planner (Plan — interactive, turns the human's documents into <code>brief.md</code>), the sign-off and act leaves (interactive) instrument the human steps the principle above keeps human, and the publisher opens the draft PR on accept (Check's closing step); Do (builder) and Check's reviewer stay <strong>headless</strong>; and two more sit inside Plan's own boundary — the sizer (headless, judges a brief's size) and the splitter (interactive, invoked by the planner on itself when a brief is really several slices — see §Plan below). The state transitions, the gates, and the <strong>C6 accept-guard remain deterministic code</strong> — a leaf only fills an artifact. Leaves are configured in <code>pdca.toml</code> (<code>[leaves.*]</code>: <code>mode = stub|command</code>, <code>interactive</code>); set <code>PDCA_LEAVES_MODE=stub</code> to force the offline placeholders (CI / <code>make</code>).</p>
 </blockquote>
 <blockquote>
 <p><strong>Parallel-lanes extension.</strong> Because the bundle is the unit of isolation, several cycles can run <strong>concurrently</strong> for throughput — see <a href="/spec/09-parallel-lanes.html">09 - Parallel Lanes</a>. The key discipline: mechanical isolation (a private working tree per lane) makes concurrent <em>execution</em> safe, but correctness <em>across</em> the parallel results is a separate problem — handled by <strong>lane planning</strong> (group same-area issues into one lane) and the <strong>merge re-gate</strong> (<code>gates.run_working_tree</code> over the merged tree + the draft PR), never by isolation alone. Parallelism stays in the unattended Do + Check band; the human touch points remain serial. Two realizations: N separate workspaces (zero machinery), or the <strong>in-driver worker pool</strong> — <code>[driver].lanes = N</code> (<code>PDCA_LANES</code> / <code>--lanes N</code>) fans the Do + Check band across N workers in one workspace, each exposing its lane slot to gates as <code>$PDCA_LANE</code>.</p>
@@ -99,6 +99,7 @@
 </blockquote>
 <p>Do not build a monolith. Each issue's <strong>state is its files</strong> in <code>results/issue_&lt;id&gt;/</code>, and a driver advances issues idempotently:</p>
 <pre><code>(no bundle)        →  PLAN   →  brief.md present
+                       tracker settles it first (no brief ever authored) → RESOLVED (terminal; issue #302)
 brief.md           →  DO     →  patch.diff + test + build-notes.md present
 patch.diff         →  CHECK  →  check-gates + check-review + SUMMARY.md present
 SUMMARY.md         →  (AWAITING_SIGNOFF)  ← pipeline STOPS here
@@ -108,6 +109,13 @@ SUMMARY.md §9 set  →  sign-off applied:
                        iterate-to-Plan  → driver archives the attempt (incl. brief.md) into iteration-v&lt;N&gt;/; state ← UNPLANNED (human authors a new brief.md, then Do re-runs)
                        discontinue      → state ← DISCONTINUED (no transition, no archive; bundle deliberately abandoned and dropped from the active set)
 </code></pre>
+<p><strong>RESOLVED</strong> is a fifth halted state alongside UNPLANNED / AWAITING_SIGNOFF /
+COMPLETE / DISCONTINUED (issue #302): a briefless bundle whose tracker item was
+closed — duplicate, wontfix, fixed elsewhere — <em>before</em> anyone authored a
+brief. It is written by <code>pdca cleanup</code>'s tracker reconciliation, never
+fabricated by Plan, and is distinct from DISCONTINUED (a human abandoning a
+bundle that <em>did</em> run a cycle) precisely because a RESOLVED bundle never
+entered one.</p>
 <p>The driver stops the issue at AWAITING_SIGNOFF every time — including on iteration. After sign-off, an accepted bundle is <strong>frozen</strong>: it becomes input for the <em>next</em> Act review (a separate, cross-cycle pass — see below).</p>
 <p>Properties this buys, cheaply:</p>
 <ul>
@@ -116,9 +124,66 @@ SUMMARY.md §9 set  →  sign-off applied:
 <li><strong>Inspectable.</strong> &quot;What state is issue N in&quot; is a directory listing, not a database.</li>
 </ul>
 <p>The driver is a thin loop: for each issue, look at which files exist, run the next beat's command, write its artifact, advance. Stop the issue when it reaches AWAITING_SIGNOFF.</p>
+<h2>Pre-dispatch guards — [built] (issues #321, #333)</h2>
+<p>Gates verify the <em>built artifact</em> at Check; the pre-dispatch guards verify the
+<em>brief</em> before Do is even allowed to spend a builder on it. They are plain
+code inside <code>advance()</code> itself — not a hook at the literal end of Plan, since
+several distinct code paths (<code>pdca flow &lt;id&gt;</code>, <code>pdca flow &lt;ids…&gt;</code>, the zero-id
+batch sweep, <code>pdca run &lt;id&gt;</code>) all converge on <code>advance()</code> and only one of them
+is a true &quot;Plan just finished&quot; event. Two independent checks, evaluated fresh
+every beat (never cached, never pinned by a stale marker) — so editing the
+brief or registering a missing row un-holds a bundle on the very next attempt:</p>
+<ul>
+<li><strong>The dependency guard</strong> (<code>[driver].dependency_guard</code>, default <code>hold</code>) —
+<strong>blocking</strong>. Every backticked token in the brief's <code>External dependencies</code>
+field is checked against the project's registered <code>[[doctor.checks]]</code> rows;
+an unmatched one raises a <code>PolicyHold</code> and stops the beat before a builder
+runs. This is set membership, not a heuristic — a token either names a
+registered row or it doesn't — so unlike the size guard below, <code>hold</code> here
+is real and is the default. It is also not a <em>new</em> block: the same
+unregistered dependency already refuses <code>signoff --accept</code> through the C6
+guard (<a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a>); the
+pre-dispatch guard just moves that refusal earlier, so a missing dependency
+costs a human a minute instead of a full builder + reviewer pass.</li>
+<li><strong>The size guard</strong> (<code>[driver].size_guard</code>, default <code>off</code>) — <strong>advisory
+only, never blocking</strong>, even set to <code>hold</code> (silently treated as <code>warn</code>).
+Calibrated over 86 real bundles, the best structural size signal reaches
+62% precision against ≥3 sign-off rounds — nearly one wrong flag for every
+right one, and a blocking gate at that rate trains people to override it.
+With <code>size_guard = &quot;warn&quot;</code>, an oversized brief prints the signal that fired
+and a remedy (<code>pdca split</code>) and the beat proceeds regardless.</li>
+</ul>
+<p>Both fire <strong>twice</strong>: once with the bundle at PLANNED, before Do dispatches
+(the size guard pays for a fresh <code>[leaves.sizer]</code> verdict here, since a
+verdict now can still prevent a build), and again with the bundle at BUILT,
+before Check dispatches (the size guard reads the <em>stored</em> sizer verdict for
+free instead of buying a second opinion on work already done) — because a
+bundle can reach BUILT without passing back through a fresh Plan exit (a
+resumed run, a builder that wrote <code>patch.diff</code> and then crashed), and Check is
+a real spend too. The size guard's remedy differs by firing: at PLANNED,
+<code>pdca split</code> runs directly; at BUILT, the remedy is <code>iterate-plan</code> at
+sign-off, because splitting means authoring new briefs, and that's Plan's
+beat, not something done to a bundle mid-build.</p>
 <h2>Per-beat automation</h2>
 <h3>Plan — instrumented (project scaffolding + human)</h3>
 <p>Reuse an existing scrape / handoff pipeline as the Plan scaffolder (scrape → emit a <code>brief.md</code> with a TRIAGE VERDICT scaffold and auto-flags), drawn from the <strong>current process-baseline spec template</strong> that Act maintains. That <em>is</em> the draft <code>brief.md</code>. The human fills the spec + success criterion + resolved branch target and confirms/overrides the disposition hint. Automated: everything except the judgment. Not automated: the judgment.</p>
+<p><strong>Splitting is owned by Plan, not a maintenance task run after it (issue
+#358).</strong> The design-proposal pattern in <a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a>
+§Solution-approach design — &quot;one Plan, many child cycles&quot; — now has a
+deterministic tool for the brief-scale case too. When the planner leaf, still
+co-authoring <code>brief.md</code> with the human, judges the slice to be several
+independently-shippable outcomes, it runs <code>pdca split &lt;id&gt;</code> <strong>on itself</strong>,
+inline, in the same interactive session: the splitter leaf drafts
+<code>split-proposal.md</code> (seeded by the sizer's <code>proposed_seams</code>, if a verdict
+exists), the human reads it there, and <code>pdca split &lt;id&gt; --accept</code> materializes
+one child bundle per proposed slice — filing a real tracker sub-issue per
+child itself (<code>gh issue create --parent</code>) unless the human already filed them.
+Nobody leaves the session to file issues by hand. The parent bundle is then
+marked via the same close-disposition fast path a duplicate/wontfix uses, so
+it routes to sign-off instead of pretending it still needs a builder, and each
+child schedules into <a href="/spec/09-parallel-lanes.html">dependency waves</a> via the
+<code>Depends on</code> / <code>Conflicts with</code> fields the proposal already declared between
+siblings.</p>
 <h3>Do — full (headless builder, subagent scope)</h3>
 <p>Driver invokes the builder agent non-interactively with <code>brief.md</code> as input, builder subagent scope (read repos, write patch+test, MAY push to feature/draft branches, MAY open draft PRs, <strong>MUST NOT mark a PR ready</strong>). Output: <code>patch.diff</code>, the test, <code>build-notes.md</code>. Pushing and draft-PR-open are allowed because they let CI exercise the artifact during the cycle without bypassing the sign-off gate.</p>
 <p><strong>The ready-mark mechanism — built, mechanically enforced.</strong> The builder subagent (<code>.claude/agents/builder.md</code>) registers a PreToolUse hook (<code>.claude/hooks/builder_guard.py</code>) that blocks <code>gh pr ready</code>, <code>gh pr merge</code>, and <code>gh pr review --approve</code> for the builder while allowing <code>gh pr create --draft</code> and <code>git push</code>. The guard splits compound commands on shell operators and strips wrappers (<code>timeout</code>, <code>nice</code>, …) before matching, so the block can't be smuggled past. It is scoped to the builder subagent — <strong>not</strong> a global <code>settings.json</code> deny — so the human and the driver's accept step can still mark PRs ready (a global deny can't be overridden and would block the human's legitimate ready-mark). The constraint is therefore <em>enforced</em>, not merely asked of the builder via the brief.</p>

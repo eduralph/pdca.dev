@@ -40,7 +40,12 @@
 <p><strong>Beat: Do.</strong> Fully automated — no human touch point. The builder leaf reads the
 <code>PLANNED</code> bundle's <code>brief.md</code> (and nothing else) and produces the change. When
 <code>patch.diff</code> lands, the bundle becomes <code>BUILT</code>.</p>
-<h2>How Do runs</h2>
+<p>Two parts follow: <a href="#how-to-use"><strong>how to use</strong></a> it — the leaf config you write,
+the per-bundle model routing, and a real patch it produced — then
+<a href="#how-it-works"><strong>how it works</strong></a> underneath: the worktree isolation, the
+artifacts it writes and why one is withheld from the reviewer, and the
+close-disposition fast path that skips Do entirely.</p>
+<h2>How to use</h2>
 <p>The <code>builder</code> leaf is <strong>headless</strong> (<code>interactive = false</code>) — it runs unattended
 as part of <code>pdca flow</code>, so there's nothing to type. From gramps' <code>pdca.toml</code>:</p>
 <pre><code class="language-toml">[leaves.builder]
@@ -83,73 +88,7 @@ variant's <code>argv</code> is the whole command, so it carries the model <em>an
 flags. On top of either pick, the <strong>escalation ladder</strong> (<code>[[leaves.builder_escalation]]</code>,
 #135) still overrides on <em>iterate</em>, so a bundle that keeps failing climbs to a stronger
 backend regardless of its self-rating.</p>
-<h3>Isolated in a worktree (issue #94)</h3>
-<p>Do (and Check's gates) run against a dedicated <strong>git worktree</strong> off the target's
-base, not the host's primary checkout — so a cycle never leaves the live checkout
-dirty or collides with your own work there. The harness creates/resets it per cycle
-(per lane slot) and exposes its path as <strong><code>$PDCA_WORKTREE</code></strong>: the builder is granted
-access to it automatically, and bundle-scoped gate commands target it too. On by
-default (<code>[driver].worktree</code>); best-effort — a target that isn't a worktree-capable
-git checkout falls back to editing in place. (This isolation is what publish's
-stash/restore worked around before; with it, serial cycles get the same clean-tree
-guarantee lanes already had.)</p>
-<h3>The harness checkout is not isolated — don't do git maintenance under a live flow (issue #130)</h3>
-<p>Worktree isolation protects the <strong>target</strong> repo. It does <strong>not</strong> protect the
-<strong>harness checkout</strong> — the repo that holds <code>results/issue_&lt;id&gt;/</code> bundle state <em>and</em>
-the <code>pdca_harness</code> code a running flow imports. While a <code>pdca flow</code> is live (e.g.
-parked at the interactive sign-off leaf), ordinary git maintenance in that checkout
-silently corrupts in-flight state:</p>
-<ul>
-<li><strong><code>git stash -u</code> clobbers the bundle.</strong> A flow's <code>results/issue_&lt;id&gt;/</code> is
-long-lived <strong>untracked</strong> working-tree files (it isn't committed as it goes); a
-stash sweeps them into a stale snapshot while the flow keeps advancing the
-on-disk bundle — a later <code>stash pop</code> overwrites newer Check artifacts with older
-Do ones.</li>
-<li><strong>A branch switch or <code>copier update</code> rewrites <code>src/pdca_harness/*.py</code> under the
-running interpreter.</strong> The live process pinned the old modules in memory, but any
-<code>python -m pdca_harness …</code> <strong>subprocess</strong> it spawns afterward picks up the new
-code — a mixed-version cycle.</li>
-</ul>
-<p>The discipline is just #94's own principle turned on the harness repo: <strong>do
-harness-repo maintenance (version bumps, <code>copier update</code>, bundle-recording commits)
-in a separate <code>git worktree</code> of the harness repo</strong> — never branch-switch,
-<code>copier update</code>, or <code>git stash</code> the live checkout while a flow runs. (An advisory
-<code>pdca</code> flow-lock that refuses such maintenance while a flow is held is planned as a
-follow-up; until then this is operator discipline.)</p>
-<h2>What Do produces</h2>
-<p>Three artifacts land in the bundle:</p>
-<table>
-<thead>
-<tr>
-<th>Artifact</th>
-<th>Purpose</th>
-<th>Who sees it</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>patch.diff</code></td>
-<td>The change itself</td>
-<td>Check gates, reviewer, you</td>
-</tr>
-<tr>
-<td>the test file</td>
-<td>The red→green proof, shipped at the brief's <strong>Test file</strong> path</td>
-<td>C4 gate runs it</td>
-</tr>
-<tr>
-<td><code>build-notes.md</code></td>
-<td>The builder's rationale — why this approach, trade-offs considered</td>
-<td><strong>You</strong> at sign-off — <strong>withheld from the reviewer</strong></td>
-</tr>
-</tbody>
-</table>
-<p>That last withholding is a real design decision, not an accident: the Check
-reviewer (<a href="/guide/05-check.html">step 05</a>) sees only <code>{patch.diff, test, brief.md, check-gates.json}</code>. If the reviewer could read the builder's self-justification,
-it would anchor on the builder's framing instead of judging the diff cold. The
-human signing off <em>does</em> get <code>build-notes.md</code>, because the human is adjudicating,
-not independently re-deriving.</p>
-<h2>The real patch</h2>
+<h3>The real patch</h3>
 <p>Here's the heart of the actual <code>results/issue_11589/patch.diff</code>. The brief said
 &quot;delete only the selected plugin's own files when the directory is shared&quot;; the
 builder added two helpers and rerouted <code>__uninstall</code>:</p>
@@ -207,7 +146,127 @@ probe.</li>
 to run.</p>
 <p>The bundle is now <code>BUILT</code>. The driver moves straight into Check — <a href="/guide/05-check.html">step
 05</a> — with no pause.</p>
-<h2>The close-disposition fast path</h2>
+<hr />
+<h2>How it works</h2>
+<h3>The leaf, and the guards around it</h3>
+<p>Do has exactly one leaf — <code>builder</code>, covered above in
+<a href="#how-to-use">How to use</a> including its per-bundle variants and escalation
+ladder. Unlike Plan, Do has no leaves of its own beyond that one: no split, no
+size judgment happens here — Do just builds what the brief says and stops.</p>
+<p>Do doesn't add any gating logic of its own, but it's flanked on both sides by
+the same <strong>pre-dispatch policy check</strong> — the mechanism itself, and the
+<code>[driver].dependency_guard</code> / <code>[driver].size_guard</code> config, are defined once in
+<a href="/guide/03-plan.html#entry-and-exit-the-guards-around-plan">step 03</a>. It fires twice:
+once right before Do is allowed to dispatch, and again right after Do produces
+a patch, before Check is allowed to. <a href="/guide/07-crosscutting.html#the-process">Step 07</a>
+has the full two-entry diagram; here's what each firing means for Do
+specifically.</p>
+<p><strong>Before Do dispatches</strong> (bundle at <code>PLANNED</code>), two things about the brief are
+checked:</p>
+<ul>
+<li><strong>The dependency guard</strong> (default <code>hold</code>) — blocking. Every backticked token
+in the brief's <code>External dependencies</code> field is checked against the
+registered <code>[[doctor.checks]]</code> rows from
+<a href="/guide/01-render-and-integrate.html#1d-install--doctor-verify-the-toolchain">step 01</a>;
+an unmatched one holds the bundle right here, before a builder is ever spent.
+Set membership, not a heuristic, which is why <code>hold</code> is the real default.</li>
+<li><strong>The size guard</strong> (default <code>off</code>) — advisory only. With
+<code>size_guard = &quot;warn&quot;</code>, an oversized brief prints the signal that fired and a
+remedy — <code>pdca split</code> — while Do dispatches anyway. This is the <strong>backstop</strong>
+case; the normal path is the planner splitting the brief itself, inside Plan,
+before it ever reaches here (<a href="/guide/07-crosscutting.html#size--split">step 07</a>).</li>
+</ul>
+<p><strong>After Do produces a patch</strong> (bundle at <code>BUILT</code>), the <em>same</em> check runs a
+second time, before Check dispatches — and it has to, because a bundle can
+reach <code>BUILT</code> without passing back through a fresh Plan exit: a resumed run, or
+a builder that wrote <code>patch.diff</code> and then crashed. Check is a real spend too
+(a reviewer at <code>xhigh</code>, possibly an adversary), so it shouldn't run unpoliced on
+a brief that was never actually cleared. Two things differ from the first
+firing, both because Do has already happened:</p>
+<ul>
+<li>The dependency check is unchanged — still blocking, still reconciled fresh
+against whatever's registered <em>now</em>. Register the missing row after Do ran,
+and the very next beat proceeds; nothing about the hold survives past that.</li>
+<li>The size guard reads the <strong>stored</strong> sizer verdict instead of paying for a
+fresh one — Plan already bought that opinion, and buying a second on work
+that's already built would be paying twice for the same answer. The remedy
+changes too: <code>pdca split</code> no longer applies (splitting means authoring new
+briefs, and Do's output isn't one) — instead the message points at
+<code>iterate-plan</code> at sign-off, which archives this attempt and returns the
+bundle to Plan for the re-plan.</li>
+</ul>
+<p>Both firings are evaluated fresh every time, never cached, so editing the brief
+or registering a missing row un-holds the bundle on the very next attempt, no
+re-plan required. The <a href="#the-close-disposition-fast-path">close-disposition fast path</a>
+below is a different question from either of these — not &quot;is this bundle
+allowed to proceed,&quot; but &quot;does it need a real builder at all.&quot;</p>
+<h3>Isolated in a worktree (issue #94)</h3>
+<p>Do (and Check's gates) run against a dedicated <strong>git worktree</strong> off the target's
+base, not the host's primary checkout — so a cycle never leaves the live checkout
+dirty or collides with your own work there. The harness creates/resets it per cycle
+(per lane slot) and exposes its path as <strong><code>$PDCA_WORKTREE</code></strong>: the builder is granted
+access to it automatically, and bundle-scoped gate commands target it too. On by
+default (<code>[driver].worktree</code>); best-effort — a target that isn't a worktree-capable
+git checkout falls back to editing in place. (This isolation is what publish's
+stash/restore worked around before; with it, serial cycles get the same clean-tree
+guarantee lanes already had.)</p>
+<h3>The harness checkout is not isolated — don't do git maintenance under a live flow (issue #130)</h3>
+<p>Worktree isolation protects the <strong>target</strong> repo. It does <strong>not</strong> protect the
+<strong>harness checkout</strong> — the repo that holds <code>results/issue_&lt;id&gt;/</code> bundle state <em>and</em>
+the <code>pdca_harness</code> code a running flow imports. While a <code>pdca flow</code> is live (e.g.
+parked at the interactive sign-off leaf), ordinary git maintenance in that checkout
+silently corrupts in-flight state:</p>
+<ul>
+<li><strong><code>git stash -u</code> clobbers the bundle.</strong> A flow's <code>results/issue_&lt;id&gt;/</code> is
+long-lived <strong>untracked</strong> working-tree files (it isn't committed as it goes); a
+stash sweeps them into a stale snapshot while the flow keeps advancing the
+on-disk bundle — a later <code>stash pop</code> overwrites newer Check artifacts with older
+Do ones.</li>
+<li><strong>A branch switch or <code>copier update</code> rewrites <code>src/pdca_harness/*.py</code> under the
+running interpreter.</strong> The live process pinned the old modules in memory, but any
+<code>python -m pdca_harness …</code> <strong>subprocess</strong> it spawns afterward picks up the new
+code — a mixed-version cycle.</li>
+</ul>
+<p>The discipline is just #94's own principle turned on the harness repo: <strong>do
+harness-repo maintenance (version bumps, <code>copier update</code>, bundle-recording commits)
+in a separate <code>git worktree</code> of the harness repo</strong> — never branch-switch,
+<code>copier update</code>, or <code>git stash</code> the live checkout while a flow runs. (An advisory
+<code>pdca</code> flow-lock that refuses such maintenance while a flow is held is planned as a
+follow-up; until then this is operator discipline.)</p>
+<h3>What Do produces</h3>
+<p>Three artifacts land in the bundle:</p>
+<table>
+<thead>
+<tr>
+<th>Artifact</th>
+<th>Purpose</th>
+<th>Who sees it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>patch.diff</code></td>
+<td>The change itself</td>
+<td>Check gates, reviewer, you</td>
+</tr>
+<tr>
+<td>the test file</td>
+<td>The red→green proof, shipped at the brief's <strong>Test file</strong> path</td>
+<td>C4 gate runs it</td>
+</tr>
+<tr>
+<td><code>build-notes.md</code></td>
+<td>The builder's rationale — why this approach, trade-offs considered</td>
+<td><strong>You</strong> at sign-off — <strong>withheld from the reviewer</strong></td>
+</tr>
+</tbody>
+</table>
+<p>That last withholding is a real design decision, not an accident: the Check
+reviewer (<a href="/guide/05-check.html">step 05</a>) sees only <code>{patch.diff, test, brief.md, check-gates.json}</code>. If the reviewer could read the builder's self-justification,
+it would anchor on the builder's framing instead of judging the diff cold. The
+human signing off <em>does</em> get <code>build-notes.md</code>, because the human is adjudicating,
+not independently re-deriving.</p>
+<h3>The close-disposition fast path</h3>
 <p>Not every briefed bundle should be built. When a Plan concludes a <strong>close / no-fix</strong>
 outcome — a duplicate, a not-reproducible report, a by-design behaviour, an upstream
 issue, or a macOS-only manual check — there is nothing for the builder to write. The
@@ -220,7 +279,7 @@ class (<code>[driver].close_dispositions</code> in <code>pdca.toml</code> — de
 marker (the bundle's Do artifact) and a <code>build-notes.md</code> breadcrumb recording <em>why</em>
 no patch exists. Check then records an N/A gate matrix (no patch to verify, no gate
 command runs) and routes a <strong>confirm-the-close</strong> item into SUMMARY §6. The bundle
-halts at <code>AWAITING_SIGNOFF</code> like any other — the human <a href="/guide/06-signoff.html">signs off</a> on
+halts at <code>AWAITING_SIGNOFF</code> like any other — the human <a href="/guide/05-check.html#signing-off--the-four-dispositions">signs off</a> on
 the close, and the C6 guard blocks accept until they consciously confirm it.</p>
 <p>It is a <strong>hint, not a gate</strong>. If the close was wrong, the human reopens to a fix path
 (iterate-to-Do); that archives the close marker and the <em>next</em> pass runs the real

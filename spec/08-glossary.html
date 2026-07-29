@@ -71,14 +71,23 @@ boundary between them is <strong>the seam</strong>: Act is not a re-vote on a co
 <p>(doc <a href="/spec/03-cycle-automation.html">03</a>)</p>
 <ul>
 <li><strong>Leaf / model leaf</strong> — a point where a model is invoked. The leaves fill <em>artifacts</em>;
-they never decide control flow. There are <strong>six</strong>, all steps within beats:
+they never decide control flow. There are <strong>eight</strong>, all steps within beats:
 <ul>
-<li><strong>planner</strong> — Plan (interactive): turns the human's documents into <code>brief.md</code>.</li>
+<li><strong>planner</strong> — Plan (interactive): turns the human's documents into <code>brief.md</code>; also
+the one that runs <code>pdca split</code> on itself when a brief is really several slices
+(issue #358; see splitter, below).</li>
 <li><strong>builder</strong> — Do (headless): writes <code>patch.diff</code> + the named test + <code>build-notes.md</code>.</li>
 <li><strong>reviewer</strong> — Check review step (headless, advisory): writes <code>check-review.md</code>.</li>
 <li><strong>signoff</strong> — Check sign-off step (interactive): records the human's decision token.</li>
 <li><strong>publisher</strong> — Check publish step (interactive): drafts the contribution artifacts.</li>
 <li><strong>act</strong> — Act (interactive): proposes process deltas.</li>
+<li><strong>sizer</strong> — Plan-adjacent (headless): judges a brief's size — <code>{band, independent_outcomes, proposed_seams, confidence}</code> — but never cuts a split itself.
+Not invoked by the planner; called automatically by the pre-dispatch size guard
+(<a href="/spec/03-cycle-automation.html">03</a> §Pre-dispatch guards), once before Do (paid) and again
+before Check (its stored verdict, read free).</li>
+<li><strong>splitter</strong> — Plan-adjacent (interactive): drafts <code>split-proposal.md</code> from a brief
+judged oversized, seeded by the sizer's <code>proposed_seams</code> where one exists. Invoked by
+<code>pdca split &lt;id&gt;</code> — normally the planner itself, inline, mid-Plan-session (issue #358).</li>
 </ul>
 </li>
 <li><strong>Leaf mode</strong> — <code>stub</code> (offline placeholder; the vertical-slice default) or <code>command</code>
@@ -144,6 +153,10 @@ Act review.</li>
 <li><strong>ITERATE_PLAN</strong> — §9 = iterate-to-Plan; driver archives the attempt (incl. brief) → UNPLANNED.</li>
 <li><strong>DISCONTINUED</strong> — §9 = discontinue; <strong>terminal</strong>, no transition and no archive: the bundle
 is deliberately abandoned and dropped from the active set (independent of §6 / the C6 guard).</li>
+<li><strong>RESOLVED</strong> — no <code>brief.md</code> ever authored, <strong>and</strong> the tracker item was already settled
+(closed as duplicate / wontfix / fixed elsewhere) before Plan touched it; <strong>terminal</strong>, no
+cycle ever ran (issue #302). Written by <code>pdca cleanup</code>'s tracker reconciliation, never by
+Plan. Distinct from DISCONTINUED, which abandons a bundle that <em>did</em> run a cycle.</li>
 <li><strong>iterate-to-Do</strong> — the fix was wrong, the spec right: rebuild against the same brief.</li>
 <li><strong>iterate-to-Plan</strong> — the spec was wrong: re-author the brief (old attempt archived to <code>iteration-v&lt;N&gt;/</code>).</li>
 </ul>
@@ -185,6 +198,13 @@ not fix-correctness.</li>
 evidence chain.</li>
 <li><strong>C6 accept-guard</strong> — accept is refused while §6 NEEDS-HUMAN has open items. Enforced by
 deterministic code, even when the decision is made in a model+human session.</li>
+<li><strong>Pre-dispatch guards</strong> (<code>[driver].dependency_guard</code>, <code>[driver].size_guard</code>) — plain-code
+checks against the brief, evaluated inside <code>advance()</code> before Do dispatches and again
+before Check dispatches (<a href="/spec/03-cycle-automation.html">03</a> §Pre-dispatch guards, issues #321
+/ #333). The dependency guard <strong>blocks</strong> (default <code>hold</code>) on a brief-declared external
+dependency with no matching <code>[[doctor.checks]]</code> row — moving an existing C6 refusal
+earlier, not adding a new one. The size guard is <strong>advisory only</strong> (default <code>off</code>; even
+<code>hold</code> is treated as <code>warn</code>), calibrated at 62% precision — not enough to gate on.</li>
 <li><strong>Per-beat rule prefixes</strong> — the guidelines are numbered by beat: <strong>P-</strong> (Plan), <strong>D-</strong>
 (Do), <strong>C-</strong> (Check), <strong>A-</strong> (Act) — e.g. P1, P8, C6, A1. A repo may add prefixed rules
 that <em>tighten</em> a generic one, never weaken it (<a href="/spec/06-quality-cycle-guidelines.html">06</a>).</li>

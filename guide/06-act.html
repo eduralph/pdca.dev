@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step 06 — Act: improve the process — PDCA Harness</title>
+<meta name="description" content="← 05 Check · Index · next: 07 Cross-cutting →">
+<meta property="og:title" content="Step 06 — Act: improve the process — PDCA Harness">
+<meta property="og:description" content="← 05 Check · Index · next: 07 Cross-cutting →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1>Step 06 — Act: improve the process</h1>
+<p>← <a href="/guide/05-check.html">05 Check</a> · <a href="/guide/">Index</a> · next: <a href="/guide/07-crosscutting.html">07 Cross-cutting →</a></p>
+<p><strong>Beat: Act.</strong> Touch point #3, and the last one. Plan/Do/Check operate on <strong>one
+contribution</strong>. Act operates on the <strong>process itself</strong>, across <em>many</em> completed
+cycles, on its own cadence (every N cycles, or weekly — <em>not</em> per-cycle). It's
+what closes the PDCA loop: turning what several cycles exposed into a
+permanently better baseline, so the <em>next</em> Plan starts from firmer ground.</p>
+<p>Two parts follow: <a href="#how-to-use"><strong>how to use</strong></a> it — the commands, and two real
+process deltas it produced — then <a href="#how-it-works"><strong>how it works</strong></a>
+underneath: the leaf, what it reads (and explicitly refuses to do), where a
+delta can land, and the cadence that keeps it from firing on noise.</p>
+<h2>How to use</h2>
+<pre><code class="language-bash">pdca act index                              # read-only: frozen cycles + recurring signals
+pdca act log --date 2026-06-12 --append     # scaffold a dated entry into process/act-log.md
+</code></pre>
+<p>Act reads the <code>COMPLETE</code> bundles' SUMMARYs — especially §6 (what needed a
+human), §7 (what stayed unproven), and §10 (Act candidates the cycle flagged)
+— looking for <strong>patterns</strong>. A one-off is noise; the same gap across three
+cycles is a process defect.</p>
+<h3>A real Act entry</h3>
+<p>This is from <code>gramps-testbed-v2/process/act-log.md</code> (2026-06-12), and it's the
+clearest demonstration of why the beat exists. A maintainer reviewing the
+<code>glade-setattr</code> cycle's published PR was asked to list a new <code>.py</code> file in
+<code>po/POTFILES</code> — a documented rule <strong>no gate owned</strong>:</p>
+<pre><code class="language-markdown"># Act review — 2026-06-12 — cycles considered: glade-setattr (PR #2356 review feedback)
+
+## What the cycles' records exposed
+- A documented doc-16 MUST with no owner in the cycle — surfaced by a maintainer
+  at review, not by any gate. Nick-Hall asked for the new test file to be listed
+  in `po/POTFILES.{in,skip}`. The rule is explicit and sourced ... It is not
+  exotic — it simply has no encoding in our T1–T4 ladder.
+- The omission fell through every beat. Plan: the brief never stated the
+  obligation. Do: the builder has no independent doc-16 checklist. Check/gates:
+  T1 is addon-only; T2 checks file *shape*; T4 checks the commit/PR *wrapper* —
+  none implement doc 16 §Translation Files. New-file→manifest registration falls
+  in the gap between T2 (shape) and T4 (wrapper); neither owns it.
+
+## Process deltas (candidates — routed for engineering, NOT applied here)
+- Gate (highest-value): add a bundle-scoped, deterministic check — for a *core*
+  bundle whose `patch.diff` adds a `.py` file, assert it appears in
+  `po/POTFILES.in` or `po/POTFILES.skip`. Directly implements doc 16:99-100, is
+  target-aware (core-only), and needs no Docker. Home: extend `t2_shape.py`.
+</code></pre>
+<p>Trace the loop: a human review comment (§ outside the gates) → Act
+<em>generalizes</em> it (&quot;this will recur on every core bundle that adds a file&quot;) →
+a concrete process delta (a new gate) → which, once built, means <strong>the next
+cycle's gates catch it automatically</strong> instead of a maintainer catching it at
+review. That is the &quot;→ back to Plan with a better baseline&quot; arrow made
+operational.</p>
+<p>Another entry shows Act tightening the <em>spec</em>, not the gates — the
+<code>issue_8653</code> cycle shipped a test that exercised a hand-ported copy of
+production rather than production itself; only the human's T5 judgment caught
+it:</p>
+<pre><code class="language-markdown">- Reference (applied): new principle §3.4 — test the production path: the success
+  evidence MUST exercise the production path; a parallel re-implementation that
+  mirrors production is not acceptable evidence. (docs/principles.md §3.4)
+- Spec template (applied): brief Test file field now reminds that the test must
+  drive the production path, not a parallel copy. (templates/brief.md.tpl)
+</code></pre>
+<p>That second delta is now also a <strong>mechanical</strong> check you can wire in: the
+reference <code>scripts/checks/test_exercises_production.py</code> (a <code>[[gates.checks]]</code>
+example, issue #154) asserts each <em>added</em> test file imports the production
+package and declares itself UNVERIFIABLE → §6 when it can't — promoting &quot;test
+the production path&quot; from a human-only T5 judgment to a
+deterministically-surfaced one.</p>
+<h3>Closing the loop — the process-delta ledger</h3>
+<p>A delta is only worth anything if it <em>works</em>. Act keeps a
+<code>process/act-ledger.json</code>: each recurring signal it surfaces is tracked
+<code>open</code>; once you land the fix you run</p>
+<pre><code class="language-bash">pdca act resolve &quot;&lt;signal&gt;&quot; --location &lt;path:line&gt;
+</code></pre>
+<p>to mark it <strong>applied</strong>; and on a later review Act flags any applied delta
+whose miss <strong>recurs</strong> in a cycle frozen after the applied date — a loud
+&quot;⚠ Ineffective deltas&quot; section in <code>act index</code> / the <code>act log</code> scaffold. So Act
+audits its own prescriptions instead of writing them and forgetting.</p>
+<hr />
+<h2>How it works</h2>
+<h3>The leaf Act uses</h3>
+<p>Act has one leaf — <code>act</code>, interactive, like <code>planner</code> and <code>signoff</code>: the human
+touch point is the whole beat, not a step inside it. The leaf instruments the
+process — presenting the bundle index and recurring-signal candidates — but
+<code>pdca act index</code>'s pattern-detection and the ledger are pure code; the leaf
+only helps you draft the dated entry.</p>
+<h3>What Act reads, and what it explicitly does not do</h3>
+<p>Act reads <code>COMPLETE</code> bundles only — frozen records, never anything in-flight.
+What it explicitly does <strong>not</strong> do: re-decide any disposition, re-run the
+suite, or write the next brief. It generalizes a pattern into a <em>candidate</em>
+delta; a human still judges what to actually change (what rule to add, which
+template field to revise, whether to retire a check) — the bundle index
+surfaces patterns, the human decides.</p>
+<h3>Where deltas land</h3>
+<p>Act deltas land in five places: the <strong>spec template</strong> (a brief field), the
+<strong>ruleset</strong> (a written rule), the <strong>gates</strong> (a new/promoted check), the
+<strong>agent role prompts</strong> (<code>agents/*.md</code>), or the <strong>orchestration</strong>
+(driver/state). Each is a permanent improvement to the baseline every future
+cycle starts from — the next Do should not recreate the issue the previous Act
+tried to eliminate; if it does, the Act wasn't effective (which is exactly what
+the ledger's &quot;⚠ Ineffective deltas&quot; check is for).</p>
+<h3>Cadence — why Act doesn't fire every cycle</h3>
+<p><code>[driver].act_cadence</code> (default <code>5</code>) is why &quot;every N cycles, not per-cycle&quot; is
+a real mechanism, not just a suggestion: <code>pdca flow</code> auto-runs Act only once
+this many cycles have frozen <strong>since the last Act review</strong>, counted across
+<code>flow</code> invocations (five separate one-bundle flows trip it on the fifth, same
+as one five-bundle batch would). Below the threshold, a flow skips Act with a
+hint instead of running it on too little evidence to show a pattern; <code>pdca act log</code> still runs it on demand any time, and <code>--no-act</code> always forces a skip.
+Set <code>act_cadence = 1</code> to restore &quot;run after every completed flow.&quot;</p>
+<h3>The loop, closed</h3>
+<div class="mermaid">
+flowchart LR
+    Plan --&gt; Do --&gt; Check --&gt; signoff[&quot;(sign-off)&quot;] --&gt; COMPLETE --&gt; publish[&quot;publish (draft PR)&quot;]
+    COMPLETE -.-&gt; Act[&quot;Act&lt;br/&gt;&lt;small&gt;every N cycles: turn recurring&lt;br/&gt;misses into spec/gate/rule deltas&lt;/small&gt;&quot;]
+    Act -.-&gt; Plan
+</div>
+<p>You've now walked one contribution from a tracker issue to a merged,
+signed-off, verified fix — and seen how the cycle feeds its own improvement.
+To do it for real, go back to <a href="/guide/01-render-and-integrate.html">step 01</a> and render
+the harness into your own project; the reference spec in
+<a href="/spec/"><code>../template/PCDA/quality-cycle/</code></a> is there
+when you want the <em>why</em> behind any beat.</p>
+<p>One more thing worth knowing before you go: three mechanisms — sizing/splitting
+an oversized brief, how an iterate actually archives and carries context
+forward, and running several cycles concurrently — cut across every beat above
+rather than belonging to one of them. <a href="/guide/07-crosscutting.html">Step 07</a> covers
+them.</p>
+<p>← <a href="/guide/05-check.html">05 Check</a> · <a href="/guide/">Index</a> · next: <a href="/guide/07-crosscutting.html">07 Cross-cutting →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+<script src="/assets/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral"});</script>
+</body>
+</html>

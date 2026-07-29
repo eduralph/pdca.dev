@@ -328,8 +328,8 @@ level path, separate from the per-issue bundles. Suggested name:
   ruleset/               # the current conformance ruleset (Tiers 1–4)
 </code></pre>
 <p>The leaf instruction files Act also maintains live at <code>.claude/agents/*.md</code> (the
-six subagents: planner, builder, reviewer, signoff, publisher, act) plus <code>AGENTS.md</code>
-for the cross-vendor reviewer.</p>
+eight subagents: planner, builder, reviewer, signoff, publisher, act, sizer,
+splitter) plus <code>AGENTS.md</code> for the cross-vendor reviewer.</p>
 <p>The minimal per-cycle bundle is <code>SUMMARY.md</code>, <code>patch.diff</code>, <code>pr-description.md</code>, <code>tracker-comment.md</code>, <code>MANUAL-VERIFICATION.md</code>. The operational layer above adds <code>brief.md</code> (names the Plan artifact explicitly), <code>build-notes.md</code> (separates builder rationale for the independence contract), and the two <code>check-*</code> artifacts (makes Check's product auditable rather than implicit), and reframes <code>SUMMARY.md</code> as ending in <strong>Check sign-off</strong> (§9), with §10 as a lightweight feeder to the <em>project-level</em> Act log.</p>
 
     </article>

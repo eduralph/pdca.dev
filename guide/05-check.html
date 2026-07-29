@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Step 05 — Check: gates, reviewer, and the assembled SUMMARY — PDCA Harness</title>
-<meta name="description" content="← 04 Do · Index · next: 06 Sign-off →">
-<meta property="og:title" content="Step 05 — Check: gates, reviewer, and the assembled SUMMARY — PDCA Harness">
-<meta property="og:description" content="← 04 Do · Index · next: 06 Sign-off →">
+<title>Step 05 — Check: gates, reviewer, sign-off, and publish — PDCA Harness</title>
+<meta name="description" content="← 04 Do · Index · next: 06 Act →">
+<meta property="og:title" content="Step 05 — Check: gates, reviewer, sign-off, and publish — PDCA Harness">
+<meta property="og:description" content="← 04 Do · Index · next: 06 Act →">
 <meta property="og:type" content="article">
 <link rel="stylesheet" href="/assets/style.css">
 </head>
@@ -35,31 +35,34 @@
   <main>
     <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
     <article class="prose">
-<h1>Step 05 — Check: gates, reviewer, and the assembled SUMMARY</h1>
-<p>← <a href="/guide/04-do.html">04 Do</a> · <a href="/guide/">Index</a> · next: <a href="/guide/06-signoff.html">06 Sign-off →</a></p>
-<p><strong>Beat: Check.</strong> This is the substance of the harness. Check verifies the built
-artifact against the spec along <strong>three axes — the &quot;5/5/1&quot;</strong> — using three
-mechanisms that run in order, then assembles everything into one document for the
-human: <code>SUMMARY.md</code>.</p>
-<pre><code>BUILT ─► gates (deterministic) ─► reviewer (advisory) ─► assemble SUMMARY ─► AWAITING_SIGNOFF
-         check-gates.{md,json}     check-review.md        (driver stops here)
-</code></pre>
-<h2>The 5/5/1</h2>
-<p>Check asks three different kinds of question:</p>
-<ul>
-<li><strong>5 correctness</strong> — does it work? <code>C1</code> spec · <code>C2</code> reproduction (red pre-fix) ·
-<code>C3</code> change · <code>C4</code> verification (green post-fix) · <code>C5</code> causal adequacy.</li>
-<li><strong>5 conformance</strong> — does it fit the project? <code>T1</code> structure · <code>T2</code> shape · <code>T3</code>
-runtime · <code>T4</code> contribution · <code>T5</code> judgment.</li>
-<li><strong>1 validation</strong> — is it the <em>right</em> thing? (scope, success criterion, root
-cause vs symptom) — a human call.</li>
-</ul>
-<p>Of these, the deterministic ones run as <strong>gates</strong>; <code>C5</code>, <code>T5</code>, and validation are
-inherently judgment and route to the reviewer and to you.</p>
-<h2>1. Gates — the deterministic oracles</h2>
-<p>The gates you wired in <a href="/guide/01-render-and-integrate.html">step 01</a> run automatically.
-Each emits a row: check, result, oracle, and whether it's gating. Here is the
-real <code>results/issue_11589/check-gates.md</code>:</p>
+<h1>Step 05 — Check: gates, reviewer, sign-off, and publish</h1>
+<p>← <a href="/guide/04-do.html">04 Do</a> · <a href="/guide/">Index</a> · next: <a href="/guide/06-act.html">06 Act →</a></p>
+<p><strong>Beat: Check.</strong> The substance of the harness, and the biggest beat by far —
+because Check isn't just gates and a reviewer. Per the model, <strong>sign-off and
+publish are steps of Check too</strong>: gates and the reviewer run unattended
+(<strong>full</strong> automation); sign-off is the human completing Check (<strong>instrumented</strong>
+— touch point #2); publish is Check's closing work, turning an accepted bundle
+into a contribution. One beat, four parts, only one of them human.</p>
+<div class="mermaid">
+flowchart LR
+    BUILT --&gt; gates[&quot;gates (deterministic)&lt;br/&gt;&lt;small&gt;check-gates.{md,json}&lt;/small&gt;&quot;]
+    gates --&gt; reviewer[&quot;reviewer (advisory)&lt;br/&gt;&lt;small&gt;check-review.md&lt;/small&gt;&quot;]
+    reviewer --&gt; assemble[&quot;assemble SUMMARY&quot;]
+    assemble --&gt; AWAITING_SIGNOFF[&quot;AWAITING_SIGNOFF&lt;br/&gt;&lt;small&gt;driver stops here&lt;/small&gt;&quot;]
+    AWAITING_SIGNOFF --&gt; signoff[&quot;sign-off (§9)&lt;br/&gt;&lt;small&gt;human — touch point #2&lt;/small&gt;&quot;]
+    signoff --&gt; COMPLETE
+    COMPLETE --&gt; publish[&quot;publish&lt;br/&gt;&lt;small&gt;draft PR&lt;/small&gt;&quot;]
+</div>
+<p>Two parts follow: <a href="#how-to-use"><strong>how to use</strong></a> it — the commands, and two
+real worked examples (an accept, and a two-round iterate) — then
+<a href="#how-it-works"><strong>how it works</strong></a> underneath: the 5/5/1 model, the leaves
+involved, gate mechanics, the reviewer's isolation sandbox, SUMMARY assembly,
+the C6 accept-guard, and how a batch publishes as waves.</p>
+<h2>How to use</h2>
+<h3>The gates run automatically</h3>
+<p>The gates you wired in <a href="/guide/01-render-and-integrate.html">step 01</a> run as part of
+<code>pdca flow</code> — nothing to type. Each emits a row: check, result, oracle, and
+whether it's gating. Here is the real <code>results/issue_11589/check-gates.md</code>:</p>
 <pre><code class="language-markdown"># Check gates — issue_11589
 
 **Overall (gating): pass**
@@ -79,28 +82,27 @@ real <code>results/issue_11589/check-gates.md</code>:</p>
 | T3 runtime: addon unit suites | fail | run-addon-unit.sh | pip install logs (3 failures) [baseline] | no |
 | T4 contribution | pass | gate.py T4 | N/A: no commit-msg.txt | no |
 </code></pre>
-<p><strong><code>Overall (gating): pass</code> even though three rows say <code>fail</code>.</strong> This is the whole
-point of the gating/advisory split. The only gating check — <code>C4-verify</code>, the
-red→green proof — passed, so the contribution is <em>correct</em>. The failing rows are
-all <strong>advisory</strong>: a GPL-header gap in a file the patch never touched, and two
-runtime suites failing with <code>[baseline]</code> signatures (a pre-existing core segfault
-and an environmental pip issue). They don't block — but they don't vanish either.
-They become NEEDS-HUMAN items.</p>
-<blockquote>
-<p><strong><code>[baseline]</code> vs <code>[delta]</code>.</strong> gramps' T3 gate baseline-diffs: a known
-pre-existing failure is tagged <code>[baseline]</code> (ignore — not your fix's fault); a
-<em>new</em> failure is <code>[delta]</code> (your fix may have caused it). You'll see a <code>[delta]</code>
-bite in <a href="/guide/06-signoff.html">step 06</a>.</p>
-</blockquote>
-<p><strong>Promoting a check.</strong> A new gate should earn the right to block. Give a check
-<code>promote_after = N</code> and run <code>pdca gates --promotions</code>: it lists the advisory checks that
-have <strong>passed in their N most-recent frozen cycles</strong> — earned promotion from advisory to
-gating. It's a hint; you flip <code>gating = true</code> yourself (nothing is auto-mutated). That is
-the Act &quot;promote a check&quot; delta, with a concrete trigger (issue #156).</p>
-<h3>Delegating to a host runner</h3>
-<p>If your project already single-sources its gates in its own runner (<code>cargo xtask</code>,
-<code>make</code>, <code>just</code>, …), don't re-declare them in <code>pdca.toml</code> — <strong>delegate</strong>. Set a runner
-and give each check a bare <code>subcmd</code>:</p>
+<p><strong><code>Overall (gating): pass</code> even though three rows say <code>fail</code>.</strong> The only gating
+check — <code>C4-verify</code>, the red→green proof — passed, so the contribution is
+<em>correct</em>. The failing rows are all <strong>advisory</strong>: a GPL-header gap in a file
+the patch never touched, and two runtime suites failing with <code>[baseline]</code>
+signatures (a pre-existing core segfault and an environmental pip issue). They
+don't block — but they don't vanish either. They become NEEDS-HUMAN items,
+below.</p>
+<p>You can also run the gate set standalone, the same code the driver and CI both
+call:</p>
+<pre><code class="language-bash">pdca gates 11589                # this bundle's gates, printed, nothing recorded
+pdca gates --working-tree       # repo-scoped gates only — the CI merge re-gate
+pdca gates --promotions         # advisory checks clean for their promote_after cycles
+</code></pre>
+<p><code>--promotions</code> is the <strong>promote-a-check</strong> workflow: give a check
+<code>promote_after = N</code> in <code>pdca.toml</code> and this lists the advisory checks that have
+<strong>passed in their N most-recent frozen cycles</strong> — earned promotion from
+advisory to gating. It's a hint; you flip <code>gating = true</code> yourself, nothing is
+auto-mutated. That's the Act &quot;promote a check&quot; delta, with a concrete trigger
+(issue #156).</p>
+<p>If your project already single-sources its gates in its own runner (<code>cargo xtask</code>, <code>make</code>, <code>just</code>, …), don't re-declare them in <code>pdca.toml</code> —
+<strong>delegate</strong>. Set a runner and give each check a bare <code>subcmd</code>:</p>
 <pre><code class="language-toml">[gates]
 runner = &quot;cargo xtask&quot;
 checks = [
@@ -108,166 +110,498 @@ checks = [
   { id = &quot;T3-suite&quot;,  tier = &quot;T3&quot;, label = &quot;runtime suite&quot;,           subcmd = &quot;test&quot;,   gating = false, scope = &quot;repo&quot; },
 ]
 </code></pre>
-<p>PDCA runs <code>cargo xtask verify</code> / <code>cargo xtask test</code> and maps the results onto the
-5/5/1 — the host runner stays the single source of truth; PDCA only orchestrates it.
-A full <code>cmd</code> (e.g. <code>cmd = &quot;cargo xtask ci&quot;</code>) still works for wholesale delegation. A
-missing runner surfaces as a clear failing row (<code>runner '…' not found on PATH</code>), never
-a crash. Set it at render time with the <code>gates_runner</code> copier question, or later in
-<code>pdca.toml</code>.</p>
-<h2>2. Reviewer — the decorrelated second opinion</h2>
-<p>Next the <code>reviewer</code> leaf runs against <code>{patch.diff, test, brief.md, check-gates.json}</code> — <strong>not</strong> <code>build-notes.md</code> (<a href="/guide/04-do.html">step 04</a> explained why).
-It re-runs the asserted evidence (stash → confirm red, unstash → confirm green),
-re-checks that cited <code>path:line</code>s exist on the target branch, and flags scope
-creep. Its output, <code>check-review.md</code>, is <strong>advisory</strong> — it annotates, it never
-gates. The blocking path contains no LLM at all.</p>
-<p>The reviewer runs in an isolation sandbox (only <code>{patch.diff, brief.md, check-gates.json}</code> are present), so the driver hands it a read-only grounding target as
-<strong><code>$PDCA_TARGET</code></strong> (for a <code>claude</code> reviewer also via <code>--add-dir</code>). That target is the
-<strong>per-cycle worktree</strong> (<a href="/guide/04-do.html">step 04</a>) — pinned to the <em>same</em> base the gates ran
-against and carrying the patch — so a stale or unreadable sibling checkout can't drift
-the reviewer's grounding (issue #120); when worktree isolation is off it falls back to
-the brief's target checkout, freshly fetched (refs only — never resetting your working
-tree). The reviewer grounds every citation there and is told <strong>not</strong> to wander into
-other checkouts on the machine — without this it can't ground, or hunts the filesystem
-for &quot;the target&quot; (issue #75).</p>
+<p>PDCA runs <code>cargo xtask verify</code> / <code>cargo xtask test</code> and maps the results onto
+the 5/5/1 — the host runner stays the single source of truth; PDCA only
+orchestrates it. A full <code>cmd</code> (e.g. <code>cmd = &quot;cargo xtask ci&quot;</code>) still works for
+wholesale delegation. A missing runner surfaces as a clear failing row
+(<code>runner '…' not found on PATH</code>), never a crash. Set it at render time with the
+<code>gates_runner</code> copier question, or later in <code>pdca.toml</code>.</p>
+<h3>Adding a second opinion</h3>
+<p>The <code>reviewer</code> leaf is configured for you already (<a href="/guide/01-render-and-integrate.html">step 01</a>).
+For <strong>other lenses</strong> — correctness bugs the patch introduces,
+reuse/simplification/efficiency cleanups — add <strong>advisory reviewer leaves</strong>
+(issue #64): an open <code>[[leaves.advisory]]</code> list in <code>pdca.toml</code>, each a
+role-distinct, model-agnostic (<code>family</code> + <code>argv</code>) leaf. Each writes
+<code>check-advisory-&lt;id&gt;.md</code>; its <code>- NEEDS-HUMAN —</code> findings fold into §6 like the
+reviewer's, and they're <strong>always advisory</strong> (never gate). Condition one on a
+brief field with <code>when = { field = …, substring = … }</code> (e.g. run a deeper
+review only when the brief says so). A shipped <code>code-review</code> agent realizes
+the correctness+cleanup lens for a <code>claude</code> instance; <code>family = &quot;codex&quot;</code> swaps
+the vendor. A second shipped agent, <code>adversary</code> (issue #151), is a
+<strong>refutation</strong> lens — it tries to <em>disprove</em> the red→green evidence and the
+reviewer's verdict, defaulting to &quot;refuted&quot; when uncertain; the <code>pdca.toml</code>
+example gates it on <code>Difficulty: high</code> so it runs only on the highest
+blast-radius bundles.</p>
+<p><strong>Automatic vendor complement (issue #200).</strong> Cross-vendor decorrelation is the
+ideal, but the builder that <em>actually</em> runs isn't fixed — an explicit <code>Do model</code> (#167), difficulty routing (#134), or escalation (#135) can pick Codex
+for one bundle and Claude for the next, which can leave a statically-configured
+advisory <em>same-vendor</em> as the builder. Opt into
+<code>[leaves.advisory_selection] mode = &quot;vendor-complement&quot;</code> to let the driver do
+the pairing: it treats the <code>[[leaves.advisory]]</code> list as a <strong>vendor pool</strong> and
+runs the single leaf whose <code>family</code> differs from the builder that ran. Declare
+one leaf per vendor (same <code>role</code>, different <code>family</code>) and a Codex-built bundle
+gets the Claude advisory while a Claude-built bundle gets the Codex one, with
+no per-brief edits. If no leaf differs from the builder it falls back to the
+first applicable leaf and files the lapse as a §6 <code>NEEDS-HUMAN</code> so you can see
+decorrelation didn't hold.</p>
+<h3>Trying the build by hand — <code>pdca try &lt;id&gt;</code></h3>
+<p>Some §6 rows are irreducibly a <strong>run-it-yourself</strong> call — a GUI/visual repro,
+or the validation act (&quot;is this the right thing?&quot;) for a change no headless
+test can exercise. <code>pdca try &lt;id&gt;</code> closes that gap: it <strong>materializes the
+patched build on demand from the bundle's <code>patch.diff</code></strong> and hands you the
+terminal so you can drive the app and see the fix for yourself:</p>
+<pre><code class="language-bash">pdca try 11589
+</code></pre>
+<p>It runs the project's <code>[manual_test].cmd</code> (e.g. <code>python -m gramps</code>) from
+<code>$PDCA_WORKTREE</code>, and imposes no timeout — you quit the app to return. It's
+<strong>advisory</strong>: it decides nothing and mutates nothing in the bundle; you record
+what you saw in a Manual-verification note and carry it into the §9 sign-off,
+below. It works for <strong>any built/parked bundle in turn</strong> — exactly the
+batch-then-review cadence, where you <code>pdca try</code> each bundle as you sign it off.
+Needs <code>[driver].worktree</code> on and a configured <code>[manual_test].cmd</code>; otherwise it
+prints a one-line hint and changes nothing.</p>
+<h3>What a real §6 looks like, and clearing it</h3>
+<p>The driver folds brief + gates + review into <code>SUMMARY.md</code>. Here is the real
+§6 from issue 11589 — the advisory gate failures above, turned into explicit,
+adjudicable questions (shown already cleared, <code>- [x]</code>):</p>
+<pre><code class="language-markdown">## 6. NEEDS-HUMAN — items the human must clear before sign-off
+- [x] T2 — Gate failed on `__init__.py: no GPL licence header` — but no
+  `__init__.py` appears in `patch.diff`. Both files the patch *does* touch are
+  shape-clean. The violation sits in an untouched bundle file → human must decide
+  whether the pre-existing gap blocks this contribution.
+- [x] T3 — All three runtime suites are `fail` but the failure modes are not
+  plausibly caused by a 2-file addon change: core unit `Trace/breakpoint trap
+  (core dumped)` (segfault in gramps core, which the diff never touches),
+  addon-unit `pip install logs` (env), interface `_ErrorHolder`. Marked
+  &quot;whole-suite baseline&quot; — human must diff against baseline to confirm these are
+  pre-existing, not regressions.
+- [x] T5 — Always-human element. Overall contribution judgment — code quality,
+  idiom fit, whether the sibling-detection approach is the right shape.
+- [x] V — Validation — Whether the change solves the user's problem against the
+  *real* FilterRules pack layout (13 rule pairs in one dir), not just the temp-dir
+  stand-in, is a fitness-to-purpose call only the human can make.
+</code></pre>
+<p>This is the harness working as designed: the deterministic gate proved
+correctness (<code>C4</code> green) and <em>surfaced</em> everything it couldn't adjudicate — a
+header gap of ambiguous scope, environmental test noise, and the two
+irreducibly human checks (<code>T5</code> judgment, <code>V</code> validation) — as a short, specific
+checklist. You aren't re-reading the whole diff; you're answering four pointed
+questions.</p>
+<h3>Signing off — the four dispositions</h3>
+<pre><code class="language-bash">pdca signoff &lt;id&gt; --accept        # the fix is good → COMPLETE, ready to publish
+pdca signoff &lt;id&gt; --iterate-do    # right spec, wrong build → rebuild against same brief
+pdca signoff &lt;id&gt; --iterate-plan  # the spec itself was wrong → re-author the brief
+pdca signoff &lt;id&gt; --discontinue   # this doesn't belong in the cycle → abandon
+</code></pre>
+<p>Add <code>--by &quot;Name&quot;</code> to set attribution and <code>--delta &quot;…&quot;</code> to record the rationale
+on an iterate. <code>--accept</code> is refused while any §6 item is unchecked (the C6
+guard, below); the other three are not — you can redirect or abandon a bundle
+with §6 still open.</p>
+<p><strong>The simple case.</strong> For issue 11589, the gates proved correctness and the four
+§6 items above were all cleared, so the maintainer accepted. The real
+<code>results/issue_11589/SUMMARY.md</code> §9:</p>
+<pre><code class="language-markdown">## 9. Check sign-off                     ← human completes Check here
+- Disposition confirmed / overridden:
+- Outcome: merged-wider
+- Iteration delta (if iterating):
+- By / date: Eduard Ralph / 2026-06-06
+</code></pre>
+<p><code>Outcome: merged-wider</code> ⇒ state <code>COMPLETE</code>. The bundle is frozen and ready for
+publish, below.</p>
+<p><strong>The instructive case.</strong> Acceptance is the boring path — the cycle earns its
+keep on <strong>iteration</strong>, when you catch something the gates can't. gramps issue
+46 (a GraphView import-safety fix) took <strong>two</strong> iterations before it was
+accepted. The brief's own carry-forward records <em>why</em> the first attempt was
+rejected — a real <code>--iterate-do</code> rationale, verbatim:</p>
+<pre><code class="language-markdown">## Iteration 1 — carry-forward (from the previous attempt)
+- Sign-off rationale: Reject: the regression test reimplements GTK load/version-
+  pinning (test_graphview_import.py:80-82, top-level `import gi` +
+  gi.require_version(&quot;Gtk&quot;,&quot;3.0&quot;)). GTK loading/pinning is already owned by gramps
+  at runtime and by PR 950 in unit testing, so this machinery must not be in the
+  addon test — it is redundant and is the likely cause of the two T3 addon-unit
+  exit-2 collection aborts. Rebuild the test without any manual gi/Gtk pinning;
+  keep the production change (removal of the two import-time raises) as-is.
+  Re-run T3 addon-unit and E2E ...
+</code></pre>
+<p>What happened mechanically:</p>
+<ol>
+<li><strong>Iteration 1</strong> built a fix whose <em>production change was correct</em> but whose
+<em>test</em> carried redundant GTK-pinning machinery. The C4 gate went green (the
+fix worked), but the maintainer noticed the test introduced two new
+<code>[delta]</code> failures in the T3 addon-unit matrix — a regression the test
+itself caused. (<code>[baseline]</code> = a known pre-existing failure, ignore;
+<code>[delta]</code> = new, your fix may have caused it.)</li>
+<li>The maintainer ran <code>pdca signoff 46 --iterate-do --delta &quot;rebuild the test without the gi pin; keep the production change&quot;</code>. The driver archived the
+attempt into <code>iteration-v1/</code>, reverted to <code>PLANNED</code>, and re-ran the
+builder — which got the rejection rationale folded into the brief (above),
+so it didn't repeat the mistake.</li>
+<li><strong>Iteration 2</strong> rebuilt the test without the pin. Accepted:</li>
+</ol>
+<pre><code class="language-markdown">## 9. Check sign-off
+- Outcome: merged-wider
+- Iteration delta (if iterating): [iteration 2 — rebuilt test without gi pin]
+- By / date: Eduard Ralph / 2026-06-13
+</code></pre>
+<p>The lesson: <strong>the deterministic C4 gate said &quot;correct,&quot; and it was right — but
+&quot;correct fix&quot; is not &quot;good contribution.&quot;</strong> A test that pins GTK is correct
+<em>and</em> redundant <em>and</em> regression-inducing; only the human reading the §6/§7
+material caught it. The harness didn't prevent the mistake — it <strong>surfaced it
+cheaply</strong>, gave the human a clean &quot;reject with reason&quot; lever, and <strong>carried
+the reason forward</strong> so the rebuild started smarter.</p>
+<h3>Publishing the accepted fix</h3>
+<p><strong>Accept publishes by default everywhere</strong> (#97): both <code>pdca flow</code> and a
+standalone <code>pdca signoff &lt;id&gt; --accept</code> run publish on an accept, so &quot;approved&quot;
+doesn't silently stay &quot;unpublished&quot;; pass <code>--no-publish</code> to opt out (then it's
+<em>deliberately</em> unpublished, not by accident). You can also run it standalone:</p>
+<pre><code class="language-bash">pdca publish 11589              # open the draft PR
+pdca publish 11589 --dry-run    # print the git/gh plan without pushing
+</code></pre>
+<p><code>pdca status</code> (and bare <code>pdca</code>) shows each <code>COMPLETE</code> bundle's publish state —
+<code>[PR &lt;url&gt;]</code> when a PR was opened, <code>[unpublished]</code> when it wasn't (dry-run /
+no-target / failed / not-yet-run), <code>[close: no PR]</code> for a close/no-fix bundle —
+so an accepted-but-unpublished cycle is visible at a glance. It writes
+<code>publish.json</code> into the bundle and uses the project's PR conventions from
+INTEGRATION §8. For gramps that's a four-section body (Root cause / Fix /
+Verified against / Test), and — because 11589 touches an addon — an <code>## Affected addon</code> section that @-mentions the addon's maintainer (INTEGRATION §10).</p>
+<p>In gramps' git history you can see cycles land this way — each result bundle
+gets a branch and a PR:</p>
+<pre><code>c52c6a4 Merge pull request #105 from eduralph/results/issue-46-graphview-import
+f1092ca results(46): record published GraphView import-safety cycle
+</code></pre>
+<p>That's one full cycle, <a href="/guide/03-plan.html">steps 03–05</a>, from tracker issue to merged
+record.</p>
+<p><strong>Undoing one.</strong> If a landed fix turns out wrong, <code>pdca revert &lt;id&gt;</code> undoes the
+contribution from its recorded <code>publish.json</code>: a <strong>merged</strong> PR gets a draft
+<strong>revert PR</strong> (reverse-applying the bundle's own <code>patch.diff</code> onto the base —
+no guessing the merge commit), and an <strong>open</strong> one is <strong>withdrawn</strong>
+(<code>gh pr close --delete-branch</code>). STOP discipline holds — the revert PR opens as
+a draft for you to merge (issue #158).</p>
+<hr />
+<h2>How it works</h2>
+<h3>The leaves Check uses</h3>
+<p>Three leaves, plus an optional pool:</p>
+<ul>
+<li><strong><code>reviewer</code></strong> — headless, the decorrelated second opinion. Covered in full
+below — what it reads, its isolation sandbox, and the security model around
+it.</li>
+<li><strong><code>signoff</code></strong> — interactive, touch point #2. There's no model judgment here;
+the leaf just instruments the human recording §9. <code>pdca signoff</code> (above) is
+the one-command capture.</li>
+<li><strong><code>publisher</code></strong> — interactive, Check's closing work. Turns an accepted bundle
+into a draft PR per your project's conventions (INTEGRATION §8).</li>
+<li><strong><code>[[leaves.advisory]]</code></strong> (optional) — any number of extra reviewer-shaped
+leaves for other lenses (correctness, cleanup, refutation). Never gate.</li>
+</ul>
+<h3>The 5/5/1</h3>
+<p>Check asks three different <em>kinds</em> of question, and the 5/5/1 names their
+shape as much as their content: correctness is a <strong>chain</strong> (five ordered,
+dependent steps — you can't verify without a reproduction), conformance is a
+<strong>stack</strong> (five independent layers checked in parallel — Tier 1 passing
+doesn't gate Tier 3), and validation is one <strong>indivisible act</strong> — it doesn't
+decompose, because judgment of fitness-to-purpose isn't a checklist. That
+shape is exactly the deterministic/human boundary: what can be a chain or a
+stack can be automated; what's irreducibly one judgment call can't.</p>
+<h4>Correctness — is it <em>right</em>, relative to the spec?</h4>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What it asks</th>
+<th>Who answers it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>C1</code> Spec</td>
+<td>What does &quot;fixed&quot; mean?</td>
+<td><strong>Input</strong> from Plan (<code>brief.md</code>'s Success criterion) — not work Check performs</td>
+</tr>
+<tr>
+<td><code>C2</code> Reproduction</td>
+<td>Can the defect be made to fail, on demand?</td>
+<td><strong>Gate</strong> — the red proof, pre-fix</td>
+</tr>
+<tr>
+<td><code>C3</code> Change</td>
+<td>What did Do actually write?</td>
+<td><strong>Input</strong> from Do (<code>patch.diff</code>) — not work Check performs</td>
+</tr>
+<tr>
+<td><code>C4</code> Verification</td>
+<td>Does the shipped test now pass?</td>
+<td><strong>Gate</strong> — the green proof, post-fix</td>
+</tr>
+<tr>
+<td><code>C5</code> Causal adequacy</td>
+<td>Does the fix address the <em>root cause</em>, or just this symptom?</td>
+<td><strong>Judgment</strong> — reviewer (advisory) + you at sign-off</td>
+</tr>
+</tbody>
+</table>
+<p><code>C1</code> and <code>C3</code> carry no tooling of their own — they're listed to keep the chain
+complete, but they're artifacts Check <em>receives</em>, not artifacts Check
+<em>produces</em>. <code>C2</code> and <code>C4</code> are the two gates you've already seen: they're what
+<code>C4-verify</code> in the real gate table above actually is — one runner asserting
+red-without-the-fix and green-with-it. <code>C5</code> is where &quot;the test passed&quot; stops
+being enough: a fix can make <code>C2</code>→<code>C4</code> go red→green by patching the symptom
+one call site at a time and still be structurally wrong — <code>C5</code> is the reviewer
+(and, if it can't settle it, you) asking whether the <em>class</em> of defect named in
+the brief's <code>Invariant to restore</code> (<a href="/guide/03-plan.html">step 03</a>) is actually gone.</p>
+<h4>Conformance — is it <em>well-formed</em>, independent of whether it's right?</h4>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>What it asks</th>
+<th>Who answers it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>T1</code> Structure</td>
+<td>Is the change shaped where the project expects it — right directory, right registration, required files present?</td>
+<td><strong>Gate</strong></td>
+</tr>
+<tr>
+<td><code>T2</code> Shape</td>
+<td>Does the code follow the project's own style/pattern rules — the ones a linter or a semgrep rule can catch?</td>
+<td><strong>Gate</strong></td>
+</tr>
+<tr>
+<td><code>T3</code> Runtime</td>
+<td>Does it actually <em>run</em> — dependencies resolve, no crash on load, existing suite still green?</td>
+<td><strong>Gate</strong></td>
+</tr>
+<tr>
+<td><code>T4</code> Contribution</td>
+<td>Does the commit/PR itself follow convention — message format, branch target, tracker trailer?</td>
+<td><strong>Gate</strong></td>
+</tr>
+<tr>
+<td><code>T5</code> Judgment</td>
+<td>Is it good code <em>as a contribution</em> — idiom fit, one logical fix, scope creep?</td>
+<td><strong>Judgment</strong> — reviewer (advisory) + you at sign-off</td>
+</tr>
+</tbody>
+</table>
+<p>You've already seen these in the real gate table earlier on this page: T1
+&quot;1 addon(s) conform,&quot; T2 &quot;no GPL header,&quot; the two T3 runtime rows, T4 &quot;N/A: no
+commit-msg.txt&quot; — those five rows <em>are</em> T1–T5, run against one real bundle.
+Notice conformance says nothing about whether the fix <em>works</em> — a change can
+be perfectly well-formed (right directory, clean style, green suite,
+conventional commit) and still be the wrong fix, or vice versa. That
+independence is why they're a stack, not a chain: a <code>T2</code> failure never blocks
+on a <code>T1</code> result, and neither has anything to do with <code>C4</code>.</p>
+<h4>Validation — is it the <em>right thing</em>, at all?</h4>
+<p>One question, never split further: given everything the cycle has produced —
+the spec, the report, the fix — should this ship <em>at all</em>? A conformant,
+causally-adequate fix can still be validation-<code>FAIL</code> if it solves a problem
+nobody has, scopes wider than the report warranted, or the &quot;root cause&quot; it
+targeted isn't actually what the user meant by the bug. There's no tier
+ladder here because fitness-to-purpose isn't decomposable into independent
+checks the way conformance is — it's always the reviewer attempting it,
+advisory, and always you confirming it at sign-off; no gate ever touches it.</p>
+<h4>Why the shape matters</h4>
+<p>Every cell above is exactly one of three things: an <strong>input</strong> (<code>C1</code>, <code>C3</code> —
+not Check's work), a <strong>gate</strong> (<code>C2</code>, <code>C4</code>, <code>T1</code>–<code>T4</code> — deterministic,
+mechanical, blocks accept on fail), or <strong>judgment</strong> (<code>C5</code>, <code>T5</code>, validation —
+always routes to the reviewer first and you last, never gates). That
+three-way split is the same one <a href="/guide/07-crosscutting.html#auto-iterate-the-driver-deciding-for-itself">auto-iterate</a>
+reads to decide whether it's safe to rebuild without asking you: only a §6
+item tagged <code>gate</code> is eligible — the driver can plausibly fix a <code>C2</code>/<code>C4</code>/<code>T1</code>–<code>T4</code>
+finding by rebuilding, but it can never rebuild its way past a <code>C5</code>/<code>T5</code>/validation
+finding, because those were never mechanical questions to begin with. A gate
+can also come back <strong><code>unverifiable</code></strong> — it genuinely couldn't run its check
+(a missing fixture, a skipped environment) rather than having run and failed —
+which is neither pass nor fail; it routes to §6 like a judgment cell would,
+because &quot;we don't know&quot; and &quot;we checked and it's wrong&quot; need different
+responses from you.</p>
+<p>The three mechanisms — gates, reviewer, assembly — run in that order, next.</p>
+<h3>Gates — the deterministic oracles</h3>
+<p>Gates are deterministic Check commands with a pass/fail result, each tagged
+<strong>gating</strong> (blocks a sign-off) or <strong>advisory</strong> (informs only). <code>Overall (gating)</code> is the AND of every gating row; any advisory row can fail without
+touching it. That split is the whole point: it's why a pre-existing
+environmental failure never blocks a correct fix, and why a real regression
+still can't slip through as an advisory footnote — a <strong>gating</strong> row that
+hard-FAILS also lands in §6 (issue #166), covered under the C6 guard below.</p>
+<h3>Reviewer — the decorrelated second opinion</h3>
+<p>The <code>reviewer</code> leaf runs against <code>{patch.diff, test, brief.md, check-gates.json}</code> — <strong>not</strong> <code>build-notes.md</code> (<a href="/guide/04-do.html">step 04</a> explained
+why). It re-runs the asserted evidence (stash → confirm red, unstash → confirm
+green), re-checks that cited <code>path:line</code>s exist on the target branch, and flags
+scope creep. Its output, <code>check-review.md</code>, is <strong>advisory</strong> — it annotates, it
+never gates. The blocking path contains no LLM at all.</p>
+<p>The reviewer runs in an isolation sandbox (only <code>{patch.diff, brief.md, check-gates.json}</code> are present), so the driver hands it a read-only grounding
+target as <strong><code>$PDCA_TARGET</code></strong> (for a <code>claude</code> reviewer also via <code>--add-dir</code>).
+That target is the <strong>per-cycle worktree</strong> (<a href="/guide/04-do.html">step 04</a>) — pinned to the
+<em>same</em> base the gates ran against and carrying the patch — so a stale or
+unreadable sibling checkout can't drift the reviewer's grounding (issue #120);
+when worktree isolation is off it falls back to the brief's target checkout,
+freshly fetched (refs only — never resetting your working tree). The reviewer
+grounds every citation there and is told <strong>not</strong> to wander into other
+checkouts on the machine — without this it can't ground, or hunts the
+filesystem for &quot;the target&quot; (issue #75).</p>
 <h4>Runtime tests that bind a loopback socket</h4>
-<p>That isolation sandbox is a <em>temp working directory</em>, not an OS jail. The jail a leaf
-actually runs under is <strong>Claude Code's own</strong> (bubblewrap + seccomp on Linux), and by
-default it refuses <code>bind()</code> on a loopback socket — so a runtime test that does
-<code>TcpListener::bind(&quot;127.0.0.1:0&quot;)</code> (a loopback-gRPC server, a test HTTP listener) panics
-with <code>Operation not permitted</code> <em>before its assertion runs</em>. Compile and non-socket unit
-legs pass; only the socket-backed path fails, so C2/C4/T3 can never earn an automated
-red→green (issue #261).</p>
+<p>That isolation sandbox is a <em>temp working directory</em>, not an OS jail. The jail
+a leaf actually runs under is <strong>Claude Code's own</strong> (bubblewrap + seccomp on
+Linux), and by default it refuses <code>bind()</code> on a loopback socket — so a runtime
+test that does <code>TcpListener::bind(&quot;127.0.0.1:0&quot;)</code> (a loopback-gRPC server, a
+test HTTP listener) panics with <code>Operation not permitted</code> <em>before its
+assertion runs</em>. Compile and non-socket unit legs pass; only the socket-backed
+path fails, so C2/C4/T3 can never earn an automated red→green (issue #261).</p>
 <p>The rendered project's <code>.claude/settings.json</code> therefore sets:</p>
 <pre><code class="language-json">{ &quot;sandbox&quot;: { &quot;network&quot;: { &quot;allowLocalBinding&quot;: true } } }
 </code></pre>
-<p>and the driver <strong>seeds that one setting into the leaf's temp cwd</strong>, because Claude Code
-loads project settings relative to the subprocess cwd — the same walk-up that finds
-<code>.claude/agents</code>.</p>
-<p>What travels is an <strong>allow-list of named <code>sandbox.network</code> keys</strong> — never a copy of the
-<code>sandbox</code> block, and never <code>permissions</code> (whose allow-list carries <code>Edit</code>/<code>Write</code>). In
-particular <code>sandbox.excludedCommands</code>, recommended just below for your <strong>gates</strong>, makes a
-command bypass the sandbox <em>entirely</em>: carrying it into the reviewer's cwd would let the
-reviewer run your test runner unconfined, so it is never seeded however you configure it.
-Widening the seed means adding a key to that list, deliberately.</p>
+<p>and the driver <strong>seeds that one setting into the leaf's temp cwd</strong>, because
+Claude Code loads project settings relative to the subprocess cwd — the same
+walk-up that finds <code>.claude/agents</code>.</p>
+<p>What travels is an <strong>allow-list of named <code>sandbox.network</code> keys</strong> — never a
+copy of the <code>sandbox</code> block, and never <code>permissions</code> (whose allow-list carries
+<code>Edit</code>/<code>Write</code>). In particular <code>sandbox.excludedCommands</code>, covered just below
+for your <strong>gates</strong>, makes a command bypass the sandbox <em>entirely</em>: carrying it
+into the reviewer's cwd would let the reviewer run your test runner
+unconfined, so it is never seeded however you configure it. Widening the seed
+means adding a key to that list, deliberately.</p>
 <h4>Letting the reviewer settle prior art mechanically (opt-in)</h4>
-<p>The reviewer's prior-art check (<code>T4</code> contribution / <code>T5</code> judgment) spans merged history <em>and</em>
-the <strong>closed/rejected-PR corpus</strong>. Merged history is local (<code>git log --all -- &lt;paths&gt;</code>), but
-the closed corpus needs <code>gh pr list --state closed</code> → <code>api.github.com</code>. The sandbox blocks
-network by default, so that half can't be settled and the check is correctly forced
-NEEDS-HUMAN on <strong>every</strong> bundle — a standing per-bundle tax on a check that could be
-mechanical (issue #277).</p>
+<p>The reviewer's prior-art check (<code>T4</code> contribution / <code>T5</code> judgment) spans
+merged history <em>and</em> the <strong>closed/rejected-PR corpus</strong>. Merged history is
+local (a plain <code>git log --all</code> over the changed paths), but the closed corpus
+needs <code>gh pr list --state closed</code> → <code>api.github.com</code>. The sandbox blocks
+network by default, so that half can't be settled and the check is correctly
+forced NEEDS-HUMAN on <strong>every</strong> bundle — a standing per-bundle tax on a check
+that could be mechanical (issue #277).</p>
 <p>The shipped <code>.claude/settings.json</code> documents the grant but leaves it <strong>off</strong>:</p>
 <pre><code class="language-json">{ &quot;sandbox&quot;: { &quot;network&quot;: { &quot;allowLocalBinding&quot;: true, &quot;allowedDomains&quot;: [] } } }
 </code></pre>
 <p>Opt in by naming the hosts:</p>
 <pre><code class="language-json">&quot;allowedDomains&quot;: [&quot;github.com&quot;, &quot;api.github.com&quot;]
 </code></pre>
-<p>An <strong>empty list seeds nothing</strong> — that is what &quot;off&quot; means here — so this is an explicit
-choice, not a default. Scoped to the hosts you name; <code>deniedDomains</code> is carried too.</p>
-<p>Domain scoping is <strong>claude</strong> only. A <code>codex</code> leaf has no <code>allowedDomains</code> equivalent — its
-<code>--sandbox workspace-write</code> denies the network wholesale — so it takes the all-or-nothing
-<code>network_access</code> grant described under <a href="#docker-backed-conformance-gates-opt-in">Docker gates</a>
-below, which reaches <code>api.github.com</code> too and settles its prior-art check the same way.</p>
+<p>An <strong>empty list seeds nothing</strong> — that is what &quot;off&quot; means here — so this is
+an explicit choice, not a default. Scoped to the hosts you name;
+<code>deniedDomains</code> is carried too.</p>
+<p>Domain scoping is <strong>claude</strong> only. A <code>codex</code> leaf has no <code>allowedDomains</code>
+equivalent — its <code>--sandbox workspace-write</code> denies the network wholesale — so
+it takes the all-or-nothing <code>network_access</code> grant described under
+<a href="#docker-backed-conformance-gates-opt-in">Docker gates</a> below, which reaches
+<code>api.github.com</code> too and settles its prior-art check the same way.</p>
 <h4>Docker-backed conformance gates (opt-in)</h4>
-<p>A conformance gate that brings up a live cluster (<code>docker compose</code> → etcd / TiKV / FDB) is
-<strong>denied the Docker socket inside the leaf sandbox — even on a Docker-capable host</strong>. The
-runtime leg skips, its evidence can never be earned at Check, and it defers to a human-run
-confirmer on <em>every</em> bundle. That is the harness failing at its own purpose: the maintainer
-becomes the bottleneck for a check that ought to be mechanical (issue #276).</p>
-<p>Name the commands that need Docker, and <strong>only those</strong> run outside the sandbox:</p>
+<p>A conformance gate that brings up a live cluster (<code>docker compose</code> → etcd /
+TiKV / FDB) is <strong>denied the Docker socket inside the leaf sandbox — even on a
+Docker-capable host</strong>. The runtime leg skips, its evidence can never be earned
+at Check, and it defers to a human-run confirmer on <em>every</em> bundle. That is the
+harness failing at its own purpose: the maintainer becomes the bottleneck for
+a check that ought to be mechanical (issue #276).</p>
+<p>Name the commands that need Docker, and <strong>only those</strong> run outside the
+sandbox:</p>
 <pre><code class="language-toml">[leaves.sandbox]
 unsandboxed_commands = [&quot;cargo xtask fdb-conformance&quot;, &quot;cargo xtask etcd-conformance&quot;]
 </code></pre>
-<p>Every other Bash line the leaf writes stays fully confined. Empty (the default) means no
-exemption at all, and a Docker-backed leg goes on deferring to a human.</p>
-<p><strong>&quot;Only those&quot; is enforced, not merely intended</strong> — and a list of names on its own enforces
-nothing. It takes three things, because there are three ways the boundary evaporates that the
-list doesn't cover:</p>
+<p>Every other Bash line the leaf writes stays fully confined. Empty (the
+default) means no exemption at all, and a Docker-backed leg goes on deferring
+to a human.</p>
+<p><strong>&quot;Only those&quot; is enforced, not merely intended</strong> — and a list of names on its
+own enforces nothing. It takes three things, because there are three ways the
+boundary evaporates that the list doesn't cover:</p>
 <ol start="0">
 <li>
-<p><strong>No sandbox at all</strong> — two ways, both closed by seeding <code>enabled: true</code> <em>and</em>
-<code>failIfUnavailable: true</code>.</p>
-<p><code>sandbox.enabled</code> <strong>defaults to false</strong>, and (2) below deliberately drops your <em>user-scope</em>
-settings — which is exactly where an operator's <code>sandbox.enabled: true</code> normally lives. So
-without seeding it, bounding the exemption would <strong>remove the very sandbox it claims to
-bound</strong>, and every command would escape.</p>
-<p>And the sandbox does not fail closed on its own: if <code>enabled</code> is true but its dependencies
-(<code>bubblewrap</code>, <code>socat</code>) are missing, Claude Code <em>disables</em> it, warns, and runs every command
-unconfined. <code>failIfUnavailable</code> — which has effect <strong>only when <code>enabled</code> is true</strong> — makes
-the leaf <strong>refuse to start</strong> instead. A bounded exemption on top of no sandbox is not
-bounded; it is nothing. <code>pdca doctor</code> checks the same dependencies <em>before</em> a run (they are
-<strong>required</strong> rows); this catches the operator who skipped it.</p>
+<p><strong>No sandbox at all</strong> — two ways, both closed by seeding <code>enabled: true</code>
+<em>and</em> <code>failIfUnavailable: true</code>.</p>
+<p><code>sandbox.enabled</code> <strong>defaults to false</strong>, and (2) below deliberately drops
+your <em>user-scope</em> settings — which is exactly where an operator's
+<code>sandbox.enabled: true</code> normally lives. So without seeding it, bounding the
+exemption would <strong>remove the very sandbox it claims to bound</strong>, and every
+command would escape.</p>
+<p>And the sandbox does not fail closed on its own: if <code>enabled</code> is true but
+its dependencies (<code>bubblewrap</code>, <code>socat</code>) are missing, Claude Code <em>disables</em>
+it, warns, and runs every command unconfined. <code>failIfUnavailable</code> — which
+has effect <strong>only when <code>enabled</code> is true</strong> — makes the leaf <strong>refuse to
+start</strong> instead. A bounded exemption on top of no sandbox is not bounded; it
+is nothing. <code>pdca doctor</code> checks the same dependencies <em>before</em> a run (they
+are <strong>required</strong> rows); this catches the operator who skipped it.</p>
 </li>
 <li>
-<p><strong>The escape hatch.</strong> The harness seeds <code>allowUnsandboxedCommands: false</code> beside the list.
-Claude Code defaults that key to <strong>true</strong>, and while it is true the model may retry <em>any</em>
-sandbox-denied command with the <code>dangerouslyDisableSandbox</code> parameter and have it run
-unconfined. With it false, that parameter is ignored outright.</p>
+<p><strong>The escape hatch.</strong> The harness seeds <code>allowUnsandboxedCommands: false</code>
+beside the list. Claude Code defaults that key to <strong>true</strong>, and while it is
+true the model may retry <em>any</em> sandbox-denied command with the
+<code>dangerouslyDisableSandbox</code> parameter and have it run unconfined. With it
+false, that parameter is ignored outright.</p>
 </li>
 <li>
-<p><strong>Scope concatenation.</strong> The leaf runs with <code>--setting-sources project</code>, so it loads <em>only</em>
-the settings the harness seeds. Array-valued settings <strong>concatenate</strong> across scopes (user →
-project → local → managed), and the union is <strong>monotonic</strong> — no scope, not even managed
-policy, can remove what a lower one added. So your own <code>~/.claude/settings.json</code>
-<code>excludedCommands</code> (your <em>interactive</em> exemptions — a broad <code>docker *</code>) would merge straight
-into the leaf, and nothing the harness writes could subtract them. The list would be a
-<em>floor</em>, not a ceiling. The only fix is to not load that scope.</p>
+<p><strong>Scope concatenation.</strong> The leaf runs with <code>--setting-sources project</code>, so
+it loads <em>only</em> the settings the harness seeds. Array-valued settings
+<strong>concatenate</strong> across scopes (user → project → local → managed), and the
+union is <strong>monotonic</strong> — no scope, not even managed policy, can remove what
+a lower one added. So your own <code>~/.claude/settings.json</code>
+<code>excludedCommands</code> (your <em>interactive</em> exemptions — a broad <code>docker *</code>)
+would merge straight into the leaf, and nothing the harness writes could
+subtract them. The list would be a <em>floor</em>, not a ceiling. The only fix is
+to not load that scope.</p>
 </li>
 </ol>
 <blockquote>
-<p><strong>The one scope the harness cannot bound: enterprise managed policy.</strong> <code>--setting-sources</code>
-excludes <em>user</em> and <em>local</em> settings, but Claude Code <strong>always</strong> loads managed policy
-(<code>managed-settings.json</code>) regardless. Since array settings only ever concatenate, a managed
-policy carrying <code>sandbox.excludedCommands</code> widens the leaf's exemption and <strong>nothing the
-harness can do will narrow it</strong> — the list stays a ceiling with respect to <em>your</em> settings,
-but not with respect to <em>your organisation's</em>. That is by design on Claude Code's side:
-managed policy is meant to outrank everything. If your org sets one, read it before relying
-on the boundary below. The harness cannot, and does not, override it.</p>
+<p><strong>The one scope the harness cannot bound: enterprise managed policy.</strong>
+<code>--setting-sources</code> excludes <em>user</em> and <em>local</em> settings, but Claude Code
+<strong>always</strong> loads managed policy (<code>managed-settings.json</code>) regardless. Since
+array settings only ever concatenate, a managed policy carrying
+<code>sandbox.excludedCommands</code> widens the leaf's exemption and <strong>nothing the
+harness can do will narrow it</strong> — the list stays a ceiling with respect to
+<em>your</em> settings, but not with respect to <em>your organisation's</em>. That is by
+design on Claude Code's side: managed policy is meant to outrank everything.
+If your org sets one, read it before relying on the boundary below. The
+harness cannot, and does not, override it.</p>
 </blockquote>
 <blockquote>
-<p><strong>The cost of (2).</strong> The leaf no longer reads your user-scope settings at all. If your <strong>auth</strong>
-lives there (<code>apiKeyHelper</code>, or <code>env.ANTHROPIC_API_KEY</code>), move it into the environment or the
-leaf will fail to start. It fails loudly, and the error lands in the bundle's <code>*.error.log</code>.</p>
+<p><strong>The cost of (2).</strong> The leaf no longer reads your user-scope settings at
+all. If your <strong>auth</strong> lives there (<code>apiKeyHelper</code>, or <code>env.ANTHROPIC_API_KEY</code>),
+move it into the environment or the leaf will fail to start. It fails
+loudly, and the error lands in the bundle's <code>*.error.log</code>.</p>
 </blockquote>
-<p>Both ride <em>with</em> the exemption: an instance that names no command keeps today's behaviour
-exactly, rather than having a policy imposed on it. And this is <strong>claude-family only</strong> — a
-family that cannot be confined to the harness's own settings (codex) cannot have a bounded
-exemption, so the harness <strong>refuses</strong> the grant there rather than hand out an unbounded one.</p>
-<p><strong>Why a named command, and not a socket grant.</strong> The sandbox schema <em>does</em> offer
-<code>allowAllUnixSockets</code>, which would reach the Docker socket too — but it hands <strong>every</strong>
-command the leaf runs access to <strong>every</strong> unix socket. And the Docker socket on a root-owned
-daemon is effectively root on the host: anything that can talk to it can start a container
-with <code>-v /:/host</code>. Check which you have:</p>
+<p>Both ride <em>with</em> the exemption: an instance that names no command keeps
+today's behaviour exactly, rather than having a policy imposed on it. And this
+is <strong>claude-family only</strong> — a family that cannot be confined to the harness's
+own settings (codex) cannot have a bounded exemption, so the harness
+<strong>refuses</strong> the grant there rather than hand out an unbounded one.</p>
+<p><strong>Why a named command, and not a socket grant.</strong> The sandbox schema <em>does</em>
+offer <code>allowAllUnixSockets</code>, which would reach the Docker socket too — but it
+hands <strong>every</strong> command the leaf runs access to <strong>every</strong> unix socket. And the
+Docker socket on a root-owned daemon is effectively root on the host: anything
+that can talk to it can start a container with <code>-v /:/host</code>. Check which you
+have:</p>
 <pre><code class="language-bash">ls -l /var/run/docker.sock      # root:docker  → the daemon runs as root
 </code></pre>
-<p>The reviewer leaf has <code>Bash</code>. Giving it a root-adjacent socket for <em>any</em> command it cares to
-write is a far larger grant than letting <em>one command you wrote</em> run unconfined. So the
-harness does not seed <code>allowAllUnixSockets</code> at all — it is not in the allow-list, and setting
-it has no effect on a leaf.</p>
-<p><strong>Hardening.</strong> A <strong>rootless</strong> daemon (podman, or rootless <code>dockerd</code>) makes socket access
-user-level instead of root-level, which de-fangs this entire class of risk. Prefer it where
-you can. Match the command precisely, too — this is a capability, so <code>docker *</code> hands the leaf
-far more than <code>cargo xtask fdb-conformance</code> does.</p>
-<p><strong>The exemption list is harness-owned, on purpose.</strong> The driver never inherits your project's
-own <code>.claude/settings.json</code> <code>sandbox.excludedCommands</code> — that is <em>your</em> gate workaround, and a
-leaf must not silently acquire whatever you exempted for CI. A leaf's exemption is declared
-once, deliberately, in <code>pdca.toml</code>.</p>
+<p>The reviewer leaf has <code>Bash</code>. Giving it a root-adjacent socket for <em>any</em>
+command it cares to write is a far larger grant than letting <em>one command you
+wrote</em> run unconfined. So the harness does not seed <code>allowAllUnixSockets</code> at
+all — it is not in the allow-list, and setting it has no effect on a leaf.</p>
+<p><strong>Hardening.</strong> A <strong>rootless</strong> daemon (podman, or rootless <code>dockerd</code>) makes
+socket access user-level instead of root-level, which de-fangs this entire
+class of risk. Prefer it where you can. Match the command precisely, too —
+this is a capability, so <code>docker *</code> hands the leaf far more than
+<code>cargo xtask fdb-conformance</code> does.</p>
+<p><strong>The exemption list is harness-owned, on purpose.</strong> The driver never inherits
+your project's own <code>.claude/settings.json</code> <code>sandbox.excludedCommands</code> — that
+is <em>your</em> gate workaround, and a leaf must not silently acquire whatever you
+exempted for CI. A leaf's exemption is declared once, deliberately, in
+<code>pdca.toml</code>.</p>
 <h4>The codex leaf reaches Docker a different way</h4>
-<p>Everything above is the <strong>claude</strong> shape. A <code>codex</code> leaf's <code>--sandbox workspace-write</code> denies
-the Docker socket too, but it cannot take <em>any</em> of it: it does not read the settings the
-harness seeds, so it can neither be given a per-command exemption nor be confined to one. The
-harness therefore <strong>refuses</strong> <code>unsandboxed_commands</code> on codex rather than hand out an unbounded
-grant, and points you here.</p>
-<p>Its denial is <strong>not a filesystem denial</strong> — a relayed socket in a directory codex <em>can</em> write
-is refused just the same. It is the seccomp/network layer. So no path grant fixes it, and only
-one thing does:</p>
+<p>Everything above is the <strong>claude</strong> shape. A <code>codex</code> leaf's
+<code>--sandbox workspace-write</code> denies the Docker socket too, but it cannot take
+<em>any</em> of it: it does not read the settings the harness seeds, so it can
+neither be given a per-command exemption nor be confined to one. The harness
+therefore <strong>refuses</strong> <code>unsandboxed_commands</code> on codex rather than hand out an
+unbounded grant, and points you here.</p>
+<p>Its denial is <strong>not a filesystem denial</strong> — a relayed socket in a directory
+codex <em>can</em> write is refused just the same. It is the seccomp/network layer.
+So no path grant fixes it, and only one thing does:</p>
 <pre><code class="language-toml">[leaves.sandbox]
 network_access = true       # codex: open the leaf's socket/network layer
 </code></pre>
-<p>The driver then passes <code>-c sandbox_workspace_write.network_access=true</code> to codex leaves. That
-reaches the Docker socket <strong>and</strong> <code>api.github.com</code>, so it settles the prior-art check
-(<a href="#letting-the-reviewer-settle-prior-art-mechanically-opt-in">above</a>) at the same time.</p>
-<p><strong>The two grants have different shapes, and neither is strictly tighter.</strong> Read them together:</p>
+<p>The driver then passes <code>-c sandbox_workspace_write.network_access=true</code> to
+codex leaves. That reaches the Docker socket <strong>and</strong> <code>api.github.com</code>, so it
+settles the prior-art check
+(<a href="#letting-the-reviewer-settle-prior-art-mechanically-opt-in">above</a>) at the
+same time.</p>
+<p><strong>The two grants have different shapes, and neither is strictly tighter.</strong>
+Read them together:</p>
 <table>
 <thead>
 <tr>
@@ -289,132 +623,145 @@ reaches the Docker socket <strong>and</strong> <code>api.github.com</code>, so i
 </tr>
 </tbody>
 </table>
-<p>So they are deliberately <strong>separate keys</strong>. <code>unsandboxed_commands</code> promises <em>&quot;only these
-commands leave the sandbox&quot;</em> — a promise codex's grant would not keep, since it frees the
-network for every command the leaf writes. Naming a command therefore never implies the network
-grant; you opt into each explicitly.</p>
-<p>Both are moot against a <strong>root-owned</strong> daemon, mind: anything that can talk to that socket can
-start a container with <code>-v /:/host</code>, so the filesystem confinement codex retains buys little
-there. The rootless hardening above is the real answer for either family.</p>
-<p>This covers the <strong>reviewer and advisory leaves</strong>. It does <em>not</em> cover the <strong>gates</strong>: gate
-commands are plain subprocesses of <code>pdca</code>, so they inherit whatever sandbox the operator's
-own shell already has. If you launch <code>pdca flow</code> from inside a sandboxed agent shell, a
-gate that binds loopback still fails. Run <code>pdca</code> from an unsandboxed shell, or exempt the
-test runner via <code>sandbox.excludedCommands</code> in your own settings (that exemption stays in
+<p>So they are deliberately <strong>separate keys</strong>. <code>unsandboxed_commands</code> promises
+<em>&quot;only these commands leave the sandbox&quot;</em> — a promise codex's grant would not
+keep, since it frees the network for every command the leaf writes. Naming a
+command therefore never implies the network grant; you opt into each
+explicitly.</p>
+<p>Both are moot against a <strong>root-owned</strong> daemon, mind: anything that can talk to
+that socket can start a container with <code>-v /:/host</code>, so the filesystem
+confinement codex retains buys little there. The rootless hardening above is
+the real answer for either family.</p>
+<p>This covers the <strong>reviewer and advisory leaves</strong>. It does <em>not</em> cover the
+<strong>gates</strong>: gate commands are plain subprocesses of <code>pdca</code>, so they inherit
+whatever sandbox the operator's own shell already has. If you launch
+<code>pdca flow</code> from inside a sandboxed agent shell, a gate that binds loopback
+still fails. Run <code>pdca</code> from an unsandboxed shell, or exempt the test runner
+via <code>sandbox.excludedCommands</code> in your own settings (that exemption stays in
 <em>your</em> settings — the driver never seeds it into a leaf).</p>
-<h3>Optional advisory reviewers (a second lens)</h3>
-<p>The <code>reviewer</code> judges fix <em>adequacy</em>. For other lenses — correctness bugs the patch
-introduces, reuse/simplification/efficiency cleanups — add <strong>advisory reviewer leaves</strong>
-(issue #64): an open <code>[[leaves.advisory]]</code> list in <code>pdca.toml</code>, each a role-distinct,
-model-agnostic (<code>family</code> + <code>argv</code>) leaf. Each writes <code>check-advisory-&lt;id&gt;.md</code>; its
-<code>- NEEDS-HUMAN —</code> findings fold into §6 like the reviewer's. They are <strong>always advisory</strong>
-(never gate). Condition one on a brief field with <code>when = { field = …, substring = … }</code>
-(e.g. run a deeper review only when the brief says so) — the way gate targets condition
-on the bundle. A shipped <code>code-review</code> agent realizes the correctness+cleanup lens for a
-<code>claude</code> instance; <code>family = &quot;codex&quot;</code> swaps the vendor. A second shipped agent,
-<code>adversary</code> (issue #151), is a <strong>refutation</strong> lens — it tries to <em>disprove</em> the red→green
-evidence and the reviewer's verdict, defaulting to &quot;refuted&quot; when uncertain; the
-<code>pdca.toml</code> example gates it on <code>Difficulty: high</code> so it runs only on the highest
-blast-radius bundles, where a confirmatory pass is most likely to be fooled.</p>
-<p><strong>Automatic vendor complement (issue #200).</strong> Cross-vendor decorrelation is the ideal, but
-the builder that <em>actually</em> runs isn't fixed — an explicit <code>Do model</code> (#167), difficulty
-routing (#134), or escalation (#135) can pick Codex for one bundle and Claude for the next,
-which can leave a statically-configured advisory <em>same-vendor</em> as the builder. Opt into
-<code>[leaves.advisory_selection] mode = &quot;vendor-complement&quot;</code> to let the driver do the pairing:
-it treats the <code>[[leaves.advisory]]</code> list as a <strong>vendor pool</strong> and runs the single leaf whose
-<code>family</code> differs from the builder that ran — read from the bundle's <code>loop-telemetry.json</code>, so
-it holds however the backend was chosen. Declare one leaf per vendor (same <code>role</code>, different
-<code>family</code>) and a Codex-built bundle gets the Claude advisory while a Claude-built bundle gets
-the Codex one, with no per-brief edits. If no leaf differs from the builder (or the builder
-family is unknown) it falls back to the first applicable leaf — a same-vendor review beats
-none — and files the lapse as a §6 <code>NEEDS-HUMAN</code> so you can see decorrelation didn't hold.</p>
-<h3>Trying the build by hand — <code>pdca try &lt;id&gt;</code></h3>
-<p>Some §6 rows are irreducibly a <strong>run-it-yourself</strong> call — a GUI/visual repro, or the
-validation act (&quot;is this the right thing?&quot;) for a change no headless test can exercise. The
-gates can't decide those, and the reviewer is headless and sandboxed, so it can't hand you a
-live app. <code>pdca try &lt;id&gt;</code> closes that gap: it <strong>materializes the patched build on demand
-from the bundle's <code>patch.diff</code></strong> — reconstructing the tree off the target base (the same diff
-the gates and reviewer used) — and hands you the terminal so you can drive the app and see the
-fix for yourself. It runs the project's <code>[manual_test].cmd</code> (e.g. <code>python -m gramps</code>) from
-<code>$PDCA_WORKTREE</code> with the <code>PDCA_*</code> env exported, and imposes no timeout — you quit the app to
-return. It's <strong>advisory</strong>: it decides nothing and mutates nothing in the bundle (edits you
-make while testing are reset the next time a tree is staged); you record what you saw in a
-Manual-verification note and carry it into the §9 sign-off (<a href="/guide/06-signoff.html">step 06</a>).
-Because it rebuilds from <code>patch.diff</code> rather than reading whatever Do last left in the shared,
-reset-reused worktree, it works for <strong>any built/parked bundle in turn</strong> — exactly the
-batch-then-review cadence, where you <code>pdca try</code> each bundle as you sign it off. (One
-constraint: don't <code>pdca try</code> while a lane's Do is mid-build on the same worktree — a non-issue
-in batch-then-review, where building is already done.) Needs <code>[driver].worktree</code> on and a
-configured <code>[manual_test].cmd</code>; otherwise it prints a one-line hint and changes nothing.</p>
-<h2>3. Assembly — the SUMMARY the human signs</h2>
-<p>The driver folds brief + gates + review into <code>SUMMARY.md</code>, a 10-section document.
-The two sections that drive the human decision are <strong>§6 NEEDS-HUMAN</strong> (what you
-must clear) and <strong>§9 Check sign-off</strong> (where you record the verdict — <a href="/guide/06-signoff.html">step
-06</a>). When <code>SUMMARY.md</code> exists with an empty §9, the bundle is
+<h3>Assembly — the SUMMARY the human signs</h3>
+<p>The driver folds brief + gates + review into <code>SUMMARY.md</code>, a 10-section
+document. The two sections that drive the human decision are <strong>§6
+NEEDS-HUMAN</strong> (what you must clear) and <strong>§9 Check sign-off</strong> (where you
+record the verdict). When <code>SUMMARY.md</code> exists with an empty §9, the bundle is
 <code>AWAITING_SIGNOFF</code> and the driver <strong>stops</strong>.</p>
-<p>Here is the real §6 from issue 11589 — note these are the advisory gate failures
-turned into explicit, adjudicable questions (shown already cleared, <code>- [x]</code>):</p>
-<pre><code class="language-markdown">## 6. NEEDS-HUMAN — items the human must clear before sign-off
-- [x] T2 — Gate failed on `__init__.py: no GPL licence header` — but no
-  `__init__.py` appears in `patch.diff`. Both files the patch *does* touch are
-  shape-clean. The violation sits in an untouched bundle file → human must decide
-  whether the pre-existing gap blocks this contribution.
-- [x] T3 — All three runtime suites are `fail` but the failure modes are not
-  plausibly caused by a 2-file addon change: core unit `Trace/breakpoint trap
-  (core dumped)` (segfault in gramps core, which the diff never touches),
-  addon-unit `pip install logs` (env), interface `_ErrorHolder`. Marked
-  &quot;whole-suite baseline&quot; — human must diff against baseline to confirm these are
-  pre-existing, not regressions.
-- [x] T5 — Always-human element. Overall contribution judgment — code quality,
-  idiom fit, whether the sibling-detection approach is the right shape.
-- [x] V — Validation — Whether the change solves the user's problem against the
-  *real* FilterRules pack layout (13 rule pairs in one dir), not just the temp-dir
-  stand-in, is a fitness-to-purpose call only the human can make.
-</code></pre>
-<p>This is the harness working as designed: the deterministic gate proved
-correctness (<code>C4</code> green) and <em>surfaced</em> everything it couldn't adjudicate — a
-header gap of ambiguous scope, environmental test noise, and the two irreducibly
-human checks (<code>T5</code> judgment, <code>V</code> validation) — as a short, specific checklist.
-The human isn't re-reading the whole diff; they're answering four pointed
-questions.</p>
-<h3>An unregistered dependency is a §6 item (issue #263)</h3>
-<p>§6 is also where an <strong>unregistered dependency</strong> surfaces. When a slice needs something a
-human must install or provide — a build tool (<code>protoc</code>), a runtime service (Docker, a live
-etcd) — the brief's <code>External dependencies</code> names it as a <strong>backticked token equal to the
-<code>id</code> of a <code>[[doctor.checks]]</code> row</strong> in your <code>pdca.toml</code>:</p>
+<h4>An unregistered dependency is a §6 item (issue #263)</h4>
+<p>§6 is also where an <strong>unregistered dependency</strong> surfaces. When a slice needs
+something a human must install or provide — a build tool (<code>protoc</code>), a runtime
+service (Docker, a live etcd) — the brief's <code>External dependencies</code> names it
+as a <strong>backticked token equal to the <code>id</code> of a <code>[[doctor.checks]]</code> row</strong> in
+your <code>pdca.toml</code>:</p>
 <pre><code class="language-toml">[[doctor.checks]]
 id   = &quot;protoc&quot;                          # ← the brief writes `protoc`
 cmd  = &quot;protoc --version&quot;                # how to detect it
 hint = &quot;apt install protobuf-compiler&quot;   # how a human provides it
 </code></pre>
-<p>At Check the driver reconciles the two. A declared dependency with <strong>no row that detects
-it</strong> becomes a §6 item, and the C6 guard below holds <code>--accept</code> until the row exists. That
-makes registration a <em>forcing function</em> rather than advice: <code>pdca doctor</code> prompts you with
-the install hint up front, instead of the dependency surfacing mid-cycle as a cryptic
-build failure.</p>
-<p>The reviewer can't do this — its sandbox has no <code>pdca.toml</code>, so it cannot know which rows
-exist — and it isn't a judgment call anyway; it's set membership, so the driver decides it
-deterministically. Two consequences worth knowing:</p>
+<p>At Check the driver reconciles the two. A declared dependency with <strong>no row
+that detects it</strong> becomes a §6 item, and the C6 guard below holds <code>--accept</code>
+until the row exists. That makes registration a <em>forcing function</em> rather than
+advice: <code>pdca doctor</code> prompts you with the install hint up front, instead of
+the dependency surfacing mid-cycle as a cryptic build failure. This is the
+Check-time backstop for the same reconciliation the <a href="/guide/03-plan.html#entry-and-exit-the-guards-around-plan">dependency guard</a>
+already runs at Plan exit and again at Do's own exit
+(<a href="/guide/04-do.html#the-leaf-and-the-guards-around-it">step 04</a>) — three chances to
+catch it, never a fourth path to a verdict.</p>
+<p>The reviewer can't do this — its sandbox has no <code>pdca.toml</code>, so it cannot know
+which rows exist — and it isn't a judgment call anyway; it's set membership,
+so the driver decides it deterministically. Two consequences worth knowing:</p>
 <ul>
-<li><strong>A row without a <code>cmd</code> registers nothing.</strong> <code>pdca doctor</code> skips it, so it would never
-detect anything; it does not silence the §6 item.</li>
-<li><strong>A dependency nothing can detect is exempt.</strong> A required <em>topology</em> — a ≥3-replica
-cluster, a partition-capable stack — goes in plain prose (unbackticked), or as a
-backticked token annotated <code>`x` (no-check: &lt;why&gt;)</code>.</li>
+<li><strong>A row without a <code>cmd</code> registers nothing.</strong> <code>pdca doctor</code> skips it, so it
+would never detect anything; it does not silence the §6 item.</li>
+<li><strong>A dependency nothing can detect is exempt.</strong> A required <em>topology</em> — a
+≥3-replica cluster, a partition-capable stack — goes in plain prose
+(unbackticked), or as a backticked token annotated
+<code>`x` (no-check: &lt;why&gt;)</code>.</li>
 </ul>
-<p>Rows are read from <code>pdca.toml</code> as it stands when Check runs, so a row that Plan registered
-— or that you pasted in from the builder's proposal at Do — counts within the same cycle.</p>
-<h2>The C6 accept-guard</h2>
-<p>One rule connects §6 to the next step: <strong>you cannot <code>--accept</code> while any §6 item
-is unchecked.</strong> That's the <code>C6</code> guard. It's why §6 items above are <code>- [x]</code> — the
-human worked them before accepting. (<code>--iterate-*</code> and <code>--discontinue</code> are <em>not</em>
-guarded — you can redirect or abandon a bundle with §6 still open.)</p>
-<p>A <strong>gating</strong> gate that hard-FAILS (<code>overall = fail</code>, not just an advisory row) also lands
-in §6 (issue #166), so the guard blocks accept on a red gate too — you clear it with a
-conscious override, <code>--iterate</code>, or <code>--discontinue</code>, never by it slipping silently to
+<p>Rows are read from <code>pdca.toml</code> as it stands when Check runs, so a row that
+Plan registered — or that you pasted in from the builder's proposal at Do —
+counts within the same cycle.</p>
+<h3>The C6 accept-guard</h3>
+<p>One rule connects §6 to sign-off: <strong>you cannot <code>--accept</code> while any §6 item
+is unchecked.</strong> That's the <code>C6</code> guard. It's why the §6 items above are <code>- [x]</code>
+in the accepted example — the human worked them before accepting.
+(<code>--iterate-*</code> and <code>--discontinue</code> are <em>not</em> guarded — you can redirect or
+abandon a bundle with §6 still open.) A <strong>gating</strong> gate that hard-FAILS
+(<code>overall = fail</code>, not just an advisory row) also lands in §6 (issue #166), so
+the guard blocks accept on a red gate too — you clear it with a conscious
+override, <code>--iterate</code>, or <code>--discontinue</code>, never by it slipping silently to
 COMPLETE.</p>
-<p>State: <code>AWAITING_SIGNOFF</code>. Your move — <a href="/guide/06-signoff.html">step 06</a>.</p>
-<p>← <a href="/guide/04-do.html">04 Do</a> · <a href="/guide/">Index</a> · next: <a href="/guide/06-signoff.html">06 Sign-off →</a></p>
+<h3>The four dispositions, mechanically</h3>
+<p>Each disposition maps to a state transition the driver applies the instant
+you record it:</p>
+<table>
+<thead>
+<tr>
+<th>Disposition</th>
+<th>§9 outcome</th>
+<th>New state</th>
+<th>What the driver does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--accept</code></td>
+<td><code>merged-wider</code></td>
+<td><code>COMPLETE</code></td>
+<td>Freezes the bundle; publish can run</td>
+</tr>
+<tr>
+<td><code>--iterate-do</code></td>
+<td><code>iterated-to-Do</code></td>
+<td>→ <code>PLANNED</code></td>
+<td>Archives Do+Check into <code>iteration-v&lt;N&gt;/</code>, keeps the brief, re-runs the builder</td>
+</tr>
+<tr>
+<td><code>--iterate-plan</code></td>
+<td><code>iterated-to-Plan</code></td>
+<td>→ <code>UNPLANNED</code></td>
+<td>Archives the <strong>whole attempt incl. brief</strong>, you re-spec</td>
+</tr>
+<tr>
+<td><code>--discontinue</code></td>
+<td><code>discontinued</code></td>
+<td><code>DISCONTINUED</code></td>
+<td>Records §9, no transition, drops from the pending set</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><code>--discontinue</code> is the disposition this harness version
+(<a href="https://github.com/eduralph/pdca-harness/releases">v0.18.0</a>) unified — the
+action, the <code>discontinued</code> §9 outcome, and the terminal <code>DISCONTINUED</code> state
+now all share one word. Use it for work that, on inspection, doesn't fit the
+cycle (handled out-of-band, duplicate, won't-fix) — a deliberate abandon,
+independent of §6.</p>
+</blockquote>
+<p><strong>Auto-iterate</strong> — <code>[driver].auto_iterate = true</code> lets the driver record
+<code>iterate-do</code> for you when Check's §6 has implementation-only findings and
+nothing you must see first, so Do→Check keeps iterating while the reviewer
+keeps finding things only Do can fix. It never accepts, never ticks a <code>- [ ]</code>,
+and is bounded by <code>max_auto_iters</code> rounds — full mechanics, the eligibility
+rule, and its three guarantees are in
+<a href="/guide/07-crosscutting.html#auto-iterate-the-driver-deciding-for-itself">step 07</a>.</p>
+<h3>Publish's STOP discipline, and batches</h3>
+<p>The PR opens as a <em>draft</em>, and on the normal single-cycle and <code>stack</code>-mode
+paths a human marks it ready — the harness never does. gramps' governance
+makes this explicit (INTEGRATION §10): <em>&quot;Eduard opens fork PRs as draft, marks
+ready himself; builder commits and stops — no push/PR-open/ready-mark without
+explicit instruction.&quot;</em> The one carve-out is the opt-in <code>wave_mode = &quot;merge&quot;</code>,
+where the driver readies and merges each <em>non-final</em> wave's PRs to advance the
+base; even there the <strong>final</strong> wave's PR stays a draft for your ready-mark.</p>
+<p>This holds for a <strong>batch</strong>, too. A multi-id <code>pdca flow</code> runs the batch as
+dependency waves (<a href="/spec/09-parallel-lanes.html">09 parallel lanes in the spec</a>;
+mechanics in <a href="/guide/07-crosscutting.html#waves-in-execution">step 07</a>); in the default
+<code>stack</code> mode each wave's accepted work is folded onto a run-scoped integration
+branch the next wave builds on, and each dependent opens a <strong>stacked</strong> draft
+PR — the harness still never merges, so you review and merge the stack
+bottom-up yourself. Only the opt-in <code>[driver].wave_mode = &quot;merge&quot;</code> (own-repo /
+CD, where you hold merge rights on the base) relaxes this, <code>gh pr merge</code>-ing
+each wave before the next builds.</p>
+<p>State: <code>COMPLETE</code>, published. On to the cross-cycle beat — <a href="/guide/06-act.html">step 06</a>.</p>
+<p>← <a href="/guide/04-do.html">04 Do</a> · <a href="/guide/">Index</a> · next: <a href="/guide/06-act.html">06 Act →</a></p>
 
     </article>
   </main>
@@ -435,6 +782,7 @@ COMPLETE.</p>
 
 <!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
      contain a diagram; empty otherwise. -->
-
+<script src="/assets/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral"});</script>
 </body>
 </html>

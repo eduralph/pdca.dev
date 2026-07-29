@@ -40,21 +40,33 @@
 <p><strong>Beat: Plan.</strong> Human touch point #1. The output is one artifact — <code>brief.md</code> —
 the contribution spec the rest of the cycle is measured against. A bundle with no
 <code>brief.md</code> is <code>UNPLANNED</code>; once the brief exists it's <code>PLANNED</code> and ready for Do.</p>
-<h2>How Plan runs</h2>
+<p>Two parts follow: <a href="#how-to-use"><strong>how to use</strong></a> it — the commands, and what a
+good brief contains — then <a href="#how-it-works"><strong>how it works</strong></a> underneath: the
+leaves involved, the guards around the beat's exit, and why the brief has the
+shape it does.</p>
+<h2>How to use</h2>
 <p>The Plan leaf is <strong>interactive</strong> — it opens Claude in your terminal so you and the
 planner co-author the brief from a tracker issue. gramps configured it to read a
 single Mantis CSV row for the issue id:</p>
 <pre><code class="language-bash">pdca flow 11589           # opens the planner; you converge on a brief, then the
                           # driver continues unattended into Do + Check
 </code></pre>
-<p>Under the hood that's the <code>planner</code> leaf from <a href="/guide/01-render-and-integrate.html">step 01</a>
-writing <code>results/issue_11589/brief.md</code>. You can also seed a brief directly
-(<code>pdca init-issue 11589 --from-brief path/to/brief.md</code>) when you've written it by
-hand.</p>
+<p><strong>This command starts one full cycle, not just Plan.</strong> There's no standalone
+command that runs Plan alone and stops. <code>pdca flow</code> opens the planner's
+interactive session, and the moment a brief exists, that same invocation falls
+straight through into the unattended Do → Check band — there's no
+<code>--plan-only</code> flag to stop it there. <code>pdca run &lt;id&gt;</code> doesn't help either: it
+never advances an <code>UNPLANNED</code> bundle at all (there's nothing for the driver to
+do without a brief), so it can't trigger Plan in isolation. The nearest thing
+to isolating Plan is to author <code>brief.md</code> yourself, outside the harness, and
+seed it with <code>pdca init-issue &lt;id&gt; --from-brief path/to/brief.md</code> — but that
+bypasses the planner leaf entirely rather than running it.</p>
+<p>Under the hood the interactive session itself is the <code>planner</code> leaf from
+<a href="/guide/01-render-and-integrate.html">step 01</a>, writing <code>results/issue_11589/brief.md</code>.</p>
 <h3>Planning a specific id list in one session</h3>
 <p>Pass <strong>several ids</strong> to <code>pdca flow</code> to plan + drive exactly that set — e.g. bundles you
 seeded from per-bundle triage notes, not a tracker CSV:</p>
-<pre><code class="language-bash">pdca flow 11589 12030 12044 --lanes 6
+<pre><code class="language-bash">pdca flow 11589 12030 12044 
 </code></pre>
 <p>Any UNPLANNED id in the list is briefed in <strong>one shared interactive session</strong> before
 the drive; already-briefed ids skip Plan. Ids the planner chooses to skip are left
@@ -94,7 +106,10 @@ lands in a later wave than its prerequisites and builds on their <em>accepted</e
 wave driver folds each wave onto the base the next builds on — no human merge between
 them). <code>Conflicts with</code> puts two file-overlapping bundles in different waves.
 (<code>Depends on (merged)</code> / <code>Stacks on</code> still parse but are deprecated — in the wave model
-they are just <code>Depends on</code>.)</li>
+they are just <code>Depends on</code>.) <strong><code>Ordering note:</code></strong> is the free-text sibling of these two —
+<em>why</em> the scheduling is set as it is (e.g. &quot;depends-on 12 because both edit <a href="http://cache.py">cache.py</a>&quot;).
+Not machine-parsed; it just keeps the human's reasoning next to the bare-id fields for
+the next person (including future-you) reading the brief.</li>
 <li><strong><code>Difficulty:</code> / <code>Do model:</code></strong> — route this bundle's Do to the right backend
 (<a href="/guide/04-do.html">step 04</a>): <code>Difficulty</code> feeds the <code>when</code> routing (and the iterate escalation
 ladder); <code>Do model</code> pins a backend by name. So different bundles in one wave can build
@@ -104,10 +119,12 @@ on different models.</li>
 dependency/conflict structure; an unschedulable graph (a cycle, or a dep that is neither in
 the batch nor already COMPLETE) is rejected up front. <code>pdca waves &lt;ids…&gt;</code> prints the
 computed wave plan without building.</p>
-<h2>What a real brief looks like</h2>
+<h3>What a real brief looks like</h3>
 <p>This is the <strong>actual</strong> brief the planner produced for gramps issue 11589, a
-PluginManager bug. Read it as a checklist of what a good spec contains — every
-field earns its place downstream.</p>
+PluginManager bug (trimmed for length — the real file has fuller prose in a few
+fields; nothing quoted below is altered). Read it as a checklist of what a good
+spec contains for <em>this</em> fix — not every optional field fires on every bug; see
+below for which ones sat this one out and why.</p>
 <pre><code class="language-markdown"># Brief — issue 11589 / pluginmanager-uninstall-destroys-shared-dir
 
 - **Slug:** pluginmanager-uninstall-destroys-shared-dir
@@ -134,8 +151,128 @@ field earns its place downstream.</p>
   the selected rule's files are removed.
 - **Test file:** `../addons-source/PluginManager/tests/test_uninstall_shared_dir.py`
   (addon convention per INTEGRATION §3 — `tests/` package, `test_*.py` prefix).
+- **Citations expected:** Do must cite path:line on the target branch for every change.
+- **Prior-art check (triage cycles):** Searched `addons-source` history by file path —
+  `git -C ../addons-source log -S &quot;shutil.rmtree&quot; -- PluginManager/PluginManager.py`
+  returns only `00794ec32` (&quot;An enhanced addon/plugin manager (#78)&quot;), i.e. the
+  `rmtree(pdata.fpath)` uninstall logic is unchanged since the addon was introduced;
+  no later fix on any branch. No prior fix or open PR found for this defect.
+- **Disposition hint:** likely-fix (Mantis status `confirmed`; root cause confirmed
+  in source and corroborated by maintainer prculley in the thread).
 </code></pre>
-<h2>Why each field is there</h2>
+<p>Fields from the field table in <a href="#why-each-field-is-there">How it works</a> below
+that <strong>don't</strong> appear here: <code>Falsifiability</code>, <code>Invariant to restore</code>,
+<code>Onto branch</code>, <code>Surfaces</code>, <code>Difficulty</code>, <code>Do model</code>, <code>Depends on</code> /
+<code>Conflicts with</code> / <code>Ordering note</code>, and <code>External dependencies</code>. All optional,
+and this bug didn't need any of them — it's a single, unbatched fix with no
+scheduling constraints, no GUI/E2E surface split, no non-toolchain dependency,
+and no ambiguity worth a routing override. You'll see <code>Depends on</code> and
+<code>Conflicts with</code> in the <a href="#ordering-and-routing-the-batch">batch-ordering example</a>
+above, <code>Difficulty</code> / <code>Do model</code> in <a href="/guide/04-do.html">step 04</a>, and
+<code>External dependencies</code> in <a href="/guide/01-render-and-integrate.html">step 01</a>'s doctor
+section — they show up when a brief actually needs them, not by default.</p>
+<h3>The Plan can be a pointer</h3>
+<p>If your project already plans through its own artifacts — an ADR, an enhancement
+proposal, a normative spec under change control — you don't restate that here. Use
+<code>templates/plan-pointer.md.tpl</code>: a thin brief that <strong>references</strong> the host document
+(<code>- **Planning artifact:** docs/adr/0042-thing.md</code>) and carries only the few fields the
+driver parses (slug, success criterion, branch target, test file). Do reads the
+referenced artifact as the authoritative plan and cites it; the rest of the cycle is
+unchanged. This lets PDCA wrap a host's existing planning process instead of imposing
+its own document shape.</p>
+<hr />
+<h2>How it works</h2>
+<h3>The leaves Plan uses</h3>
+<p>Three leaves touch Plan's territory in <code>pdca.toml</code>, but only one of them belongs
+to the beat outright:</p>
+<ul>
+<li><strong><code>planner</code></strong> — Plan's leaf, full stop. Interactive (<code>interactive = true</code>): a
+REPL with the human, and the one leaf the model spec itself calls &quot;Plan.&quot;
+Everything under <a href="#how-to-use">How to use</a> above is this leaf running.</li>
+<li><strong><code>splitter</code></strong> — also interactive, but the driver never dispatches it —
+<strong>the planner runs it on itself</strong>, inline, mid-session, when the brief it's
+co-authoring turns out to be several slices: <code>pdca split &lt;id&gt;</code> drafts
+<code>split-proposal.md</code>, then <code>pdca split &lt;id&gt; --accept</code> materializes the
+children — both typed by the planner as tool calls in the same REPL the
+human is already sitting in, never a separate command remembered later.
+<a href="/guide/07-crosscutting.html#size--split">Step 07</a> covers the full decomposition
+process; the short version is that splitting is owned by Plan, not bolted on
+after it.</li>
+<li><strong><code>sizer</code></strong> — headless, and <strong>not</strong> invoked by the planner or by anything in
+this beat directly. It's called automatically by the driver's pre-dispatch
+policy: once right after Plan exits (a freshly-paid call, before Do), and
+again before Check (reading its stored verdict for free, no second opinion
+bought). It judges <code>{band, independent_outcomes, proposed_seams, confidence}</code>
+from whatever <code>brief.md</code> says at the time, and its <code>proposed_seams</code> is what
+the splitter reads as a starting point when a split does happen. See
+<a href="#entry-and-exit-the-guards-around-plan">Entry and exit</a> below for exactly
+when it fires.</li>
+</ul>
+<p>One thing worth knowing: the vendored model spec
+(<code>../template/PCDA/quality-cycle/03-cycle-automation.md</code>) still describes &quot;six&quot;
+leaves (planner, builder, reviewer, signoff, publisher, act) — <code>sizer</code> and
+<code>splitter</code> are newer than that count and haven't been folded into the spec's own
+language yet, even though <code>pdca.toml</code>'s <code>[leaves.*]</code> tables already ship all
+eight.</p>
+<h3>Entry and exit: the guards around Plan</h3>
+<p><strong>Entry.</strong> A bundle arrives at Plan as <code>UNPLANNED</code> — no <code>brief.md</code> yet — unless the
+tracker already settled the question before anyone wrote one, in which case it's
+<code>RESOLVED</code> instead and Plan never touches it (the states are covered fully in
+<a href="/guide/00-introduction.html">step 00</a>).</p>
+<p><strong>Exit</strong> is <code>PLANNED</code> — <code>brief.md</code> exists — but reaching <code>PLANNED</code> does not, by
+itself, buy the bundle a builder. Before the driver dispatches Do, it runs a
+<strong>pre-dispatch policy check</strong> against the brief it just got. This is the actual
+guard layer, and it's separate from anything in <code>pdca.toml</code>'s gates: gates
+verify the <em>built artifact</em> at Check; this verifies the <em>brief</em> before Do is
+even allowed to spend a builder on it. (The same check fires again at Do's own
+exit, before Check dispatches — that firing belongs to Do, not Plan, and is
+covered in <a href="/guide/04-do.html#the-leaf-and-the-guards-around-it">step 04</a>.)</p>
+<h4>The two guards</h4>
+<p>Both are evaluated fresh, every beat — never cached, never pinned by a stale
+marker — so editing the brief or registering a missing row un-holds the bundle on
+the very next attempt, no re-plan required.</p>
+<ul>
+<li><strong>The dependency guard</strong> (<code>[driver].dependency_guard</code>, default <code>hold</code>) —
+<strong>blocking</strong>. Checks every backticked token in the brief's
+<code>External dependencies</code> field (above) against the registered
+<code>[[doctor.checks]]</code> rows from
+<a href="/guide/01-render-and-integrate.html#1d-install--doctor-verify-the-toolchain">step 01</a>.
+A token with no matching row <strong>stops the beat</strong>: the driver raises a
+<code>PolicyHold</code>, prints the unregistered token(s) plus the fix (<code>register a detect cmd + install hint in pdca.toml, or annotate it (no-check: …)</code>), and exits
+non-zero — <code>pdca run</code> / <code>pdca flow</code> report the bundle as held, not done. This
+isn't a heuristic call: a token either names a registered row or it doesn't, so
+unlike the size guard below, <code>hold</code> here is real and is the default. It also
+isn't a <em>new</em> block — it moves an existing one earlier. The same unregistered
+dependency already refuses <code>signoff --accept</code> through Check's C6 guard
+(<a href="/guide/05-check.html#the-c6-accept-guard">step 05</a>); catching it here spends a human a minute instead of
+spending a full builder + reviewer + adversary pass first. Set
+<code>dependency_guard = &quot;warn&quot;</code> to report and proceed anyway, or <code>&quot;off&quot;</code> to disable
+it — both go under <code>[driver]</code> in <code>pdca.toml</code> (not pre-populated there; add the
+key yourself to change the default).</li>
+<li><strong>The size guard</strong> (<code>[driver].size_guard</code>, default <code>off</code>) — <strong>advisory only,
+never blocking</strong> — even set to <code>&quot;hold&quot;</code>, which the driver accepts but silently
+treats as <code>&quot;warn&quot;</code>. That's a deliberate, evidence-based choice, not a gap:
+calibrated over 86 real bundles, the best structural size signal reaches 62%
+precision — nearly one wrong hold per right one — and a blocking gate at that
+rate trains people to override it rather than trust it. With <code>size_guard = &quot;warn&quot;</code>, an oversized brief prints a note naming which signal fired (structural
+estimate, or the configured <code>[[leaves.sizer]]</code> leaf's verdict) and a remedy —
+<code>pdca split</code> — and Do dispatches regardless. This is a <strong>backstop</strong>, not the
+normal path — see <a href="#the-leaves-plan-uses">The leaves Plan uses</a> above and
+<a href="/guide/07-crosscutting.html#size--split">step 07</a> for the default, Plan-owned split
+flow this only catches when it didn't already happen. (The remedy reads
+differently on the guard's second firing, at Do's exit — see
+<a href="/guide/04-do.html#the-leaf-and-the-guards-around-it">step 04</a>.)</li>
+</ul>
+<h4>Where it runs, and why</h4>
+<p>The check lives inside <code>driver.advance()</code> itself, not a hook at the literal end
+of the Plan beat. That's deliberate: there are four separate code paths that can
+walk a bundle from <code>PLANNED</code> into Do (<code>pdca flow &lt;id&gt;</code>, <code>pdca flow &lt;ids…&gt;</code>, the
+zero-id batch sweep, and <code>pdca run &lt;id&gt;</code> direct), and only one of them is a true
+&quot;Plan just finished&quot; hook. Evaluating inside <code>advance()</code> covers all four by
+construction instead of by enumeration — the same reason it's the right place
+for the second firing at Do's exit too, covered in
+<a href="/guide/04-do.html#the-leaf-and-the-guards-around-it">step 04</a>.</p>
+<h3>Why each field is there</h3>
 <p>A brief is not free-form. Each labelled field is consumed by a later beat, which
 is <em>why</em> the harness can automate Do and Check at all:</p>
 <table>
@@ -158,9 +295,29 @@ is <em>why</em> the harness can automate Do and Check at all:</p>
 <td>&quot;Done&quot; is unfalsifiable</td>
 </tr>
 <tr>
+<td><strong>Falsifiability</strong></td>
+<td>Plan itself — a self-check, not machine-enforced (unlike the <a href="#entry-and-exit-the-guards-around-plan">two guards</a> above)</td>
+<td>A criterion nothing can ever make go RED; Do burns a cycle &quot;verifying&quot; the unverifiable</td>
+</tr>
+<tr>
+<td><strong>Invariant to restore</strong></td>
+<td>Do (the property to guarantee), Check C5</td>
+<td>The fix guards the one reported case instead of the actual defect <em>category</em></td>
+</tr>
+<tr>
 <td><strong>Repo + branch target</strong></td>
 <td>Do (branch from), Publish (where the PR goes)</td>
 <td>The fix lands on the wrong branch</td>
+</tr>
+<tr>
+<td><strong>Onto branch</strong></td>
+<td>Do (branch from), Publish (stacks a commit onto the named PR instead of opening a new one)</td>
+<td>A redundant PR opens instead of landing on the one already under review</td>
+</tr>
+<tr>
+<td><strong>Surfaces</strong></td>
+<td>Check (routes which runtime gates apply, e.g. an E2E gate only when <code>gui</code>)</td>
+<td>A GUI-only regression ships because no gate was ever pointed at the surface</td>
 </tr>
 <tr>
 <td><strong>Scope / out-of-scope</strong></td>
@@ -173,9 +330,24 @@ is <em>why</em> the harness can automate Do and Check at all:</p>
 <td>No way to prove the bug existed</td>
 </tr>
 <tr>
+<td><strong>External dependencies</strong></td>
+<td>the <a href="#entry-and-exit-the-guards-around-plan">dependency guard</a> at Plan exit (blocking, by default) + Check §6 as a backstop, reconciled against registered <code>[[doctor.checks]]</code> rows (<a href="/guide/01-render-and-integrate.html">step 01</a>)</td>
+<td>A missing build tool or service surfaces mid-cycle instead of preflighted — or worse, Do silently works around it</td>
+</tr>
+<tr>
 <td><strong>Test file</strong></td>
 <td>Do (ship it here), C4 gate (run it)</td>
 <td>The C4 red→green proof has nothing to run</td>
+</tr>
+<tr>
+<td><strong>Citations expected</strong></td>
+<td>reviewer + human sign-off (traceability)</td>
+<td>An unreviewable &quot;trust me&quot; diff with no <code>path:line</code> anchor</td>
+</tr>
+<tr>
+<td><strong>Prior-art check (triage cycles)</strong></td>
+<td>Plan itself, sign-off</td>
+<td>A duplicate or already-attempted fix reaches Do before anyone checks history</td>
 </tr>
 <tr>
 <td><strong>Disposition hint</strong></td>
@@ -189,15 +361,6 @@ INTEGRATION §2&quot;, &quot;addon convention per INTEGRATION §3&quot;. That's 
 <a href="/guide/01-render-and-integrate.html">step 01</a>: the planner resolves abstract questions
 (&quot;which branch? where does the test go?&quot;) against your repo's concretizations
 instead of guessing.</p>
-<h3>The Plan can be a pointer</h3>
-<p>If your project already plans through its own artifacts — an ADR, an enhancement
-proposal, a normative spec under change control — you don't restate that here. Use
-<code>templates/plan-pointer.md.tpl</code>: a thin brief that <strong>references</strong> the host document
-(<code>- **Planning artifact:** docs/adr/0042-thing.md</code>) and carries only the few fields the
-driver parses (slug, success criterion, branch target, test file). Do reads the
-referenced artifact as the authoritative plan and cites it; the rest of the cycle is
-unchanged. This lets PDCA wrap a host's existing planning process instead of imposing
-its own document shape.</p>
 <h2>STOP discipline</h2>
 <p>Every brief carries the rule that the cycle never ships before sign-off:</p>
 <blockquote>

@@ -38,8 +38,9 @@
 <h1>Step 01 — Render the harness &amp; integrate your repo</h1>
 <p>← <a href="/guide/00-introduction.html">00 Introduction</a> · <a href="/guide/">Index</a> · next: <a href="/guide/02-rehearse-offline.html">02 Rehearse offline →</a></p>
 <p>This step gets you from &quot;I have the template&quot; to &quot;the driver knows how to build,
-gate, and publish for <em>my</em> repo.&quot; There are three sub-steps: <strong>render</strong>,
-<strong>concretize</strong> (<code>docs/INTEGRATION.md</code>), and <strong>wire</strong> (<code>pdca.toml</code>).</p>
+gate, and publish for <em>my</em> repo.&quot; There are four sub-steps: <strong>render</strong>,
+<strong>concretize</strong> (<code>docs/INTEGRATION.md</code>), <strong>wire</strong> (<code>pdca.toml</code>), and <strong>install &amp;
+verify</strong> (<code>make install</code>, <code>pdca doctor</code>).</p>
 <hr />
 <h2>1a. Render the template</h2>
 <p>The harness is a <a href="https://copier.readthedocs.io/">Copier</a> template. Rendering it
@@ -124,7 +125,8 @@ cd ../gramps-testbed-v2
 <p><strong>Start in <code>stub</code> mode.</strong> You want the offline rehearsal in
 <a href="/guide/02-rehearse-offline.html">step 02</a> working before you point any beat at a real
 model. The render message says the same thing: <em>&quot;Replace the stub leaves once
-the deterministic gates exist (build order: gates → driver → batch → Act).&quot;</em></p>
+the deterministic gates exist (build order: gates → driver → batch → Act).&quot;</em>
+See <em>The build ladder</em> below (1c) for why that order matters.</p>
 </blockquote>
 <p>After rendering you have:</p>
 <pre><code>gramps-testbed-v2/
@@ -135,7 +137,7 @@ the deterministic gates exist (build order: gates → driver → batch → Act).
   templates/                # brief / SUMMARY / PR-description templates
   examples/toy/             # the offline toy brief (step 02)
   results/                  # bundles land here
-  process/act-log.md        # Act log (step 07)
+  process/act-log.md        # Act log (step 06)
   Makefile                  # the front door
 </code></pre>
 <hr />
@@ -272,11 +274,188 @@ proof that the fix actually fixes the bug — and left every conformance tier
 advisory, so a pre-existing lint failure or an environmental test segfault
 surfaces to a human (in §6 NEEDS-HUMAN) rather than silently blocking a correct
 fix. You'll see that play out in <a href="/guide/05-check.html">step 05</a>.</p>
+<h3>The build ladder — what order to wire <code>pdca.toml</code> in</h3>
+<p>The model defines a four-rung <strong>maturity ladder</strong> (the vendored spec's
+<a href="/spec/03-cycle-automation.html"><code>03-cycle-automation.md</code></a>
+§Maturity ladder) for how much of the cycle runs unattended. Every mechanism is
+tagged <strong>[built]</strong> (ships and runs today), <strong>[partial]</strong> (ships, needs
+per-project wiring), or <strong>[project-provided]</strong> (tracker-specific — no template
+default makes sense):</p>
+<ul>
+<li><strong>L1 — scripted handoff.</strong> <code>[project-provided]</code> A tracker scraper + handoff
+generator that drafts briefs from a candidate pool. This is <code>docs/INTEGRATION.md</code>
+item 9 (1b above) — the harness ships no default because it's inherently
+tracker-specific.</li>
+<li><strong>L2 — unattended per-issue body.</strong> <code>[built]</code> <code>pdca run &lt;id&gt;</code> — Do → Check →
+assemble → STOP for one issue: the state machine, the two headless leaf calls,
+the gate runner.</li>
+<li><strong>L3 — unattended contribution-batch + sign-off queue.</strong> <code>[built]</code>
+<code>pdca flow &lt;ids…&gt;</code> fans the driver over N issues; <code>pdca queue</code> is the
+cheap-first sign-off burn-down.</li>
+<li><strong>L4 — Act review tooling.</strong> <code>[built]</code> <code>pdca act index</code> / <code>pdca act log</code> —
+independent of L1–L3, so you can run Act manually against any frozen bundles
+regardless of what else is wired.</li>
+</ul>
+<p><strong>The punchline: you're not building L2–L4 — the harness already ships them.</strong>
+What's actually yours to build, in order, is what makes L2 <em>gate something real</em>
+instead of running on stubs — the <strong>per-project build order</strong>:</p>
+<ol>
+<li><strong>Gates, single-sourced</strong> (<code>[[gates.checks]]</code>, above) — fill the real Tier
+1–4 rows so the driver and CI call the <em>same</em> implementation. This is the
+long pole: until it's done, Check runs on the all-PASS stub fallback and
+blocks nothing, no matter how <code>gating</code> is set.</li>
+<li><strong>The leaf commands</strong> (<code>[leaves.*]</code>, above) — flip <code>leaves_mode</code> from <code>stub</code>
+to <code>command</code> once you trust the gates to catch a bad build. Doing this
+<em>before</em> the gates exist means an ungated fix can reach sign-off looking
+green for the wrong reason.</li>
+<li><strong>The batch queue and Act tooling</strong> — nothing to build; <code>pdca flow</code> and
+<code>pdca act</code> are ready the moment 1 and 2 are.</li>
+</ol>
+<p>This is exactly why <a href="/guide/02-rehearse-offline.html">step 02</a> has you rehearse the whole
+flow on stubs <em>before</em> either gates or leaves are real — it proves the L2–L4
+plumbing the harness already ships, so the only genuinely new work left is
+step 1: your gates.</p>
+<hr />
+<h2>1d. Install &amp; doctor: verify the toolchain</h2>
+<p>Wiring <code>pdca.toml</code> says <em>what</em> each beat runs; it doesn't install anything or
+confirm it's usable. Two commands close that gap — one provisions, the other only
+reports.</p>
+<h3><code>make install</code> — provision every tool <code>flow</code> needs</h3>
+<pre><code class="language-bash">make install         # idempotent — re-running is a no-op once everything's present
+make install-check   # report-only: same checks, installs nothing; non-zero if a
+                      # REQUIRED tool is missing (the CI preflight)
+</code></pre>
+<p><code>make install</code> delegates to <code>scripts/bootstrap-tools.sh</code> (ships verbatim from the
+template — it hardcodes no project gate toolchain of its own). On a machine of
+unknown state it works through <strong>three tiers, in order</strong>, printing one
+<code>OK|MISSING|INSTALLED|FAILED|WARN</code> row per tool as it goes:</p>
+<p><strong>Tier 1 — harness-universal.</strong> Needed regardless of what your leaves or gates
+are:</p>
+<ul>
+<li><code>python3</code> (≥3.11) — REQUIRED, not auto-installed (you're already running it).</li>
+<li>A pip-capable venv: probes <code>ensurepip</code> in the interpreter first; a clean
+Debian/Ubuntu lacks it, so it installs <code>python3-venv</code> via <code>apt</code> where possible,
+and falls back to bootstrapping <code>pip</code> from <code>get-pip.py</code> if even that's
+unavailable — the console-script install below never hard-fails on a pip-less
+stdlib.</li>
+<li><code>git</code> and <code>gh</code>, installed via <code>sudo apt-get</code> when apt + sudo are available; if
+not, the exact command is printed and — since both are REQUIRED — the run exits
+non-zero rather than silently continuing without them. If <code>gh</code> is present but
+not authenticated, it warns (<code>gh auth login</code>) since publish/merge need it.</li>
+<li>Then it creates <code>.venv/</code> (if absent) and runs <code>pip install -e .</code> into it — that's
+what makes the project's console script (named per <code>pyproject.toml</code>
+<code>[project.scripts]</code>) available on <code>.venv/bin/</code>.</li>
+</ul>
+<p><strong>Tier 2 — configured leaf backends.</strong> It parses your rendered <code>pdca.toml</code> with
+<code>tomllib</code> (not a grep — so TOML structure, comments, and each leaf's <code>mode</code> are
+honoured) and collects the <em>distinct</em> <code>family</code> values across every <code>command</code>-mode
+leaf: <code>builder</code>, <code>reviewer</code>, <code>planner</code>, <code>signoff</code>, <code>publisher</code>, <code>act</code>, plus any
+<code>[[leaves.advisory]]</code>, <code>builder_variant</code>, and <code>builder_escalation</code> entries. A
+<code>stub</code>-mode leaf contributes nothing — an all-stub render (step 02's territory)
+needs no model CLI installed at all. The <strong>builder's family is REQUIRED</strong> (Do
+can't run without it); every other family is optional, the same &quot;advisory never
+blocks&quot; contract Check uses for gates. Each family maps to a binary (<code>claude</code>,
+<code>codex</code>, <code>gemini</code>, or itself) and, where the harness knows one, an official
+user-space installer — today that's <code>claude</code> via
+<code>curl -fsSL https://claude.ai/install.sh | bash</code>; other families print a hint to
+install their CLI yourself, since there's no known auto-installer.</p>
+<p><strong>Tier 3 — your project's gate toolchain (the instance-owned hook).</strong> The script
+itself hardcodes nothing here; it just runs what you've declared, in both
+<code>install</code> and <code>install-check</code> mode:</p>
+<ul>
+<li>Every <code>scripts/bootstrap-tools.d/*.sh</code> script, in filename order — the
+drop-in extension point for anything not expressible as one command (a hook
+reads <code>$CHECK_ONLY</code> itself and must honour it).</li>
+<li><code>[install].extra_bootstrap</code> from <code>pdca.toml</code> — <strong>one</strong> idempotent command run
+<em>last</em>, only on a real <code>install</code> (never under <code>--check</code>, which must install
+nothing — it's only echoed there for visibility):</li>
+</ul>
+<pre><code class="language-toml">[install]
+extra_bootstrap = &quot;pip install -e .[test]&quot;    # gramps-shaped example; rustup for a
+                                               # cargo-xtask gate, etc.
+</code></pre>
+<p>Both the drop-in scripts and <code>extra_bootstrap</code> survive <code>copier update</code> — they're
+your config/data, not template files the render owns. Neither declared ⇒ the
+script just reports &quot;no project hook&quot; and moves on.</p>
+<p>At the end it prints one summary line and sets the exit code from that alone: any
+REQUIRED tool still missing ⇒ exit 1 (the failing rows are above); otherwise 0,
+with a note if only optional pieces need attention. Run <code>make install</code> on a fresh
+clone or in CI before the first <code>pdca flow</code>; run <code>make install-check</code> as the fast
+preflight that reports the same rows without installing or mutating anything.</p>
+<h3><code>pdca doctor</code> — verify prerequisites, change nothing</h3>
+<p>Where <code>install</code> provisions, <code>doctor</code> only reports — one row per prerequisite,
+<code>OK | MISSING | UNAUTH | WARN</code> plus a fix hint:</p>
+<pre><code class="language-bash">pdca doctor            # every prerequisite; exit 0 iff all REQUIRED rows pass
+pdca doctor --strict   # escalate EVERY non-OK row (including WARN) — for CI
+</code></pre>
+<p>Most rows are <strong>derived from <code>pdca.toml</code> automatically</strong>, so they track your edits
+with no extra config: every leaf's <code>argv[0]</code> on <code>PATH</code> (with a per-family auth
+probe), <code>gh</code> present and authenticated (needed for publish), the bundle root
+writable, the tracker's <code>notes_cmd</code> tool resolvable, and — when a leaf sandbox is
+configured — its dependencies.</p>
+<p>Instance-specific prerequisites (a Docker engine, sibling checkouts, a scraper
+browser…) are declared as data, the same pattern as <code>[[gates.checks]]</code>:</p>
+<pre><code class="language-toml">[[doctor.checks]]
+group = &quot;engine&quot;
+id = &quot;docker&quot;
+cmd = &quot;docker info&quot;
+hint = &quot;https://docs.docker.com/engine/install/ — the gates run in a container&quot;
+level = &quot;WARN&quot;          # status when it FAILS (default MISSING); WARN = optional
+</code></pre>
+<p>gramps also declared a <code>per_lane</code> row so <code>doctor</code> checks every lane's sibling
+worktree exists before a parallel batch run:</p>
+<pre><code class="language-toml">[[doctor.checks]]
+group = &quot;workspace&quot;
+id = &quot;lane worktrees lane{lane}&quot;
+cmd = &quot;test -e ../repo-lane{lane}/.git&quot;
+hint = &quot;make worktrees LANES={lanes}&quot;
+per_lane = true
+</code></pre>
+<p><strong>This is also where a brief's <code>External dependencies</code> field cashes out.</strong> A
+brief may name a per-bundle requirement — <code>protoc</code>, a live etcd cluster, whatever
+that fix's slice needs to build and go red→green — as a backticked token, and
+that token MUST equal a registered <code>[[doctor.checks]]</code> <code>id</code>. The driver
+reconciles the two at Plan exit (before Do dispatches) and again at Check as a
+backstop: an unregistered token routes into SUMMARY §6 and blocks accept until
+you add the matching row here. So a doctor row isn't only a one-time
+machine-readiness check — it's the registry a brief's dependency claims are
+checked against for the life of the bundle. See <a href="/guide/03-plan.html">step 03</a>'s field
+table for the brief side of this contract.</p>
+<p>Run <code>pdca doctor</code> right after <code>make install</code>, and again any time you add a gate,
+an <code>extra_bootstrap</code> step, or change a leaf's family — it's the fast way to tell
+whether a red gate is a real fix regression or just a missing tool.</p>
+<h3><code>make setup</code> — grant the interactive Claude leaves workspace read</h3>
+<p><code>install</code> gets tools onto the machine and <code>doctor</code> confirms they're usable;
+<code>setup</code> is a third, narrower thing — a one-time <strong>permission</strong> grant, and only
+relevant if a Claude CLI is one of your leaf backends. Without it, the
+interactive leaves (planner, signoff, publisher, act) prompt you file-by-file the
+first time they need to read something outside the project, e.g. a sibling
+checkout your gates or briefs reference.</p>
+<pre><code class="language-bash">make setup
+</code></pre>
+<p>It computes <code>ws</code> — the parent directory of your project (the sibling-checkouts
+workspace, e.g. where gramps kept <code>../gramps</code> and <code>../addons-source</code> alongside
+<code>gramps-testbed-v2</code>) — and writes the machine-local, gitignored
+<code>.claude/settings.local.json</code>:</p>
+<pre><code class="language-json">{
+  &quot;permissions&quot;: {&quot;allow&quot;: [&quot;Read(/abs/path/to/workspace/**)&quot;]},
+  &quot;additionalDirectories&quot;: [&quot;/abs/path/to/workspace&quot;, &quot;/tmp&quot;]
+}
+</code></pre>
+<p>That's it: read access to the whole sibling workspace plus <code>/tmp</code>, nothing more —
+it's a <strong>permissions</strong> file, not project trust. If your gates or leaves reach into
+other directories (a build output dir, a second sibling checkout), add them to
+this file by hand; <code>make setup</code> only seeds the common case.</p>
+<p><strong>Trust is a separate, global gate</strong> the harness deliberately doesn't touch:
+folder trust lives in <code>~/.claude.json</code>, not in this repo, and the <em>first</em>
+interactive <code>pdca flow</code> (or <code>&lt;cli&gt; flow</code>) prompts you to trust the project once —
+accept it there. <code>make setup</code> runs before that and only prevents the
+<em>permission</em> prompts that would otherwise fire per file after you've trusted it.</p>
 <hr />
 <h2>Before you go live</h2>
-<p>Run <code>make setup</code> once (grants the interactive Claude leaves read of your
-workspace so they don't prompt per-file). Then <strong>prove the control flow offline
-before spending a single model token</strong> — that's <a href="/guide/02-rehearse-offline.html">step 02</a>.</p>
+<p>With <code>make install</code> done, <code>pdca doctor</code> green, and (if you're on Claude leaves)
+<code>make setup</code> run once, you're ready to <strong>prove the control flow offline before
+spending a single model token</strong> — that's <a href="/guide/02-rehearse-offline.html">step 02</a>.</p>
 <p>← <a href="/guide/00-introduction.html">00 Introduction</a> · <a href="/guide/">Index</a> · next: <a href="/guide/02-rehearse-offline.html">02 Rehearse offline →</a></p>
 
     </article>

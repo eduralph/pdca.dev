@@ -61,16 +61,27 @@ issues this cycle exposed don't recur). A deterministic <strong>driver</strong> 
 machine and <strong>stops only at the three points where a human is irreducible</strong>:
 authoring the Plan, signing off the Check, and the cross-cycle Act review.
 Everything between those points is automated.</p>
-<pre><code>UNPLANNED ─Plan→ PLANNED ─Do→ BUILT ─Check→ CHECKED ─assemble→ AWAITING_SIGNOFF
-                                                                      │  (driver STOPS — human)
-                                          ┌───────────────────────────┤
-                                  accept ─┤ iterate-do  → back to PLANNED (rebuild)
-                              (COMPLETE)  │ iterate-plan → back to UNPLANNED (re-spec)
-                                          └ discontinue → DISCONTINUED (abandon)
-</code></pre>
-<p>The four <strong>halted</strong> states — <code>UNPLANNED</code>, <code>AWAITING_SIGNOFF</code>, <code>COMPLETE</code>,
-<code>DISCONTINUED</code> — are where the driver hands control back. Everything else it
-advances through unattended.</p>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --&gt; UNPLANNED
+    UNPLANNED --&gt; PLANNED: Plan
+    PLANNED --&gt; BUILT: Do
+    BUILT --&gt; CHECKED: Check
+    CHECKED --&gt; AWAITING_SIGNOFF: assemble — driver STOPS
+    UNPLANNED --&gt; RESOLVED: tracker settles it first
+
+    AWAITING_SIGNOFF --&gt; COMPLETE: accept
+    AWAITING_SIGNOFF --&gt; PLANNED: iterate-do (rebuild)
+    AWAITING_SIGNOFF --&gt; UNPLANNED: iterate-plan (re-spec)
+    AWAITING_SIGNOFF --&gt; DISCONTINUED: discontinue
+
+    COMPLETE --&gt; [*]
+    DISCONTINUED --&gt; [*]
+    RESOLVED --&gt; [*]
+</div>
+<p>The five <strong>halted</strong> states — <code>UNPLANNED</code>, <code>AWAITING_SIGNOFF</code>, <code>COMPLETE</code>,
+<code>DISCONTINUED</code>, <code>RESOLVED</code> — are where the driver hands control back. Everything
+else it advances through unattended.</p>
 <h2>The steps</h2>
 <p>Read these in order. Each maps to one beat of the cycle (or one setup step) and
 shows the real gramps-testbed-v2 artifact it produces.</p>
@@ -116,21 +127,21 @@ shows the real gramps-testbed-v2 artifact it produces.</p>
 </tr>
 <tr>
 <td><a href="/guide/05-check.html">05</a></td>
-<td>Check</td>
+<td>Check (gates, reviewer, sign-off, publish)</td>
 <td><strong>C</strong></td>
-<td>Gates + reviewer run; driver assembles <code>SUMMARY.md</code> (the 5/5/1 verdict + §6 NEEDS-HUMAN)</td>
+<td>Gates + reviewer run; you record §9 (<code>--accept</code> / <code>--iterate-do</code> / <code>--iterate-plan</code> / <code>--discontinue</code>, real: issue 46's two iterations); accept publishes a draft PR</td>
 </tr>
 <tr>
-<td><a href="/guide/06-signoff.html">06</a></td>
-<td>Sign-off</td>
-<td><strong>C</strong></td>
-<td>You record §9: <code>--accept</code> / <code>--iterate-do</code> / <code>--iterate-plan</code> / <code>--discontinue</code> (real: issue 46's two iterations)</td>
+<td><a href="/guide/06-act.html">06</a></td>
+<td>Act</td>
+<td><strong>A</strong></td>
+<td>The cross-cycle review that turns recurring misses into spec/gate/rule deltas</td>
 </tr>
 <tr>
-<td><a href="/guide/07-publish-and-act.html">07</a></td>
-<td>Publish &amp; Act</td>
-<td><strong>C / A</strong></td>
-<td>Publish the accepted fix as a draft PR; later, the cross-cycle Act review turns recurring misses into process deltas</td>
+<td><a href="/guide/07-crosscutting.html">07</a></td>
+<td>Cross-cutting</td>
+<td>—</td>
+<td>Mechanisms that span beats, not owned by one: size &amp; <code>pdca split</code>, iteration/carry-forward + auto-iterate, parallel lanes, sweep &amp; cleanup</td>
 </tr>
 </tbody>
 </table>
@@ -142,7 +153,7 @@ pdca flow 13636 13637 13638   # several ids → batch; unbriefed are auto-planne
 pdca flow --from-csv issues.csv   # one Plan session briefs SEVERAL from the export, then drives all
 pdca status                   # every bundle and its state (also the bare `pdca`)
 </code></pre>
-<p>The per-beat detail in steps 03–07 is what <code>pdca flow</code> orchestrates for you —
+<p>The per-beat detail in steps 03–06 is what <code>pdca flow</code> orchestrates for you —
 worth understanding once, even though you'll mostly drive from the top.</p>
 <h2>Prerequisites (for a live run)</h2>
 <p>The offline rehearsal in <a href="/guide/02-rehearse-offline.html">step 02</a> needs only Python
@@ -185,6 +196,7 @@ driver move a bundle with no model or gates wired up? Jump to
 
 <!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
      contain a diagram; empty otherwise. -->
-
+<script src="/assets/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral"});</script>
 </body>
 </html>

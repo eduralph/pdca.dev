@@ -49,6 +49,17 @@ questions:</p>
 <pre><code class="language-bash">copier copy gh:eduralph/pdca-harness ../gramps-testbed-v2
 cd ../gramps-testbed-v2
 </code></pre>
+<blockquote>
+<p><strong>Rendering from a local checkout instead?</strong> Give copier a <code>gh:</code>/<code>https:</code>
+URL (as above) or an <strong>absolute</strong> path. Copier records the source argument
+verbatim as <code>_src_path</code> in <code>.copier-answers.yml</code>, and <code>copier update</code>
+resolves it from the <em>project</em> directory — a path relative to your render
+cwd never resolves there, so the first <code>copier update</code> fails
+(<a href="https://github.com/copier-org/copier/issues/335">copier#335</a>; fix pending
+in <a href="https://github.com/copier-org/copier/pull/2717">copier#2717</a>). Already
+rendered that way? Hand-edit <code>_src_path</code> to the template URL or an absolute
+path — that's the whole repair.</p>
+</blockquote>
 <p>The prompts (from <a href="https://github.com/eduralph/pdca-harness/blob/main/copier.yml"><code>copier.yml</code></a>) and what gramps answered:</p>
 <table>
 <thead>

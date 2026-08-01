@@ -239,8 +239,16 @@ the very next attempt, no re-plan required.</p>
 <a href="/guide/01-render-and-integrate.html#1d-install--doctor-verify-the-toolchain">step 01</a>.
 A token with no matching row <strong>stops the beat</strong>: the driver raises a
 <code>PolicyHold</code>, prints the unregistered token(s) plus the fix (<code>register a detect cmd + install hint in pdca.toml, or annotate it (no-check: …)</code>), and exits
-non-zero — <code>pdca run</code> / <code>pdca flow</code> report the bundle as held, not done. This
-isn't a heuristic call: a token either names a registered row or it doesn't, so
+non-zero — <code>pdca run</code> / <code>pdca flow</code> report the bundle as held, not done.
+Registration is only half the contract: the guard then <strong>runs</strong> the named
+rows' detect <code>cmd</code>s — and only those, never the instance's wider doctor
+inventory — so a registered row whose cmd exits non-zero holds the same way,
+quoting that row's own <code>hint</code>. A dependency can't be discharged by
+registration alone on a machine that doesn't have it; keep detect cmds cheap
+and side-effect-free, because they run every beat the policy is consulted,
+not just on <code>pdca doctor</code>. This
+isn't a heuristic call: a token either names a registered row or it doesn't,
+and a detect cmd either exits 0 or it doesn't, so
 unlike the size guard below, <code>hold</code> here is real and is the default. It also
 isn't a <em>new</em> block — it moves an existing one earlier. The same unregistered
 dependency already refuses <code>signoff --accept</code> through Check's C6 guard

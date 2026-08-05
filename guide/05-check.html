@@ -430,7 +430,9 @@ why). It re-runs the asserted evidence (stash → confirm red, unstash → confi
 green), re-checks that cited <code>path:line</code>s exist on the target branch, and flags
 scope creep. Its output, <code>check-review.md</code>, is <strong>advisory</strong> — it annotates, it
 never gates. The blocking path contains no LLM at all.</p>
-<p>The reviewer runs in an isolation sandbox (only <code>{patch.diff, brief.md, check-gates.json}</code> are present), so the driver hands it a read-only grounding
+<p>The reviewer runs in an isolation sandbox (only <code>{patch.diff, brief.md, check-gates.json}</code> plus the round's <code>gate-logs/</code> are present — the frozen gate
+evidence, so a row it cannot re-run is adjudicated from the log its <code>log</code> key
+names rather than escalated, issue #403), so the driver hands it a read-only grounding
 target as <strong><code>$PDCA_TARGET</code></strong> (for a <code>claude</code> reviewer also via <code>--add-dir</code>).
 That target is the <strong>per-cycle worktree</strong> (<a href="/guide/04-do.html">step 04</a>) — pinned to the
 <em>same</em> base the gates ran against and carrying the patch — so a stale or

@@ -415,7 +415,12 @@ can also come back <strong><code>unverifiable</code></strong> — it genuinely c
 (a missing fixture, a skipped environment) rather than having run and failed —
 which is neither pass nor fail; it routes to §6 like a judgment cell would,
 because &quot;we don't know&quot; and &quot;we checked and it's wrong&quot; need different
-responses from you.</p>
+responses from you. And it can come back <strong><code>deferred</code></strong> — it ran, but the thing
+it audits doesn't exist yet (the contribution check lints the PR body and commit
+message, which get drafted at publish, after Check). That one is <em>not</em> routed to
+§6: its real verdict is owed to the gate that re-runs the row before anything is
+pushed, not to you, so it shows in the matrix and §5 with its reason and nothing
+lands on your checklist.</p>
 <p>The three mechanisms — gates, reviewer, assembly — run in that order, next.</p>
 <h3>Gates — the deterministic oracles</h3>
 <p>Gates are deterministic Check commands with a pass/fail result, each tagged

@@ -281,6 +281,33 @@ the rest: the children's records are staged and moved with their briefs, the
 parent's is written before the close marker, and a failed accept restores the
 parent's prior record byte-for-byte (a record that can't be <em>read</em> refuses the
 accept up front, since one that can't be read can't be restored).</p>
+<p>That record is what lets <strong>a split hand its children back to the run that is
+driving it</strong>. When a bundle in the drive set reaches <code>close-disposition = split</code>, the flow reads its <code>children</code>, drops the ones it can't drive (no brief,
+already terminal, already in this run), and splices the rest into the waves
+<em>after</em> the parent's — never the wave being driven, whose fold has a base about
+to move. From there they are ordinary members of the run: scheduled by their own
+<code>Depends on</code> / <code>Conflicts with</code> (<a href="#waves-in-execution">waves</a>), pointed at the
+same per-target integration branch, published and folded by the same code, and
+drawn from <a href="#the-iteration-budget">the same run's pass pool</a>, so an adopted wave
+can never quietly double it. It is one implementation on the one drive path, so
+it applies to every shape that reaches it — <code>pdca flow &lt;id&gt;</code>, an explicit id
+list, and the CSV batch alike — and Entry B (<code>iterate-plan</code> at sign-off →
+re-plan → split) no longer ends in a restart.</p>
+<p>Adoption follows the <strong>lineage edge only</strong>: a flow drives the children of the
+bundles it is driving, transitively (an adopted child that splits again is
+adopted in its turn, on the same pass pool), and never widens into a sweep of
+<code>results/</code>. The ids you name keep their strict contract — an id list with a
+cycle or an unresolvable <code>Depends on</code> is still refused up front — while a
+<em>child</em> that can't be scheduled is held with the reason and left in flight (the
+resume sweep's tolerance), out of the run's results rather than counted as work
+it did. That holds whenever the hold happens: a child adopted into a later wave
+that becomes unschedulable before its wave arrives is dropped back out of the
+run, and its adoption announcement retracted by name, so &quot;held&quot; always reads the
+same way. A parent marked <code>split</code> with no readable record is reported and skipped;
+both holds degrade to the old remedy, the <code>pdca flow &lt;child-ids&gt;</code> command
+<code>--accept</code> still prints, which remains the right answer for a split accepted
+outside any running flow — including a parent an earlier run already closed,
+whose children a later run does not yet pick up on its own.</p>
 <hr />
 <h2>Iteration &amp; carry-forward</h2>
 <p><a href="/guide/05-check.html#signing-off--the-four-dispositions">Step 05</a> covers the human
@@ -317,9 +344,16 @@ is larger <em>because</em> it churned, not because it started large — so the s
 heading both mechanisms use is the one place they have to agree.</p>
 <h3>The iteration budget</h3>
 <p><code>[driver].max_passes</code> (default <code>20</code>) bounds how many build→sign-off passes one
-<code>pdca flow</code> run gives a bundle before it stops driving it — not silently: the
+wave of a <code>pdca flow</code> run spends before it stops driving — not silently: the
 bundle is named on stderr with a <code>pdca flow &lt;id&gt;</code> resume hint, and its accepted
 siblings still publish. Raise it in <code>pdca.toml</code> rather than editing anything.</p>
+<p>It also sizes the run's <strong>pool</strong>: that many passes per wave the run <em>set out to</em>
+drive, spent down by every wave in turn. A run whose waves are fixed can never
+reach that pool — each of its waves is separately capped at the same number — so
+this changes nothing for it. It is the ceiling on a run whose drive set <strong>grows</strong>:
+children <a href="#the-split">adopted from a split</a> draw from what their parent's schedule
+was allowed, so a split can never quietly multiply the budget. A run that spends
+the pool stops there and says so, naming what it walked away from.</p>
 <h3>Auto-iterate: the driver deciding for itself</h3>
 <p>Every implementation defect the reviewer catches — a logic slip, a weak test, a
 red gate — parks a bundle at <code>AWAITING_SIGNOFF</code> and asks a human to press

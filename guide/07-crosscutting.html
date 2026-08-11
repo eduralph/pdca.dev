@@ -500,7 +500,15 @@ breaks).</li>
 each non-final wave's PRs, so the next wave builds on a genuinely merged base.
 Needs merge rights on the base remote and relaxes STOP discipline for the
 batch; fails closed if a PR turns out non-mergeable. <code>[driver].merge_method</code>
-picks the merge strategy (<code>&quot;merge&quot;</code> / <code>&quot;squash&quot;</code> / <code>&quot;rebase&quot;</code>).</li>
+picks the merge strategy (<code>&quot;merge&quot;</code> / <code>&quot;squash&quot;</code> / <code>&quot;rebase&quot;</code>).
+Before each merge the driver reads that PR's <strong>full check rollup</strong> itself —
+after the ready-mark, immediately before merging — and refuses (the run STOPs)
+on any failing check, any still-running one, and on a rollup with nothing in it
+at all; <code>gh pr merge</code> alone would only refuse what <em>this host</em> marks required in
+branch protection, so without that read a thin protection config lets the next
+wave build on a base that never went green.
+<code>[driver].merge_requires = &quot;required&quot;</code> opts back into host-config-only
+semantics.</li>
 </ul>
 <p>In merge mode the merge is unattended, so <strong>publish refuses to open a PR against
 any branch this run produced</strong> — the work must land on a base that exists

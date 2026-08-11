@@ -195,7 +195,19 @@ briefs, and Do's output isn't one) — instead the message points at
 <code>iterate-plan</code> at sign-off, which archives this attempt and returns the
 bundle to Plan for the re-plan.</li>
 </ul>
-<p>Both firings are evaluated fresh every time, never cached, so editing the brief
+<p>The guard catches what the <em>brief</em> declared. A dependency only the <strong>builder</strong>
+discovers — the tool was there, the version it needed wasn't — has its own exit
+path (issue #341, opt-in <code>[driver].dependency_halt = true</code>): an honest builder
+declares it in <code>build-notes.md</code> (<code>NEEDS-HUMAN external dependency: …</code>, plus a
+proposed <code>[[doctor.checks]]</code> row), and the driver <strong>adjudicates the claim
+deterministically</strong> at <code>BUILT</code> — the named dependency must resolve to a doctor
+row whose detect command really does exit non-zero. Confirmed ⇒ the bundle
+skips the full Check (no reviewer spent adjudicating a patch already stated to
+be unverifiable) and parks at sign-off, <strong>resumable</strong>: install the dependency
+and answer <code>iterate-do</code>. Refuted or unresolvable ⇒ the full Check runs
+unchanged with the refutation recorded into §6 — a self-report can never skip
+review on its own say-so.</p>
+<p>Both guard firings are evaluated fresh every time, never cached, so editing the brief
 or registering a missing row un-holds the bundle on the very next attempt, no
 re-plan required. The <a href="#the-close-disposition-fast-path">close-disposition fast path</a>
 below is a different question from either of these — not &quot;is this bundle

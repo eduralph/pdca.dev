@@ -49,6 +49,7 @@ delta can land, and the cadence that keeps it from firing on noise.</p>
 <h2>How to use</h2>
 <pre><code class="language-bash">pdca act index                              # read-only: frozen cycles + recurring signals
 pdca act log --date 2026-06-12 --append     # scaffold a dated entry into process/act-log.md
+pdca triage &lt;pr&gt;                            # ingest a published PR's external review findings
 </code></pre>
 <p>Act reads the <code>COMPLETE</code> bundles' SUMMARYs — especially §6 (what needed a
 human), §7 (what stayed unproven), and §10 (Act candidates the cycle flagged)
@@ -110,6 +111,23 @@ deterministically-surfaced one.</p>
 whose miss <strong>recurs</strong> in a cycle frozen after the applied date — a loud
 &quot;⚠ Ineffective deltas&quot; section in <code>act index</code> / the <code>act log</code> scaffold. So Act
 audits its own prescriptions instead of writing them and forgetting.</p>
+<h3>External review findings — <code>pdca triage</code> (issue #316)</h3>
+<p>The maintainer review on a <em>published</em> PR is the outer loop's highest-value
+signal — and, until someone transcribes it, invisible to Act. <code>pdca triage</code>
+does the transcription:</p>
+<pre><code class="language-bash">pdca triage https://github.com/OWNER/REPO/pull/123   # or OWNER/REPO#123, or a bare number with --repo
+</code></pre>
+<p>It pulls the PR's reviews and review comments via <code>gh api</code>, classifies each
+finding (<strong>BUG / CONVENTION / NOISE / TEST-GAP</strong> — keyword heuristics, tunable
+from the instance rubric's class list), and routes by class: a BUG on a merged
+PR files a tracker issue whose body carries a carry-forward note; CONVENTION /
+NOISE / TEST-GAP append candidate gate-row, rubric-line and rubric-exclusion
+entries to <code>process/act-log.md</code>. Every finding also registers in the Act
+ledger under a class-keyed signal (<code>codex-pr:&lt;slug&gt;</code>), so the ineffective-delta
+audit above covers external findings too: a class that recurs <em>after</em> its
+process delta was applied gets flagged. It <strong>proposes only</strong> — it never edits
+<code>pdca.toml</code> or the rubric — and re-running the same PR ingests only findings
+that arrived since the last run.</p>
 <hr />
 <h2>How it works</h2>
 <h3>The leaf Act uses</h3>

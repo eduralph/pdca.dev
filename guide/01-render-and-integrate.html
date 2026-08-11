@@ -233,7 +233,15 @@ argv = [&quot;claude&quot;, &quot;--agent&quot;, &quot;signoff&quot;, &quot;--pe
 </code></pre>
 <p>The interactive leaves (planner, signoff, publisher, act) open Claude in your
 terminal because they're the human touch points. The headless ones (builder,
-reviewer) run unattended. Each agent's role prompt lives in a canonical,
+reviewer) run unattended.</p>
+<p>Every interactive session also has a <strong>checked exit</strong> (issue #331): before you
+end it, run <code>/handoff &lt;issue-id&gt;</code> — it verifies the session's expected artifact
+exists and is well-formed, and reports PASS or FAIL with the items to fix. The
+same contract is enforced mechanically at session end by a Stop hook, so a
+session can't silently close with its artifact missing or malformed; a
+deliberate walk-away is recorded with
+<code>python3 .claude/hooks/handoff_guard.py --abandon &quot;&lt;why&gt;&quot;</code> rather than by
+ignoring the guard. Each agent's role prompt lives in a canonical,
 vendor-neutral body at <code>agents/&lt;name&gt;.md</code>; Claude leaves additionally get
 <code>.claude/agents/&lt;name&gt;.md</code> (a frontmatter wrapper that includes that body, so
 <code>--agent</code> resolves), materialized only when the leaf's family is <code>claude</code>.
@@ -285,6 +293,13 @@ proof that the fix actually fixes the bug — and left every conformance tier
 advisory, so a pre-existing lint failure or an environmental test segfault
 surfaces to a human (in §6 NEEDS-HUMAN) rather than silently blocking a correct
 fix. You'll see that play out in <a href="/guide/05-check.html">step 05</a>.</p>
+<p>One more wiring question the gate ladder can't answer for you: <strong>does the host
+repo's CI run anything on every PR that your gates don't?</strong> A spell-checker, a
+docs linter — jobs like that let a bundle pass Check green and open a PR that
+immediately fails a required status. Declare them in <code>[gates].host_ci</code> (issue
+#311) and the harness runs each one against the patched tree at Check <em>and</em>
+re-runs it at publish, immediately before anything is pushed — a failure there
+refuses the push. Empty or absent changes nothing.</p>
 <h3>The build ladder — what order to wire <code>pdca.toml</code> in</h3>
 <p>The model defines a four-rung <strong>maturity ladder</strong> (the vendored spec's
 <a href="/spec/03-cycle-automation.html"><code>03-cycle-automation.md</code></a>

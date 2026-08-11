@@ -256,6 +256,12 @@ doesn't silently stay &quot;unpublished&quot;; pass <code>--no-publish</code> to
 <pre><code class="language-bash">pdca publish 11589              # open the draft PR
 pdca publish 11589 --dry-run    # print the git/gh plan without pushing
 </code></pre>
+<p>A fix whose tracker issue doesn't exist yet takes <code>--no-issue</code> (issue #384): it
+amnesties exactly one requirement — the not-yet-assigned tracker id — and
+records <code>id_pending</code> in <code>publish.json</code> instead of inventing a magic <code>#0000</code>.
+Every <em>other</em> contribution check still blocks the push in both modes; the mode
+travels to the T4 gate as <code>$PDCA_PENDING_ID</code>, so the checker knows precisely
+what it is excusing.</p>
 <p><code>pdca status</code> (and bare <code>pdca</code>) shows each <code>COMPLETE</code> bundle's publish state —
 <code>[PR &lt;url&gt;]</code> when a PR was opened, <code>[unpublished]</code> when it wasn't (dry-run /
 no-target / failed / not-yet-run), <code>[close: no PR]</code> for a close/no-fix bundle —
@@ -270,6 +276,15 @@ f1092ca results(46): record published GraphView import-safety cycle
 </code></pre>
 <p>That's one full cycle, <a href="/guide/03-plan.html">steps 03–05</a>, from tracker issue to merged
 record.</p>
+<p>Those record commits don't have to be hand-made. <strong><code>pdca record [&lt;ids&gt;…]</code></strong>
+(issue #317) commits every bundle whose cycle is <em>over</em> —
+<code>COMPLETE</code> / <code>DISCONTINUED</code> / <code>RESOLVED</code>, never one in motion or halted for a
+human — to the instance repo as <strong>one batch commit</strong>, so a bundle's provenance
+stops living on the machine that ran it. Enable it via the <code>[records]</code> table in
+<code>pdca.toml</code> (<code>mode = &quot;commit&quot;</code> or <code>&quot;pr&quot;</code>, which pushes a <code>records/{date}</code> branch
+and opens one draft PR for the batch); once enabled, publish also triggers it,
+strictly after its <code>publish.json</code> write. Off by default — turn it on only if
+the instance versions its <code>results/</code> bundle root.</p>
 <p><strong>Undoing one.</strong> If a landed fix turns out wrong, <code>pdca revert &lt;id&gt;</code> undoes the
 contribution from its recorded <code>publish.json</code>: a <strong>merged</strong> PR gets a draft
 <strong>revert PR</strong> (reverse-applying the bundle's own <code>patch.diff</code> onto the base —
@@ -429,6 +444,24 @@ touching it. That split is the whole point: it's why a pre-existing
 environmental failure never blocks a correct fix, and why a real regression
 still can't slip through as an advisory footnote — a <strong>gating</strong> row that
 hard-FAILS also lands in §6 (issue #166), covered under the C6 guard below.</p>
+<p>Three properties every row has, learned from rows that lacked them:</p>
+<ul>
+<li><strong>A wall clock</strong> (issue #368). A row can set <code>timeout_secs = N</code>, and
+<code>[gates].default_timeout_secs</code> bounds every row without its own (measured
+before the bound existed: one hung advisory row held a Check beat for 19
+hours, and the heartbeat's &quot;still working&quot; made it never <em>look</em> hung). On
+expiry the whole process group is killed and the row records UNVERIFIABLE —
+the oracle didn't answer, which is not a pass or a fail — landing in §6.</li>
+<li><strong>Its full output is kept</strong> (issue #370). Each check's complete stdout/stderr
+lands in <code>gate-logs/&lt;id&gt;.log</code> inside the bundle, so a red row is
+diagnosable after the fact — the matrix keeps its one-line summary, the log
+keeps the reason.</li>
+<li><strong>Host-CI parity</strong> (issue #311). CI jobs the host repo runs on every PR but
+the gate ladder doesn't know about (a <code>typos</code> pass, a docs linter) used to
+surface only after the draft PR opened red. Declare them in <code>[gates].host_ci</code>
+and they run against the patched tree at Check like any other row — and
+again right before publish pushes, where a failure refuses the push.</li>
+</ul>
 <h3>Reviewer — the decorrelated second opinion</h3>
 <p>The <code>reviewer</code> leaf runs against <code>{patch.diff, test, brief.md, check-gates.json}</code> — <strong>not</strong> <code>build-notes.md</code> (<a href="/guide/04-do.html">step 04</a> explained
 why). It re-runs the asserted evidence (stash → confirm red, unstash → confirm
@@ -437,8 +470,11 @@ scope creep. Its output, <code>check-review.md</code>, is <strong>advisory</stro
 never gates. The blocking path contains no LLM at all.</p>
 <p>The reviewer runs in an isolation sandbox (only <code>{patch.diff, brief.md, check-gates.json}</code> plus the round's <code>gate-logs/</code> are present — the frozen gate
 evidence, so a row it cannot re-run is adjudicated from the log its <code>log</code> key
-names rather than escalated, issue #403), so the driver hands it a read-only grounding
-target as <strong><code>$PDCA_TARGET</code></strong> (for a <code>claude</code> reviewer also via <code>--add-dir</code>).
+names rather than escalated, issue #403). For the stash → red → unstash → green
+re-run itself the sandbox carries a throwaway, git-writable copy of the target
+(issue #419) — the C4 reproduction needs a working git index, and the real
+checkout must receive no writes. For grounding citations the driver hands it a
+read-only target as <strong><code>$PDCA_TARGET</code></strong> (for a <code>claude</code> reviewer also via <code>--add-dir</code>).
 That target is the <strong>per-cycle worktree</strong> (<a href="/guide/04-do.html">step 04</a>) — pinned to the
 <em>same</em> base the gates ran against and carrying the patch — so a stale or
 unreadable sibling checkout can't drift the reviewer's grounding (issue #120);

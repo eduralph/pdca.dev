@@ -375,8 +375,25 @@ that becomes unschedulable before its wave arrives is dropped back out of the
 run, and its adoption announcement retracted by name, so &quot;held&quot; always reads the
 same way. A parent marked <code>split</code> with no readable record is reported and skipped;
 both holds degrade to the old remedy, the <code>pdca flow &lt;child-ids&gt;</code> command
-<code>--accept</code> still prints, which remains the right answer for whatever a run
-could not adopt.</p>
+<code>--accept</code> prints — but only when nothing can guarantee more. While a live run
+holds the split parent right now (driving it, or holding it as a recovery seed,
+from this session or another shell entirely) — or a live CSV batch has not yet
+swept its in-flight bundles, which reaches this parent too — <code>--accept</code> prints a
+<em>condition</em> instead: that a running flow drives the children <em>if it reaches
+them</em>, and names any it did not when it ends, with the same <code>pdca flow &lt;child-ids&gt;</code> command for use after that run has ended. It never says &quot;will
+drive&quot;. Otherwise — standalone, once the run that held the parent has ended, or
+for a child a run already let go — the line is unchanged. And right before ANY
+run ends, it re-checks every split anywhere in its own drive set — including one
+accepted from another shell on a bundle the run has already walked away from
+un-terminal (<code>_warn_abandoned</code> above) — and names every child still IN FLIGHT
+there too, so a split's children are never left silently orphaned once the run
+that could have reached them is gone. In flight, not merely un-driven: a child an
+earlier run already carried to COMPLETE (or that was discontinued or resolved) is
+finished work, so it is passed over in silence rather than handed back with a
+<code>pdca flow</code> that would re-open something already done. A child that is itself a
+split is passed over too — but the walk continues THROUGH it, since a split
+parent is terminal by design and the generation below it may still be sitting
+where an earlier run left it.</p>
 <p>One more thing changes at the reporting end, because adoption puts bundles you
 never typed into the run's results map and the exit code is derived from all of
 them: the single-id shape prints its <code>state&lt;TAB&gt;path</code> line for <strong>every</strong> bundle
@@ -479,6 +496,28 @@ checkout) or two lanes collide. Override per-run without touching <code>pdca.tom
 <code>PDCA_LANES=N</code> or <code>--lanes N</code> on <code>pdca flow</code>. Several standalone <code>pdca flow &lt;id&gt;</code>
 processes can also share one workspace this way — each auto-claims a free lane
 via a lockfile, or is pinned explicitly with <code>PDCA_LANE=k</code>.</p>
+<p>Those processes never <em>drive</em> the same bundle at once: <strong>one live driver per
+bundle</strong>. A <code>pdca flow</code> run claims each bundle before it drives it — the ids you
+name, each bundle its CSV sweep picks up, each child it adopts from a split —
+with a lock the OS drops when the run ends, however it ends (a return, an
+exception, <code>SIGKILL</code>). It keeps the claim for the rest of the run, except on a
+bundle it then decides not to drive (a named id it skips, a swept bundle held on
+an unresolved dependency, a child the reschedule holds), which it lets go at
+once. A second run whose <em>named</em> ids include a bundle a live run holds is
+refused before it touches anything, naming that bundle; a bundle it would only
+have reached <em>implicitly</em> (the sweep, an adopted child) is named and left to the
+run that holds it, and the rest of the run goes on. A claim the run cannot
+record at all — an unwritable <code>process/</code>, a filesystem without file locks — is
+treated the same way: the bundle is never driven unclaimed. The claim files
+live under <code>process/.drive-claims/</code>, outside every bundle, and are gitignored.
+It is also why a run that walks away from a bundle mid-flight says to resume it
+&quot;once this run has ended&quot;: the command is right, its time is after the run that
+printed it.</p>
+<p>The claim covers <em>driving</em>, not every write to a bundle, and there is one known
+gap in that: a CSV batch's Plan session runs <strong>before</strong> the batch claims
+anything, so the planner in it — or a <code>pdca split --accept</code> it runs — can still
+rewrite the brief of, or split, a bundle another live run holds. Single-step
+verbs (<code>pdca run</code>, <code>signoff</code>, <code>publish</code>) take no claim either.</p>
 <p>Each cycle's Do+Check runs in a dedicated git worktree off the target's base
 (<code>[driver].worktree</code>, default <code>true</code>) so the primary checkout is never mutated
 in place — exposed as <code>$PDCA_WORKTREE</code>, and gate commands should target that,

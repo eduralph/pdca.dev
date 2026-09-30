@@ -687,6 +687,11 @@ pdca cleanup --apply    # execute the matched actions below
 <td><strong>report only, always</strong> — never auto-writes an accept past the C6 guard</td>
 </tr>
 <tr>
+<td><code>COMPLETE</code> split parent (<code>close-disposition</code> = <code>split</code>)</td>
+<td>issue OPEN</td>
+<td>checked <strong>first</strong>, ahead of the PR rows: <strong>report only</strong> while any child issue is open or its state can't be read (or the lineage record's <code>children</code> list is missing, empty, or has an entry that is not an issue number — close it by hand); once every child issue is closed, comments (naming every child) + closes as <code>completed</code> if at least one child was completed, else <code>not planned</code></td>
+</tr>
+<tr>
 <td><code>COMPLETE</code> with a merged PR</td>
 <td>issue OPEN</td>
 <td>comments + closes the issue</td>

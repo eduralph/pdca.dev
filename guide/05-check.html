@@ -422,10 +422,11 @@ not Check's work), a <strong>gate</strong> (<code>C2</code>, <code>C4</code>, <c
 mechanical, blocks accept on fail), or <strong>judgment</strong> (<code>C5</code>, <code>T5</code>, validation —
 always routes to the reviewer first and you last, never gates). That
 three-way split is the same one <a href="/guide/07-crosscutting.html#auto-iterate-the-driver-deciding-for-itself">auto-iterate</a>
-reads to decide whether it's safe to rebuild without asking you: only a §6
-item tagged <code>gate</code> is eligible — the driver can plausibly fix a <code>C2</code>/<code>C4</code>/<code>T1</code>–<code>T4</code>
-finding by rebuilding, but it can never rebuild its way past a <code>C5</code>/<code>T5</code>/validation
-finding, because those were never mechanical questions to begin with. A gate
+reads to decide whether a rebuild without asking you has anything to do: only
+a §6 item tagged <code>gate</code> is work for the builder — the driver can plausibly fix a
+<code>C2</code>/<code>C4</code>/<code>T1</code>–<code>T4</code> finding by rebuilding, but it can never settle a
+<code>C5</code>/<code>T5</code>/validation finding that way, because those were never mechanical
+questions to begin with. Those are held for you instead; step 07 has how. A gate
 can also come back <strong><code>unverifiable</code></strong> — it genuinely couldn't run its check
 (a missing fixture, a skipped environment) rather than having run and failed —
 which is neither pass nor fail; it routes to §6 like a judgment cell would,
@@ -461,6 +462,21 @@ the gate ladder doesn't know about (a <code>typos</code> pass, a docs linter) us
 surface only after the draft PR opened red. Declare them in <code>[gates].host_ci</code>
 and they run against the patched tree at Check like any other row — and
 again right before publish pushes, where a failure refuses the push.</li>
+<li><strong>A red is confirmed once</strong> (issue #371). A gating row is one sample, and a
+single transient red used to park a bundle as if the patch were broken. At
+Check, a gating row that fails with a real exit code is re-run once with the
+same command, environment and timeout. Fail then pass records <code>pass</code> with
+<code>flaky = true</code> and lands in §6 as a human item naming both outcomes, so you
+still see the red sample before accepting. Fail then fail records <code>fail</code> with
+the second run's evidence. If the second run gives no clean answer (timeout,
+unverifiable, deferred, or the command could not start), the first <code>fail</code>
+stands. The row's <code>attempts</code> lists both outcomes and its log holds both runs.
+Only Check confirms: the publish host-CI gate and the integration and
+working-tree re-gates run a failing row once, as before. Turn it off for the
+project with <code>[gates] confirm_gating_fail = false</code>, or for one row with
+<code>confirm_fail = false</code> on its <code>[[gates.checks]]</code> or <code>host_ci</code> entry — do that
+for a model-backed row, where a second run is a fresh sample rather than a
+re-check.</li>
 </ul>
 <h3>Reviewer — the decorrelated second opinion</h3>
 <p>The <code>reviewer</code> leaf runs against <code>{patch.diff, test, brief.md, check-gates.json}</code> — <strong>not</strong> <code>build-notes.md</code> (<a href="/guide/04-do.html">step 04</a> explained
@@ -731,7 +747,10 @@ abandon a bundle with §6 still open.) A <strong>gating</strong> gate that hard-
 (<code>overall = fail</code>, not just an advisory row) also lands in §6 (issue #166), so
 the guard blocks accept on a red gate too — you clear it with a conscious
 override, <code>--iterate</code>, or <code>--discontinue</code>, never by it slipping silently to
-COMPLETE.</p>
+COMPLETE. The guard reads the §6 the driver assembled, the last
+<code>## 6. NEEDS-HUMAN</code> heading in the file: a reviewer that quotes a §6 block in
+its report puts that quote in §5, above the real one, and a box ticked in the
+quote doesn't count.</p>
 <h3>The four dispositions, mechanically</h3>
 <p>Each disposition maps to a state transition the driver applies the instant
 you record it:</p>
@@ -780,11 +799,11 @@ cycle (handled out-of-band, duplicate, won't-fix) — a deliberate abandon,
 independent of §6.</p>
 </blockquote>
 <p><strong>Auto-iterate</strong> — <code>[driver].auto_iterate = true</code> lets the driver record
-<code>iterate-do</code> for you when Check's §6 has implementation-only findings and
-nothing you must see first, so Do→Check keeps iterating while the reviewer
-keeps finding things only Do can fix. It never accepts, never ticks a <code>- [ ]</code>,
-and is bounded by <code>max_auto_iters</code> rounds — full mechanics, the eligibility
-rule, and its three guarantees are in
+<code>iterate-do</code> for you while Check's §6 still has implementation findings, so
+Do→Check keeps iterating while the reviewer keeps finding things only Do can
+fix. Findings that need your judgment are held and handed to you in §6 when it
+stops. It never accepts and never ticks a <code>- [ ]</code> — the eligibility rule, the
+deferred findings, what stops the loop, and its guarantees are all in
 <a href="/guide/07-crosscutting.html#auto-iterate-the-driver-deciding-for-itself">step 07</a>.</p>
 <h3>Publish's STOP discipline, and batches</h3>
 <p>The PR opens as a <em>draft</em>, and on the normal single-cycle and <code>stack</code>-mode

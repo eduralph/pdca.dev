@@ -309,14 +309,17 @@ shared-resource relation that forces the pair into <em>different</em> waves. A c
 prerequisite is a <strong>hard error rejected before any build</strong> (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
 <li><strong><code>Depends on (merged)</code> / <code>Stacks on</code></strong> — <em>deprecated, still parsed</em>; both fold into a plain
 <code>Depends on</code> edge. Author <code>Depends on</code> (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
-<li><strong>Integration branch</strong> — the run-scoped branch a wave's accepted patches are folded onto so
-the next wave builds on them within one run (one per <code>(repo, base)</code> target); carries the diff
-forward with <strong>no merge by the harness</strong> (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
+<li><strong>Integration branch</strong> — the run-scoped branch a wave's published PR branches are merged onto
+so the next wave builds on them within one run (one per <code>(repo, base)</code> target); it carries the
+PRs' own commits, only grows within a run, and is never merged into the target — <strong>nothing is
+merged into the target by the harness</strong> (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
 <li><strong>wave_mode (<code>stack</code> / <code>merge</code>)</strong> — how a wave's work reaches the next base (<code>[driver].wave_mode</code>):
 <strong><code>stack</code></strong> (default, fork-safe) folds onto a push-only integration branch and cuts each
-dependent off it — an own-repo PR is a clean increment-only <strong>stacked PR</strong> <code>--base</code>d on the
-branch, a fork PR opens against the upstream base carrying the <em>cumulative</em> diff; in stack
-mode the harness <strong>never merges</strong> (you merge the PR stack bottom-up). <strong><code>merge</code></strong> (own-repo /
+dependent off it; every PR, own-repo or fork, targets the real base. A later wave's PR carries
+every earlier-wave branch on the line, not only its prerequisites', and shows their changes
+until they merge (and, unless the line is a plain chain, until its branch is also updated from
+the base — see <a href="/spec/09-parallel-lanes.html">09</a>). In stack mode the harness <strong>never merges</strong> (you merge
+the PR stack bottom-up with a merge commit, not squash or rebase). <strong><code>merge</code></strong> (own-repo /
 CD only, needs merge rights) instead <strong><code>gh pr merge</code>s each non-final wave</strong> so the next wave
 builds on the genuinely-merged base (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
 <li><strong>Overlap audit</strong> — a post-Do check flagging two same-wave bundles whose patches touch a

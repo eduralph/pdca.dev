@@ -117,8 +117,9 @@ on different models.</li>
 </ul>
 <p>Declaring the constraints is a Plan judgment — the planner sets them from the batch's real
 dependency/conflict structure; an unschedulable graph (a cycle, or a dep that is neither in
-the batch nor already COMPLETE) is rejected up front. <code>pdca waves &lt;ids…&gt;</code> prints the
-computed wave plan without building.</p>
+the batch nor already COMPLETE) is rejected up front — <code>pdca flow</code> exits 2 before building
+anything, naming the bundle and the dependency (or the cycle) and the ways out.
+<code>pdca waves &lt;ids…&gt;</code> prints the computed wave plan without building.</p>
 <h3>What a real brief looks like</h3>
 <p>This is the <strong>actual</strong> brief the planner produced for gramps issue 11589, a
 PluginManager bug (trimmed for length — the real file has fuller prose in a few

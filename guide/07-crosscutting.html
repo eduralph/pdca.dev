@@ -681,11 +681,15 @@ bundle put on the line (say your base reverted a merged PR, so a file the
 bundle added would disappear); a base that only edits such a file is merged
 in as usual. An
 accepted bundle whose publish pushed no branch holds only the bundles that
-depend on it; the rest of the run goes on. When you publish it later
+depend on it or share a <code>Conflicts with</code> edge with it (declared on either
+side): the run ordered those after it to build on its work, which no line of
+the run now holds. The rest of the run goes on. When you publish it later
 (<code>pdca publish &lt;id&gt;</code>), its PR branch is cut from the line commit it was built
 on, so it carries no later wave's work; if a later run has replaced the line
 by then, publish refuses and pushes nothing — re-drive that bundle in a new
-run.</p>
+run. Re-run a held <code>Conflicts with</code> partner only once that PR has merged into
+your base: the carry described below starts only from a plain <code>Depends on</code>,
+so an earlier re-run can build the partner without that work.</p>
 <p>To recover a run that stopped part-way (an integrity stop, the pass budget, a
 crash, Ctrl-C), re-issue the same <code>pdca flow &lt;ids&gt;</code>. The ids the earlier run
 finished are skipped, and if a bundle the new run drives names one of them in

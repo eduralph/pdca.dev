@@ -883,7 +883,22 @@ updated head, or a head or base that moved stops the run. Turn on &quot;require
 branches to be up to date&quot; in the base's branch protection: the host then also
 refuses a merge if the base moves after the driver's last read.
 <code>[driver].merge_requires = &quot;required&quot;</code> opts back into host-config-only
-semantics, and skips the behind check and the update too.</p>
+semantics, and skips the behind check and the update too.
+Merge mode does not support a <code>Merges with</code> group yet (an atomic merge group,
+<a href="/guide/03-plan.html#ordering-and-routing-the-batch">step 03</a>; issue #778): it merges
+each PR on its own, so one member could land on the base without the rest. So
+it builds no group member the run can see, meaning a bundle in the run whose
+brief declares <code>Merges with</code>, or that another brief in the run names there.
+That holds even when the whole group would sit in the final wave, which the
+driver does not merge: a later merge-mode run can still pick up its open PRs
+one at a time. <code>pdca flow &lt;ids&gt;</code> exits 2 before building anything, naming the
+group and the two ways out: set <code>wave_mode = &quot;stack&quot;</code>, or fold the group into
+one bundle. The <code>--from-csv</code> sweep holds the group and its dependents and
+drives the rest. Bare <code>pdca waves</code> refuses (<code>unschedulable:</code>, exit 1) where
+the sweep holds, as it already does for an unresolved <code>Depends on</code>. Two gaps
+remain, both in issue #778: a group declared only in the brief of a bundle
+outside the run is not seen, and a split does not carry <code>Merges with</code> to its
+children. Declare it on every member.</p>
 </li>
 </ul>
 <p>In merge mode the merge is unattended, so <strong>publish refuses to open a PR against

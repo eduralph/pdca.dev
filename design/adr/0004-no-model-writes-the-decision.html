@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0004. No model writes §9; `accept` is refused while a NEEDS-HUMAN item is open (C6) — PDCA Harness</title>
+<meta name="description" content="A model grades its own work leniently and will mark work done without end-to-end evidence">
+<meta property="og:title" content="0004. No model writes §9; `accept` is refused while a NEEDS-HUMAN item is open (C6) — PDCA Harness">
+<meta property="og:description" content="A model grades its own work leniently and will mark work done without end-to-end evidence">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0004-no-model-writes-9-accept-is-refused-while-a-needs-human-item-is-open-c6">0004. No model writes §9; <code>accept</code> is refused while a NEEDS-HUMAN item is open (C6)</h1>
+<h2 id="context">Context</h2>
+<p>A model grades its own work leniently and will mark work done without end-to-end evidence.
+If the accept decision can be written by a model, every other check in the cycle is advisory.
+The maintainer's sign-off is the one step the harness exists to protect.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li><strong>One writer.</strong> <code>signoff.record</code> (<code>template/src/pdca_harness/signoff.py:255</code>) is the only
+code that writes §9, and the driver's decision step is its only caller. Leaves propose a
+decision token; the human decides; the driver records it.</li>
+<li><strong>C6 accept-guard.</strong> <code>accept</code> is refused while any <code>- [ ]</code> row is open under the <strong>last</strong>
+<code>## 6. NEEDS-HUMAN</code> heading of <code>SUMMARY.md</code> (<code>signoff.open_needs_human</code>). A SUMMARY with no
+§6 section cannot be evaluated and is refused (<code>signoff.unrecordable</code>).</li>
+<li><strong>Auto-iterate is narrow.</strong> The automatic loop may only ever write <code>iterate-do</code>, only while an
+implementation-level finding exists, and never past <code>max_auto_iters</code>; it defers findings
+that need a person instead of ticking them.</li>
+<li><strong>Merging is human.</strong> No leaf may mark a PR ready, merge it or approve it; a <code>gh</code> shim and a
+PreToolUse hook (<code>builder_guard</code>) enforce this.</li>
+</ul>
+<p>Present from the first commit (<code>3ca179a</code>, 2026-06-04); the guard was extended by the <code>park</code>
+disposition (#42) and the <code>unverifiable</code> class (#46) in June 2026.</p>
+<h2 id="consequences">Consequences</h2>
+<p>Acceptance is code, not a prose verdict, and no model output can release a publish on its
+own. The human carries the sign-off load, so the quality of §6 decides whether the guard is
+read or rubber-stamped (risk R2 in architecture §11).</p>
+<p><strong>Known gap.</strong> The interactive sign-off session runs with <code>Edit</code>/<code>Write</code>, and nothing yet stops
+it editing §9 directly; <code>state.state</code> would read that text as decided. The guard there is the
+prompt and a watching human. #710 closes this with a hook.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

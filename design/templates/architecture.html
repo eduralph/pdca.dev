@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>N. Section title — PDCA Harness</title>
+<meta name="description" content="system as it currently is, never as it might be, and must not lag the code —">
+<meta property="og:title" content="N. Section title — PDCA Harness">
+<meta property="og:description" content="system as it currently is, never as it might be, and must not lag the code —">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="n-section-title">N. Section title</h1>
+<blockquote>
+<p>Living document. <One line: what this section currently reflects.> Open
+questions are marked <strong>[OPEN]</strong> inline.</p>
+</blockquote>
+<!-- arc42-derived. This class is *descriptive and living*: it must describe the
+     system as it currently is, never as it might be, and must not lag the code —
+     "update the architecture doc" is a legitimate merge requirement on a PR that
+     changes structure. Number the file NN-section-name.md to match its position. -->
+<h2 id="n1-subsection">N.1 Subsection</h2>
+<p>Descriptive prose. Keep every claim grounded in the current design; mark anything
+unsettled as <strong>[OPEN]</strong>. Reference decisions by number (e.g. ADR-0008) for the
+<em>why</em> rather than restating it here.</p>
+<h2 id="n2-subsection">N.2 Subsection</h2>
+<p>…</p>
+<!-- Diagrams as code: keep Mermaid/D2 source under architecture/diagrams/ and
+     reference it; never paste binary image exports. -->
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

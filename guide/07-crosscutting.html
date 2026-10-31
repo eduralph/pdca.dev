@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Step 07 — Cross-cutting: size, iteration, and parallel execution — PDCA Harness</title>
-<meta name="description" content="← 06 Act · Index">
+<meta name="description" content="← 06 Act · Index · next: 08 Command reference →">
 <meta property="og:title" content="Step 07 — Cross-cutting: size, iteration, and parallel execution — PDCA Harness">
-<meta property="og:description" content="← 06 Act · Index">
+<meta property="og:description" content="← 06 Act · Index · next: 08 Command reference →">
 <meta property="og:type" content="article">
 <link rel="stylesheet" href="/assets/style.css">
 </head>
@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -35,10 +37,11 @@
   <main>
     <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
     <article class="prose">
-<h1>Step 07 — Cross-cutting: size, iteration, and parallel execution</h1>
-<p>← <a href="/guide/06-act.html">06 Act</a> · <a href="/guide/">Index</a></p>
+<h1 id="step-07--cross-cutting-size-iteration-and-parallel-execution">Step 07 — Cross-cutting: size, iteration, and parallel execution</h1>
+<p>← <a href="/guide/06-act.html">06 Act</a> · <a href="/guide/">Index</a> · next: <a href="/guide/08-command-reference.html">08 Command reference →</a></p>
 <p>Everything through <a href="/guide/06-act.html">step 06</a> is one contribution moving
-linearly through Plan → Do → Check → sign-off → Publish → Act. Three mechanisms
+linearly through Plan → Do → Check → Act, with sign-off and publish as Check's
+last two steps. Three mechanisms
 don't fit that line — they modify <em>how</em> the beats run rather than being a beat
 themselves, and each one touches more than one of them:</p>
 <ul>
@@ -53,7 +56,7 @@ maintenance that keeps a long-running instance from silting up.</li>
 <p>This step gathers them in one place rather than splitting each across every
 beat it touches.</p>
 <hr />
-<h2>Size &amp; split</h2>
+<h2 id="size--split">Size &amp; split</h2>
 <p><a href="/guide/03-plan.html#entry-and-exit-the-guards-around-plan">Step 03</a> already covers the
 <strong>size guard</strong> — the pre-dispatch check that can warn before Do. This section is
 about the decomposition it warns you toward, and — the important part —
@@ -64,7 +67,7 @@ briefs, and briefs are yours. You do not leave the session to file issues by
 hand.&quot;</em> The planner runs <code>pdca split</code> and <code>pdca split --accept</code> itself, inline,
 with the human right there in the same interactive Plan session — the same
 session that's already open to co-author <code>brief.md</code> in the first place.</p>
-<h3>The process</h3>
+<h3 id="the-process">The process</h3>
 <div class="mermaid">
 flowchart TD
     subgraph ENTRY_P[&quot;Entry P — the default path: inside the Plan session itself&quot;]
@@ -138,7 +141,7 @@ you do to a bundle mid-build — so the route back is <code>iterate-plan</code> 
 that archives the rejected attempt (Do's output isn't discarded, the same as
 any other iterate — <a href="#iteration--carry-forward">below</a>) and returns the bundle
 to <code>PLANNED</code>, landing right back at Entry P for the re-plan.</p>
-<h3>The estimate</h3>
+<h3 id="the-estimate">The estimate</h3>
 <p><code>pdca size [&lt;ids…&gt;]</code> is read-only — it decides nothing, writes nothing, and is
 safe to run against a live queue at any time:</p>
 <pre><code class="language-bash">pdca size 13636        # one bundle
@@ -251,7 +254,7 @@ the structural estimate only (the stored sizer verdict is not joined in) and
 track real churn is not yet observable from either artifact. Until one of them
 grows that column, the evidenced Act-cadence outcome for <code>model_weight</code> is
 &quot;stays 0, gap recorded&quot; — not a retune.</p>
-<h3>The split</h3>
+<h3 id="the-split">The split</h3>
 <p><code>pdca split</code> is the deterministic decomposition path — two verbs, because the
 second is meaningless without the first — and, per the process above, the
 planner leaf is normally the one typing both, from inside the Plan session:</p>
@@ -335,6 +338,33 @@ the rest: the children's records are staged and moved with their briefs, the
 parent's is written before the close marker, and a failed accept restores the
 parent's prior record byte-for-byte (a record that can't be <em>read</em> refuses the
 accept up front, since one that can't be read can't be restored).</p>
+<p><strong>A real split.</strong> Wyrd issue 736 — &quot;the S3 gateway advertises no version&quot; —
+went through four Do rounds as one slice before the planner split it. The
+proposal (<code>results/issue_736/split-proposal.md</code>) names the seam by where the
+blocking findings landed, not by byte count: every blocker of rounds 3 and 4 sat
+in <em>deriving</em> a build identity (a build script, the packaging path, a rerun-watch
+set), while <em>stamping</em> it on the wire &quot;was never the problem: v4's adversary could
+not refute its red→green and it passed every rubric every round&quot;. Its wave sketch
+says why the children stack rather than run in parallel:</p>
+<pre><code class="language-markdown">- `child-2` **depends on** `child-1` because its success criterion is defined *against*
+  child-1's artifact: the header's remainder must be byte-equal to the `version` field of
+  the `role started` log event that child-1 introduces. Built on a base without child-1
+  there is no field to compare against and the header could only go green on a
+  placeholder — the exact `wyrd/unknown` hole this ordering exists to close.
+</code></pre>
+<p><code>pdca split 736 --accept</code> filed the children as tracker sub-issues #778 and
+#779, rewrote <code>child-1</code> / <code>child-2</code> to those ids, and left the parent as a
+<code>split</code> close-disposition with this <code>build-notes.md</code>:</p>
+<pre><code class="language-markdown"># Build notes — NO PATCH (split)
+
+This slice was decomposed rather than built. The work lives in the child bundles: issue_778, issue_779.
+</code></pre>
+<p>and this <code>split-lineage.json</code> on the parent
+(<code>{&quot;children&quot;: [&quot;778&quot;, &quot;779&quot;], &quot;id&quot;: &quot;736&quot;, &quot;version&quot;: 1}</code>) and on each child
+(<code>{&quot;depth&quot;: 1, &quot;id&quot;: &quot;779&quot;, &quot;parent&quot;: &quot;736&quot;, &quot;siblings&quot;: [&quot;778&quot;], &quot;version&quot;: 1}</code>).
+<a href="/guide/03-plan.html">Step 03</a> picks up 779's brief from here, and
+<a href="/guide/05-check.html#publishing-the-accepted-change">step 05</a> shows the two PRs landing as
+a stack.</p>
 <p>That record is what lets <strong>a split hand its children back to the run that is
 driving it</strong>. When a bundle in the drive set reaches <code>close-disposition = split</code>, the flow reads its <code>children</code>, drops the ones it can't drive (no brief,
 already terminal, already in this run), and splices the rest into the waves
@@ -403,14 +433,14 @@ so <code>pdca flow 500</code> can no longer report <code>COMPLETE</code> on stdo
 because of a bundle it never named, nor return 0 while a child it drove waits at
 <code>AWAITING_SIGNOFF</code> unmentioned.</p>
 <hr />
-<h2>Iteration &amp; carry-forward</h2>
+<h2 id="iteration--carry-forward">Iteration &amp; carry-forward</h2>
 <p><a href="/guide/05-check.html#signing-off--the-four-dispositions">Step 05</a> covers the human
 decision — <code>--iterate-do</code> / <code>--iterate-plan</code> — and the state machine
 (<a href="/guide/00-introduction.html">step 00</a>) shows
 <code>ITERATE_DO</code> / <code>ITERATE_PLAN</code> as transient states the driver resolves on its
 own. This section is the mechanics common to <em>every</em> iterate, however it's
 triggered.</p>
-<h3>What actually happens on disk</h3>
+<h3 id="what-actually-happens-on-disk">What actually happens on disk</h3>
 <p>Two things happen, in order, whenever a bundle iterates:</p>
 <ol>
 <li><strong>Carry-forward</strong> — before anything is archived, the driver appends a new
@@ -436,7 +466,7 @@ heading, never the file as it stands after several iterations. Measuring the
 raw file would leak the outcome into the predictor — an iterating bundle's brief
 is larger <em>because</em> it churned, not because it started large — so the same
 heading both mechanisms use is the one place they have to agree.</p>
-<h3>The iteration budget</h3>
+<h3 id="the-iteration-budget">The iteration budget</h3>
 <p><code>[driver].max_passes</code> (default <code>20</code>) bounds how many build→sign-off passes one
 wave of a <code>pdca flow</code> run spends before it stops driving — not silently: the
 bundle is named on stderr with a <code>pdca flow &lt;id&gt;</code> resume hint, and its accepted
@@ -451,7 +481,7 @@ yourself. What bounds a chain of splits is that adoption is finite (a bundle is
 adopted once, a candidate examined once), not arithmetic that truncates the
 schedule; nothing gives back what the run has already spent. A run that does
 spend the pool stops there and says so, naming what it walked away from.</p>
-<h3>Auto-iterate: the driver deciding for itself</h3>
+<h3 id="auto-iterate-the-driver-deciding-for-itself">Auto-iterate: the driver deciding for itself</h3>
 <p>Every implementation defect the reviewer catches — a logic slip, a weak test, a
 red gate — parks a bundle at <code>AWAITING_SIGNOFF</code> and asks a human to press
 <code>iterate-do</code>, which is a decision the driver is often positioned to make itself.
@@ -531,10 +561,15 @@ scratch, plus the deferred findings.</li>
 and the deferred findings survive across rebuilds instead of resetting every
 iterate.</li>
 </ul>
-<p>gramps runs <code>auto_iterate = true</code> with the default <code>max_auto_iters = 3</code>.</p>
+<p>Wyrd runs <code>auto_iterate = true</code> with <code>max_auto_iters = 5</code>, and has switched the
+size backstop's rounds rule off (<code>[driver.size_signal] rounds = 0</code>) after an Act
+review found that rule counting rounds lost to a stale host tool as churn
+(<a href="/guide/06-act.html">step 06</a>). <a href="/guide/05-check.html#signing-off--the-four-dispositions">Step 05</a>
+shows a real auto-iterate round on issue 779: two implementation findings
+rebuilt unattended, the fitness-to-purpose question deferred to the human.</p>
 <hr />
-<h2>Parallel lanes &amp; housekeeping</h2>
-<h3>Lanes</h3>
+<h2 id="parallel-lanes--housekeeping">Parallel lanes &amp; housekeeping</h2>
+<h3 id="lanes">Lanes</h3>
 <p><code>[driver].lanes</code> (default <code>1</code> — strictly serial) sizes a worker pool for the
 <strong>unattended Do+Check band only</strong> — Plan, sign-off, publish, and Act stay
 serial regardless. A pool of N runs N bundles concurrently in one workspace;
@@ -580,10 +615,12 @@ exist — the same <code>per_lane</code> <code>[[doctor.checks]]</code> rows fro
 <a href="/guide/01-render-and-integrate.html#pdca-doctor--verify-prerequisites-change-nothing">step 01</a>
 run automatically, or a <code>lane_preflight</code> command covers a resource that isn't
 expressible as a doctor row. Either way, a missing lane aborts the whole run
-<em>before</em> it produces a pile of false-red bundles, not partway through. gramps
-runs <code>lanes = 6</code>, backed by <code>make worktrees LANES=6</code> provisioning the sibling
-checkouts those doctor rows check for.</p>
-<h3>Bounding what a leaf may use</h3>
+<em>before</em> it produces a pile of false-red bundles, not partway through. Wyrd runs
+<code>lanes = 3</code> and needs no <code>per_lane</code> rows: the driver's worktree isolation gives
+each lane its own checkout of the target (<code>wyrd.pdca-wt-l0</code> … <code>l2</code>), and the
+engine's per-fix verifier and coverage runner scope their own worktrees by
+<code>$PDCA_LANE</code> the same way (<code>wyrd-verify-l&lt;N&gt;</code>, <code>wyrd-cov-l&lt;N&gt;</code>).</p>
+<h3 id="bounding-what-a-leaf-may-use">Bounding what a leaf may use</h3>
 <p>A leaf is a model subprocess doing real work in a real checkout, and lanes run
 several of them at once. <code>[driver].leaf_memory_max</code> (unset by default) caps how
 much memory each one may use: every leaf the driver spawns — planner, builder,
@@ -638,7 +675,7 @@ fans out concurrently, so they are the usual place to spend a smaller cap), and
 <code>[[leaves.builder_variant]]</code> / <code>[[leaves.builder_escalation]]</code> /
 <code>[[leaves.sizer_escalation]]</code> <strong>inherit</strong> the leaf they are a variant of unless
 they set their own.</p>
-<h3>Waves in execution</h3>
+<h3 id="waves-in-execution">Waves in execution</h3>
 <p><a href="/guide/03-plan.html#ordering-and-routing-the-batch">Step 03</a> covers <em>declaring</em> the
 shape — <code>Depends on</code> / <code>Conflicts with</code> on the brief. This is what the driver
 does with that declaration once a batch actually runs: bundles in the same wave
@@ -928,8 +965,15 @@ brief names. It never changes a brief's target.</p>
 <p><code>[driver].regate_between_waves</code> (default <code>false</code>) optionally re-runs your
 repo-scoped gates over each folded integration tip before the next wave builds
 on it — catching a combination that's red even though every fix in it was green
-alone. gramps runs the default <code>wave_mode = &quot;stack&quot;</code> with <code>merge_method = &quot;merge&quot;</code> for when a human merges the stack.</p>
-<h3>Housekeeping: sweep &amp; cleanup</h3>
+alone. Wyrd runs <code>wave_mode = &quot;stack&quot;</code> with <code>merge_method = &quot;merge&quot;</code> for when a
+human merges the stack — again since 2026-10-01, after two months in <code>&quot;merge&quot;</code>
+mode in which one red check on a non-final wave's PR stopped the whole run at
+that wave boundary (its <code>docs/INTEGRATION.md</code> §2 keeps the history). The
+778 → 779 pair in <a href="/guide/05-check.html#publishing-the-accepted-change">step 05</a> ran this
+way: 779 was built on the run's integration line
+<code>pdca-integration/main-r6da1b5689252</code> (recorded in the bundle's <code>stack-base</code>
+file), and its PR opened against <code>main</code>, stacked on #885.</p>
+<h3 id="housekeeping-sweep--cleanup">Housekeeping: sweep &amp; cleanup</h3>
 <p>Two maintenance commands, on two different axes — one is disk footprint, the
 other is tracker sync — and neither should run mid-flow (both can race a live
 session):</p>
@@ -1021,8 +1065,9 @@ aborts the whole command before any write.</p>
 through <a href="/guide/06-act.html">step 06</a>, plus the three mechanisms that cut across it.
 From here, <a href="/guide/01-render-and-integrate.html">render the harness into your own project</a>
 if you haven't, or go back to the <a href="/spec/">reference spec</a>
-for the full reasoning behind any of it.</p>
-<p>← <a href="/guide/06-act.html">06 Act</a> · <a href="/guide/">Index</a></p>
+for the full reasoning behind any of it. Every command this guide mentions is
+listed, with its options and exit codes, in the <a href="/guide/08-command-reference.html">command reference</a>.</p>
+<p>← <a href="/guide/06-act.html">06 Act</a> · <a href="/guide/">Index</a> · next: <a href="/guide/08-command-reference.html">08 Command reference →</a></p>
 
     </article>
   </main>
@@ -1035,6 +1080,8 @@ for the full reasoning behind any of it.</p>
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

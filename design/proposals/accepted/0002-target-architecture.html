@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Target architecture and migration order — PDCA Harness</title>
+<meta name="description" content="edits: the diagrams lost in export are redrawn below as Mermaid">
+<meta property="og:title" content="Target architecture and migration order — PDCA Harness">
+<meta property="og:description" content="edits: the diagrams lost in export are redrawn below as Mermaid">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<!-- Proposal 0002, added verbatim from the maintainer's document of 2026-10-15. The only
+     edits: the diagrams lost in export ("[embedded content: …]") are redrawn below as Mermaid
+     from the surrounding text, and cross-references point at the other proposal's file. -->
+<h1 id="target-architecture-and-migration-order">Target architecture and migration order</h1>
+<p>The gain comes from separating what the harness <em>knows</em> (records), what it <em>decides</em> (pure transitions and policies) and what it <em>does</em> (effects). Today those three are interleaved in <code>flow.py</code>, <code>leaves.py</code> and <code>assemble.py</code>, so a change to any one risks the other two.</p>
+<blockquote>
+<p><em>Diagram redrawn as Mermaid from the text; the original was lost in export.</em></p>
+</blockquote>
+<div class="mermaid">
+flowchart TB
+    classDef machine fill:#dbe7f5,stroke:#2d5b8a
+    O[&quot;Orchestration&lt;br/&gt;waves · lanes · batches · integration lines&lt;br/&gt;stack / merge strategies&quot;]
+    M[&quot;Machine&lt;br/&gt;state(records) → State · next(state, records, config) → Action&lt;br/&gt;no I/O&quot;]:::machine
+    P[&quot;Policies&lt;br/&gt;sizing · auto-iterate · plan policy · size signal ·&lt;br/&gt;dependency halt · convergence → Hold / Proceed&quot;]
+    E[&quot;Effects&lt;br/&gt;LeafRunner · GateRunner · Worktree · Publisher · Tracker&lt;br/&gt;budgets + telemetry&quot;]
+    R[&quot;Roles&lt;br/&gt;roles/&amp;lt;role&amp;gt;/: prompt · input manifest · output schema · stub&quot;]
+    D[(&quot;Records&lt;br/&gt;Brief · Attempt · GateResult · Review · Summary ·&lt;br/&gt;Decision · Publish · Lineage — Markdown rendered, never parsed&quot;)]
+    X[&quot;Outcomes — every phase returns Ok / Held(reason) / FailedInfra → run.json + exit code&quot;]
+    O --&gt; M
+    O --&gt; E
+    M --&gt; P
+    E --&gt; R
+    O &amp; M &amp; P &amp; E &amp; R -.read / write.-&gt; D
+    O &amp; M &amp; E -.report.-&gt; X
+</div>
+<p>Arrows show the only permitted call directions; every layer may read and write records, and no layer reads Markdown. The shaded Machine is the one place the cycle is decided, and it has no I/O.</p>
+<h2 id="the-layers">The layers</h2>
+<p><strong>Records.</strong> One dataclass per bundle artifact — Brief, Attempt, GateResult, Review (11 verdict rows), Summary (findings with id, kind, evidence pointer), Decision, Publish, Lineage — each with <code>load</code>/<code>save</code> and a schema version. Markdown (<code>SUMMARY.md</code>, <code>brief.md</code>) is rendered from them and never parsed back. Collapses the #527/#606/#634/#642/#607 bug class to one parser per record.</p>
+<p><strong>Machine.</strong> <code>state(records) -&gt; State</code> and <code>next(state, records, config) -&gt; Action</code>, no I/O; one loop applies actions. Replaces the <code>flow.flow</code> / <code>flow_ids</code> pair and makes the transition table testable without disk.</p>
+<p><strong>Effects.</strong> <code>LeafRunner.run(role, inputs, budget) -&gt; LeafOutcome</code>, <code>GateRunner</code>, <code>Worktree</code>, <code>Publisher</code>, <code>Tracker</code>. Vendors (claude, codex, gemini, stub) are runner implementations; budgets (timeout, turns, dollars) and telemetry (cost, time, memory) live here so every leaf gets them. One fake runner replaces the 122 <code>subprocess</code>/<code>_invoke</code> patches in the tests.</p>
+<p><strong>Roles.</strong> One folder per leaf: prompt template, input manifest (which records it may see), output schema (fed to <code>--json-schema</code> / <code>--output-schema</code>, validated at the boundary), stub output. Decorrelation becomes a declared manifest the runner enforces; adding a leaf is adding a folder.</p>
+<p><strong>Policies.</strong> Sizing, auto-iterate eligibility, plan policy, size signal, dependency halt, convergence gate: records in, Hold/Proceed with reason out. A <code>Policy</code> protocol discovered from <code>pdca.toml</code> or an instance's <code>pdca_ext/</code> package — the boundary <code>copier update</code> never crosses, and where wyrd's local patches would live.</p>
+<p><strong>Orchestration.</strong> Waves, lanes, batches, integration lines; stack vs merge as a strategy object with stated invariants and property tests over generated dependency graphs. The only route to a smaller stack-mode cluster (#625–#695).</p>
+<p><strong>Outcomes.</strong> Every phase returns Ok / Held(reason) / FailedInfra, written to <code>run.json</code> and reflected in the exit code. Contain-and-degrade goes away as a pattern.</p>
+<h2 id="migration-order">Migration order</h2>
+<p>A strangler, never a rewrite: each step keeps the suite green and ships as sliced briefs under the size budget.</p>
+<blockquote>
+<p><em>Diagram redrawn as Mermaid from the text; the original was lost in export.</em></p>
+</blockquote>
+<div class="mermaid">
+flowchart LR
+    S1[&quot;1 · Records + renderer&lt;br/&gt;gate: no Markdown parser in the accept path&quot;]
+    S2[&quot;2 · LeafRunner seam&lt;br/&gt;gate: no subprocess in leaves.py; every attempt has a usage row&quot;]
+    S3[&quot;3 · Role extraction&lt;br/&gt;gate: leaves.py &amp;lt; 800 lines; reviewer verdict is schema-validated JSON&quot;]
+    S4[&quot;4 · Pure machine&lt;br/&gt;gate: flow.flow deleted; _drive_and_act &amp;lt; 120 lines&quot;]
+    S5[&quot;5 · Policies + outcomes&lt;br/&gt;gate: wyrd patches as pdca_ext/ policies; non-zero exit on held/failed&quot;]
+    S6[&quot;6 · Orchestration strategies&lt;br/&gt;gate: stack-mode issues closed by invariants or reproduced by a generated case&quot;]
+    S2 --&gt; S3
+    S1 --&gt; S4
+    S1 --&gt; S5
+    S4 --&gt; S5
+    S5 --&gt; S6
+</div>
+<p>Each step's gate is the condition in the list below; a step whose gate is not met is not done, whatever its PR count.</p>
+<ol>
+<li><strong>Records + renderer.</strong> Write <code>specs/bundle-format-v1.md</code> first; introduce the dataclasses and a renderer that conform to it; keep <code>SUMMARY.md</code> and <code>brief.md</code> byte-identical under golden-file tests; readers switch from Markdown to records one call site at a time. Exit: no <code>_section_span</code>, <code>_OUTCOME_RE</code>, <code>_needs_human_rows</code> or <code>_FIELD_RE</code> call remains in the accept path.</li>
+<li><strong><code>LeafRunner</code> seam.</strong> Wrap <code>_invoke</code> behind the protocol; move the 122 test patches to one fake runner; add <code>timeout</code>, <code>max_turns</code>, <code>max_budget_usd</code> and cost/time telemetry in the runner. Exit: <code>leaves.py</code> has no direct <code>subprocess</code> use and every attempt has a cost row.</li>
+<li><strong>Role extraction.</strong> Move each leaf's prompt, stub and inputs into <code>roles/&lt;role&gt;/</code>; introduce the input manifest and output schema; reviewer first (it already has the sandbox contract), builder last. Exit: <code>leaves.py</code> under 800 lines; reviewer verdicts arrive as schema-validated JSON.</li>
+<li><strong>Pure machine.</strong> Make <code>driver.advance</code> I/O-free, collapse the two drivers, and generate the transition table test from the state diagram. Exit: <code>flow.flow</code> deleted; <code>_drive_and_act</code> under 120 lines.</li>
+<li><strong>Policies + outcomes.</strong> Extract the six policies behind the <code>Policy</code> protocol with instance discovery; replace <code>_isolate</code> and <code>except Exception: pass</code> with typed outcomes and <code>run.json</code>. Exit: wyrd's local <code>src/</code> patches re-expressed as <code>pdca_ext/</code> policies; <code>pdca flow</code> exits non-zero on a held or failed bundle.</li>
+<li><strong>Orchestration strategies.</strong> Stack and merge modes as strategy objects; property tests over generated DAGs for carry, fold and revert. Exit: the open stack-mode issues are either closed by the invariants or reproduced by a generated case.</li>
+</ol>
+<p>Steps 1 and 2 are independent and can run in parallel lanes; 3 depends on 2; 4 on 1; 5 on 1 and 4; 6 on 5. The test migration is the main cost — most of the 49k lines are coupled to module shapes, not behaviour — and should be budgeted as its own line in each step's brief.</p>
+<h2 id="sequencing-against-the-milestones">Sequencing against the milestones</h2>
+<p>The switch is a re-sequencing of the ~100 open issues, not a pause. Three milestones get an enabling step as their first bundle; nothing else stops.</p>
+<table>
+<thead>
+<tr>
+<th>Milestone</th>
+<th>Open</th>
+<th>What it is today</th>
+<th>Enabling step</th>
+<th>What to do with its issues</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.60</td>
+<td>18</td>
+<td>stack-mode cluster (#625–#630, #653, #654, #671–#673, #693–#695)</td>
+<td>none — finish as is</td>
+<td>these are the invariants step 6 needs; write each fix's invariant down as you go</td>
+</tr>
+<tr>
+<td>0.61</td>
+<td>33</td>
+<td>leaf, handoff and flow edge cases; §6 parser bugs (#606, #608, #634, #642, #644)</td>
+<td><strong>2 LeafRunner seam</strong></td>
+<td>fix the leaf and handoff bugs behind the seam; move the five parser bugs to 0.62 to land with records unless one hurts daily</td>
+</tr>
+<tr>
+<td>0.62</td>
+<td>12</td>
+<td>wave semantics, crash-resume (#509), signal deaths (#510), sweep</td>
+<td><strong>1 Records + render</strong></td>
+<td>#509/#510 are the first <code>Ok / Held / FailedInfra</code> cut; #499 waits for step 4</td>
+</tr>
+<tr>
+<td>0.63</td>
+<td>8</td>
+<td>driver guard (#471), diagnostics (#514), reviewer sandbox seed (#586)</td>
+<td>after 1 and 2</td>
+<td>#514 is trivial once runner telemetry exists; #586 is a role input manifest</td>
+</tr>
+<tr>
+<td>0.64–0.66</td>
+<td>18</td>
+<td>interactive leaves, remote control, planner contract (#487–#493, #640, #641, #643, #656)</td>
+<td><strong>3 Role extraction</strong> before 0.65</td>
+<td>after step 3 these are folder changes, not <code>leaves.py</code> edits</td>
+</tr>
+<tr>
+<td>0.67</td>
+<td>5</td>
+<td>caps and size-signal tuning (#544, #556, #594, #645)</td>
+<td><strong>5 Policies</strong></td>
+<td>implement them as <code>Policy</code> instances, not driver code</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>13</td>
+<td>#505 restructure, #607 Markdown state, #601 prompt skeleton, #512, #551, #535</td>
+<td><strong>4 + 6</strong></td>
+<td>already the target-architecture milestone; its exit gate is &quot;steps 4–6 closed&quot;; #607 and #601 move forward to where steps 1 and 3 land</td>
+</tr>
+</tbody>
+</table>
+<p>Order: finish 0.60 → 0.61 opens with step 2 → 0.62 opens with step 1 → 0.63 → step 3 before 0.65 → step 5 as 0.67 → 0.70 is steps 4 and 6. Instances stay pinned at v0.59 until the step-1 renderer passes byte-identical golden tests on wyrd's 141 live SUMMARYs.</p>
+<h2 id="formal-structure-for-the-harness-itself">Formal structure for the harness itself</h2>
+<p>pdca-harness should carry the same four document classes it already gives every rendered project through pdca-project-template: specs, architecture, ADRs, proposals. Today the harness has the walkthrough (<code>docs/00–07</code>), the vendored spec (<code>template/PCDA/quality-cycle/00–10</code>) and issue archaeology in docstrings — but no record of <em>why</em> the driver is shaped as it is, so the same debates reopen in issues (#505 and #607 are both re-deriving decisions the code already embodies).</p>
+<p><strong>Layout.</strong> <code>docs/design/</code> in pdca-harness, with the four classes and the templates copied from pdca-project-template; <code>docs/</code> keeps the walkthrough as the applied guide; <code>template/PCDA/</code> stays the single source of the spec and is class 1 by reference, not by copy.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Harness content</th>
+<th>Where it comes from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Specifications (<code>specs/</code>)</td>
+<td>the quality-cycle model 00–10; <strong>the bundle document format</strong> (below); the gate marker protocol; the role output schemas (step 3)</td>
+<td>spec exists; record and schema specs are written as steps 1 and 3 land, one spec before the second consumer</td>
+</tr>
+<tr>
+<td>Architecture (<code>architecture/</code>, arc42)</td>
+<td>01 goals ← <code>docs/00</code>; 02 constraints (stdlib-only, Python ≥ 3.11, Copier, two vendor CLIs); 03 context ← <code>INTEGRATION.md</code> contract; 04 solution strategy ← the layer diagram above; 05 building blocks ← the six layers; 06 runtime ← the state machine; 07 deployment (render, <code>copier update</code>, instances, <code>pdca_ext/</code>); 08 crosscutting ← <code>docs/07</code>; 09 build order ← the roadmap above; 10 quality, risks ← the Weaknesses section of this review</td>
+<td>written once at the start of step 1, then kept current: a PR that changes structure updates it, enforced by a <code>T2-docs</code> gate the way wyrd enforces docs currency</td>
+</tr>
+<tr>
+<td>ADRs (<code>adr/</code>)</td>
+<td>see the seed list below</td>
+<td>backfilled first, then one per migration step</td>
+</tr>
+<tr>
+<td>Proposals (<code>proposals/</code>)</td>
+<td>the oversized-slices, backlog-reversal and re-slicing documents already written in wyrd-pdca; the restructure outline (#505); this review's improvement list</td>
+<td>moved out of issues and instance <code>docs/</code> into the proposal lifecycle (draft → accepted → implemented)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The bundle document format is a spec, and it comes first.</strong> Today the shape of <code>brief.md</code>, <code>SUMMARY.md</code>, <code>check-gates.json</code>, <code>signoff-decision</code>, <code>deferred-findings.json</code>, <code>loop-telemetry.json</code> and the lineage records is defined in three places that can disagree: the prose of spec doc 02 (cycle artifacts), the <code>templates/*.tpl</code> files, and the parsers in <code>assemble.py</code>, <code>signoff.py</code>, <code>state.py</code> and <code>autoiterate.py</code>. Every consumer — the driver, four role prompts, the instances' <code>run-verify.sh</code> and <code>scripts/review-branch</code>, the Act index, a human reading §6 — codes against whichever of the three it happened to read. That is the condition the project template's own rule names: write a spec before a second consumer depends on the format. Here there are a dozen.</p>
+<p>So step 1 is reordered: the spec is written first, as <code>specs/bundle-format-v1.md</code> in RFC 2119 language, and the records, renderer and parsers are then made to conform to it, with the golden set as the conformance suite. The spec covers:</p>
+<ul>
+<li>the bundle layout and the file-derivation of state (which files exist ⇒ which state), as a normative table;</li>
+<li><code>brief.md</code>: the field set, which fields are REQUIRED at Plan exit (Slug, Defect, Success criterion, Scope, Repo + branch target — #580), the carry-forward block grammar, and the maximum size;</li>
+<li><code>SUMMARY.md</code>: the ten sections, the §6 row grammar (id marker, kind, evidence pointer, checkbox), the §9 decision grammar, and the rule that §6 is identified by its last heading;</li>
+<li>the JSON records — <code>check-gates.json</code>, <code>signoff-decision</code>, <code>deferred-findings.json</code>, <code>loop-telemetry.json</code>, <code>publish.json</code>, lineage — each with a <code>format</code> version field and the fields a consumer MUST write and MAY read;</li>
+<li>the gate marker protocol (rc 0 / 77, <code>PDCA-UNVERIFIABLE:</code>, <code>PDCA-DEFERRED:</code>, <code>PDCA-EVIDENCE:</code>, the 120-character path line) as the contract instance gate scripts are written against;</li>
+<li>the decision token set (<code>accept</code>, <code>iterate-do</code>, <code>iterate-plan</code>, <code>discontinue</code>) and the C6 refusal rule.</li>
+</ul>
+<p>The spec is versioned independently of the template (<code>bundle-format: 1</code> in every record; a template release names the format version it reads and writes), so an instance can tell a format change from a driver change, and a frozen bundle from v0.59 stays readable by the step-1 renderer. Spec doc 02 is reduced to the model-level description and points at the format spec for anything a parser depends on; <code>templates/*.tpl</code> become renderer fixtures that are tested against the spec rather than a second definition of it.</p>
+<p><strong>Seed ADRs.</strong> The first eight record decisions already made, dated to the issue or commit that made them; the rest are the migration decisions and are written as each step's first PR.</p>
+<table>
+<thead>
+<tr>
+<th>ADR</th>
+<th>Decision</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0001</td>
+<td>Record architecture decisions (Nygard-style, append-only)</td>
+<td>backfill</td>
+</tr>
+<tr>
+<td>0002</td>
+<td>Apache-2.0 and DCO</td>
+<td>backfill (exists in the project template)</td>
+</tr>
+<tr>
+<td>0003</td>
+<td>Bundle state is derived from which files exist; no database</td>
+<td>backfill</td>
+</tr>
+<tr>
+<td>0004</td>
+<td>No model writes §9; <code>accept</code> is refused while a NEEDS-HUMAN item is open (C6)</td>
+<td>backfill</td>
+</tr>
+<tr>
+<td>0005</td>
+<td>Reviewer is a different vendor from the builder and never sees <code>build-notes.md</code> (#419 disposable target)</td>
+<td>backfill</td>
+</tr>
+<tr>
+<td>0006</td>
+<td>Red-before/green-after is the only evidence allowed to block a sign-off</td>
+<td>backfill</td>
+</tr>
+<tr>
+<td>0007</td>
+<td>Distribution is a Copier template; instances concretize in <code>INTEGRATION.md</code> and <code>pdca.toml</code> and update with <code>copier update</code></td>
+<td>backfill</td>
+</tr>
+<tr>
+<td>0008</td>
+<td>The driver is pure stdlib, Python ≥ 3.11</td>
+<td>backfill</td>
+</tr>
+<tr>
+<td>0009</td>
+<td>The bundle document format is a versioned spec (RFC 2119); Markdown artifacts are rendered from typed records that conform to it and never parsed back</td>
+<td>step 1</td>
+</tr>
+<tr>
+<td>0010</td>
+<td>Leaves run behind a <code>LeafRunner</code> protocol; vendors are implementations; budgets and telemetry live in the runner</td>
+<td>step 2</td>
+</tr>
+<tr>
+<td>0011</td>
+<td>A role is data: prompt, input manifest, output schema, stub</td>
+<td>step 3</td>
+</tr>
+<tr>
+<td>0012</td>
+<td>One driver; transitions are pure functions over records</td>
+<td>step 4</td>
+</tr>
+<tr>
+<td>0013</td>
+<td>Policies implement a <code>Policy</code> protocol discovered from <code>pdca.toml</code> or an instance's <code>pdca_ext/</code>; <code>copier update</code> never crosses that boundary</td>
+<td>step 5</td>
+</tr>
+<tr>
+<td>0014</td>
+<td>Every phase returns <code>Ok / Held / FailedInfra</code>, recorded in <code>run.json</code> and the exit code</td>
+<td>step 5</td>
+</tr>
+<tr>
+<td>0015</td>
+<td>Integration modes are strategy objects with stated invariants and property tests</td>
+<td>step 6</td>
+</tr>
+<tr>
+<td>0016</td>
+<td>The migration is a strangler; instances pin a template version until golden parity</td>
+<td>now</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Process rules that make the structure live.</strong></p>
+<ul>
+<li>A migration step's first PR carries its ADR; the step is not open until the ADR is Accepted.</li>
+<li>A PR that changes a layer boundary, a record format or a role contract updates <code>architecture/</code> in the same PR; the docs gate fails otherwise.</li>
+<li>An Act delta that changes architecture (not just a gate or a brief field) is filed as a proposal, and its acceptance produces an ADR — so the Act loop feeds the decision record instead of the docstrings.</li>
+<li>Instances keep their own <code>docs/design/</code> for instance decisions (wyrd's intake cap, track rules); harness ADRs are referenced by number from there, never copied.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+<script src="/assets/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral"});</script>
+</body>
+</html>

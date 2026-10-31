@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command reference — every `pdca` subcommand — PDCA Harness</title>
+<meta name="description" content="← 07 Cross-cutting · Index · next: 09 Configuration reference →">
+<meta property="og:title" content="Command reference — every `pdca` subcommand — PDCA Harness">
+<meta property="og:description" content="← 07 Cross-cutting · Index · next: 09 Configuration reference →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="command-reference--every-pdca-subcommand">Command reference — every <code>pdca</code> subcommand</h1>
+<p>← <a href="/guide/07-crosscutting.html">07 Cross-cutting</a> · <a href="/guide/">Index</a> · next: <a href="/guide/09-configuration-reference.html">09 Configuration reference →</a></p>
+<p>The walkthrough introduces each command where the cycle first needs it. This
+page lists all of them in one place — first the commands that get an instance
+rendered, installed and checked, then every <code>pdca</code> subcommand: what each does,
+its options, what its exit code means, and where the walkthrough explains it.
+The usage lines are the tool's own <code>--help</code> output at template <code>v0.59.0</code>;
+<code>pdca &lt;command&gt; --help</code> is always the authority for the version you have
+installed.</p>
+<h2 id="conventions">Conventions</h2>
+<ul>
+<li><strong>The command is named per project.</strong> <code>cli_name</code> at render time sets the
+console script (<code>pdca</code> by default; <code>pdca-&lt;slug&gt;</code> if you run several instances
+on one machine). Before <code>make install</code>, or in CI, every command also runs as
+<code>PYTHONPATH=src python3 -m pdca_harness.cli &lt;command&gt; …</code>.</li>
+<li><strong>Every command runs inside a rendered project.</strong> Each one loads <code>pdca.toml</code>
+from the current directory first. No <code>pdca.toml</code>, or an invalid one, is a
+one-line error and <strong>exit 2</strong>, never a traceback.</li>
+<li><strong>Bare <code>pdca</code> is <code>pdca status</code>.</strong> The dashboard is the default command.</li>
+<li><strong>Exit codes</strong> are a contract: <strong>0</strong> did what it says; <strong>1</strong> a bundle or a
+check did not pass, or the command refused to act; <strong>2</strong> bad input (config, an
+unknown id, an unschedulable graph). <code>pdca flow</code> adds <strong>3</strong> — see below.</li>
+<li><strong><code>&lt;id&gt;</code></strong> is a tracker issue id as it appears in <code>results/issue_&lt;id&gt;/</code>.
+Several commands take none and then act on every bundle that fits.</li>
+</ul>
+<h2 id="getting-set-up">Getting set up</h2>
+<p>These run once per instance, or once per machine, before any <code>pdca</code> command.
+<a href="/guide/01-render-and-integrate.html">Step 01</a> walks through them in order with Wyrd's
+real answers.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+<th>Covered in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>copier copy gh:eduralph/pdca-harness &lt;dir&gt;</code></td>
+<td>Renders the template into a new project, asking the <code>copier.yml</code> questions. Use a <code>gh:</code>/<code>https:</code> URL or an <strong>absolute</strong> path, never a relative one.</td>
+<td><a href="/guide/01-render-and-integrate.html#1a-render-the-template">01</a></td>
+</tr>
+<tr>
+<td><code>copier update</code></td>
+<td>From inside the rendered project: re-applies a newer template release over your render, keeping your answers and your instance files. Do it in a separate worktree, never under a live flow.</td>
+<td><a href="/guide/01-render-and-integrate.html#1a-render-the-template">01</a>, <a href="/guide/04-do.html#the-harness-checkout-is-not-isolated--dont-do-git-maintenance-under-a-live-flow-issue-130">04</a></td>
+</tr>
+<tr>
+<td><code>make install</code></td>
+<td>Bootstraps every tool <code>flow</code> needs, idempotently, then creates <code>.venv/</code> and installs the console script with <code>pip install -e .</code>. Three tiers: harness-universal tools (<code>git</code>, <code>gh</code>, a pip-capable venv), the leaf CLIs your <code>pdca.toml</code> configures, and your own gate toolchain hook. Re-runs when <code>pdca.toml</code> or the bootstrap scripts change.</td>
+<td><a href="/guide/01-render-and-integrate.html#make-install--provision-every-tool-flow-needs">01</a></td>
+</tr>
+<tr>
+<td><code>make install-check</code></td>
+<td>The same checks, installing nothing: one <code>OK|MISSING|INSTALLED|FAILED|WARN</code> row per tool. Exit non-zero only if a REQUIRED tool is missing — the CI preflight.</td>
+<td><a href="/guide/01-render-and-integrate.html#make-install--provision-every-tool-flow-needs">01</a></td>
+</tr>
+<tr>
+<td><code>scripts/bootstrap-tools.sh [--check]</code></td>
+<td>What <code>make install</code> and <code>make install-check</code> call. Ships verbatim from the template; your toolchain goes in <code>scripts/bootstrap-tools.d/*.sh</code> and <code>[install].extra_bootstrap</code>.</td>
+<td><a href="/guide/01-render-and-integrate.html#make-install--provision-every-tool-flow-needs">01</a></td>
+</tr>
+<tr>
+<td><code>pwsh -File scripts/install.ps1</code></td>
+<td>Windows: the equivalent of <code>make install</code> plus <code>make setup</code>, where GNU make is not standard.</td>
+<td><a href="/guide/01-render-and-integrate.html#1d-install--doctor-verify-the-toolchain">01</a></td>
+</tr>
+<tr>
+<td><code>make setup</code></td>
+<td>One-time, Claude leaves only: writes the gitignored <code>.claude/settings.local.json</code> granting the interactive leaves read of the sibling workspace and <code>/tmp</code>, so they don't prompt per file. Permissions, not trust — the first interactive <code>pdca flow</code> still asks once to trust the project.</td>
+<td><a href="/guide/01-render-and-integrate.html#make-setup--grant-the-interactive-claude-leaves-workspace-read">01</a></td>
+</tr>
+<tr>
+<td><code>pdca doctor [--strict]</code></td>
+<td>Reports every prerequisite — derived from <code>pdca.toml</code> plus your <code>[[doctor.checks]]</code> rows — and changes nothing. Run it after <code>make install</code> and whenever a red gate might be a missing tool. Full contract <a href="#pdca-doctor--report-every-prerequisite-change-nothing">below</a>.</td>
+<td><a href="/guide/01-render-and-integrate.html#pdca-doctor--verify-prerequisites-change-nothing">01</a></td>
+</tr>
+<tr>
+<td><code>make check</code></td>
+<td>The fast offline self-test: the driver's unit tests (<code>python3 -m unittest discover -s tests</code>), about a second.</td>
+<td><a href="/guide/02-rehearse-offline.html">02</a></td>
+</tr>
+<tr>
+<td><code>make</code> / <code>make test</code></td>
+<td><code>check</code>, then a full driver cycle on a throwaway bundle with stub leaves — <code>init-issue selftest</code> and <code>run selftest</code> under <code>PDCA_LEAVES_MODE=stub</code>. Inspect <code>results/issue_selftest/</code>.</td>
+<td><a href="/guide/02-rehearse-offline.html">02</a></td>
+</tr>
+<tr>
+<td><code>pdca flow TOY --rehearse</code></td>
+<td>The same orchestration <code>flow</code> uses, entirely stubbed, in <code>.rehearse/</code>: the first command to run once the install is green.</td>
+<td><a href="/guide/02-rehearse-offline.html#the-one-shot-rehearsal">02</a></td>
+</tr>
+</tbody>
+</table>
+<p>The order matters: render, then <code>make install</code>, then <code>pdca doctor</code>, then the
+offline rehearsal — and only then point a leaf at a real model. If
+<code>ship_ci_workflow</code> was left on at render, the shipped <code>check-gates.yml</code> runs
+<code>pdca gates --working-tree</code> on every PR of the instance, the same gate set the
+driver runs.</p>
+<h2 id="drive-the-cycle">Drive the cycle</h2>
+<h3 id="pdca-flow--the-front-door"><code>pdca flow</code> — the front door</h3>
+<pre><code>usage: pdca flow [-h] [--from-csv FROM_CSV] [--from-briefs FROM_BRIEFS]
+                 [--rehearse] [--no-publish] [--no-act] [--by BY]
+                 [--lanes LANES] [--max-passes MAX_PASSES] [--auto-iterate]
+                 [--no-inhibit]
+                 [issue_ids ...]
+</code></pre>
+<p>Runs the whole cycle — Plan → Do → Check (gates → review → sign-off → publish)
+→ Act — for one issue, a batch, or a batch planned from a tracker export. One id
+is a single cycle; several ids run as <a href="/guide/07-crosscutting.html#waves-in-execution">dependency waves</a>,
+briefing any unbriefed id in one shared Plan session first; no ids plus
+<code>--from-csv</code> lets the planner pick the batch from the export. A split parent in
+the set hands its children to the run (<a href="/guide/07-crosscutting.html#size--split">07</a>).
+Re-issuing the same command resumes a run that stopped.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--from-csv FROM_CSV</code></td>
+<td>Tracker export that seeds the interactive Plan of unbriefed ids.</td>
+</tr>
+<tr>
+<td><code>--from-briefs FROM_BRIEFS</code></td>
+<td>Initialize any missing bundle from <code>DIR/&lt;id&gt;.md</code> before driving.</td>
+</tr>
+<tr>
+<td><code>--rehearse</code></td>
+<td>Dry run: stub leaves and stub gates in an isolated bundle root (<code>.rehearse/</code>), publish dry-run. No model, no <code>cargo</code>, no network (<a href="/guide/02-rehearse-offline.html">02</a>).</td>
+</tr>
+<tr>
+<td><code>--no-publish</code></td>
+<td>Don't open the draft PR after an accept.</td>
+</tr>
+<tr>
+<td><code>--no-act</code></td>
+<td>Skip the Act leaf (Act runs by default once <code>act_cadence</code> cycles have frozen).</td>
+</tr>
+<tr>
+<td><code>--by BY</code></td>
+<td>Who signed off; recorded in §9.</td>
+</tr>
+<tr>
+<td><code>--lanes LANES</code></td>
+<td>Worker-pool size for the unattended Do + Check band; overrides <code>[driver].lanes</code> and <code>PDCA_LANES</code> (<a href="/guide/07-crosscutting.html#lanes">07</a>).</td>
+</tr>
+<tr>
+<td><code>--max-passes MAX_PASSES</code></td>
+<td>Sign-off pass budget per wave before the driver stops driving a bundle; overrides <code>[driver].max_passes</code> and <code>PDCA_MAX_PASSES</code> (<a href="/guide/07-crosscutting.html#the-iteration-budget">07</a>).</td>
+</tr>
+<tr>
+<td><code>--auto-iterate</code></td>
+<td>Rebuild without stopping while Check finds implementation-level work; human-judgment findings are deferred to the handover §6; overrides <code>[driver].auto_iterate</code> and <code>PDCA_AUTO_ITERATE</code> (<a href="/guide/07-crosscutting.html#auto-iterate-the-driver-deciding-for-itself">07</a>).</td>
+</tr>
+<tr>
+<td><code>--no-inhibit</code></td>
+<td>Don't hold a suspend inhibitor for the run (also <code>PDCA_NO_INHIBIT=1</code>); for CI and containers.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit status</strong>, from the tool's own help: <strong>0</strong> every bundle finished (with
+one id, a stop for sign-off counts too); <strong>1</strong> a bundle did not finish, or the
+run could not start; <strong>2</strong> bad input (a bad <code>pdca.toml</code>, no ids, an
+unschedulable dependency graph); <strong>3</strong> every bundle finished, but a fold held an
+accepted bundle out of the run's integration line (it pushed no branch, or it
+conflicts with a same-wave bundle), so that work is on no line of the run.</p>
+<p>Covered in: <a href="/guide/#the-whole-cycle-in-one-command">index</a>, <a href="/guide/03-plan.html#how-to-use">03</a>,
+<a href="/guide/07-crosscutting.html#waves-in-execution">07</a>.</p>
+<h3 id="pdca-run--one-issue-one-halted-state"><code>pdca run</code> — one issue, one halted state</h3>
+<pre><code>usage: pdca run [-h] issue_id
+</code></pre>
+<p>Advances a single bundle until the driver reaches a halted state
+(<code>AWAITING_SIGNOFF</code>, <code>COMPLETE</code>, …): Do, gates, reviewer, assembly, STOP. It
+never advances an <code>UNPLANNED</code> bundle — there is nothing to do without a brief —
+and it runs no Plan, sign-off, publish or Act. This is the L2 rung of the
+maturity ladder; <code>flow</code> wraps it. Covered in: <a href="/guide/02-rehearse-offline.html">02</a>.</p>
+<h3 id="pdca-init-issue--seed-a-bundle-from-a-brief-you-already-wrote"><code>pdca init-issue</code> — seed a bundle from a brief you already wrote</h3>
+<pre><code>usage: pdca init-issue [-h] [--from-brief FROM_BRIEF] issue_id
+</code></pre>
+<p>Creates <code>results/issue_&lt;id&gt;/</code> and copies the file given by <code>--from-brief</code> in as
+its <code>brief.md</code>, so the bundle starts <code>PLANNED</code>. The flag is required: to start
+from a ticket, use <code>flow &lt;id&gt;</code>, which plans. This bypasses the planner leaf and
+its advisory review, so it is for the offline toy brief, for hand-authored
+briefs, and for tests. Covered in: <a href="/guide/02-rehearse-offline.html">02</a>, <a href="/guide/03-plan.html#how-to-use">03</a>.</p>
+<h3 id="pdca-signoff--record-the-human-verdict-9"><code>pdca signoff</code> — record the human verdict (§9)</h3>
+<pre><code>usage: pdca signoff [-h] (--accept | --iterate-do | --iterate-plan |
+                    --discontinue) [--by BY] [--delta DELTA] [--no-publish]
+                    issue_id
+</code></pre>
+<p>Exactly one disposition is required.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--accept</code></td>
+<td>Accept — <code>merged-wider</code>, state <code>COMPLETE</code>, then publish (unless <code>--no-publish</code>).</td>
+</tr>
+<tr>
+<td><code>--iterate-do</code></td>
+<td>Right spec, wrong build: archive the attempt into <code>iteration-v&lt;N&gt;/</code>, keep the brief, back to <code>PLANNED</code>.</td>
+</tr>
+<tr>
+<td><code>--iterate-plan</code></td>
+<td>The spec was wrong: archive the whole attempt including the brief, back to <code>UNPLANNED</code>.</td>
+</tr>
+<tr>
+<td><code>--discontinue</code></td>
+<td>Deliberate abandon: record §9, no transition, drop from the pending set.</td>
+</tr>
+<tr>
+<td><code>--by BY</code></td>
+<td>Who signed off.</td>
+</tr>
+<tr>
+<td><code>--delta DELTA</code></td>
+<td>The iteration rationale; folded into the brief's carry-forward on an iterate.</td>
+</tr>
+<tr>
+<td><code>--no-publish</code></td>
+<td>Record the accept and stop at <code>COMPLETE</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Refusals, all exit 1:</strong> no <code>SUMMARY.md</code> yet; <code>--accept</code> while any §6
+NEEDS-HUMAN item is unchecked (the C6 guard, which lists the open items); a
+SUMMARY with no §9 section. The other three dispositions are not guarded. On an
+accept that publishes, the exit code is publish's. Covered in:
+<a href="/guide/05-check.html#signing-off--the-four-dispositions">05</a>, <a href="/guide/05-check.html#the-c6-accept-guard">05</a>.</p>
+<h3 id="pdca-publish--contribute-an-accepted-bundle-as-a-draft-pr"><code>pdca publish</code> — contribute an accepted bundle as a draft PR</h3>
+<pre><code>usage: pdca publish [-h] [--dry-run] [--no-pr] [--no-issue] [--by BY] issue_id
+</code></pre>
+<p>Check's closing step: branch from the bundle's target (or the run's integration
+line for a dependent), apply the patch, run the <code>host_ci</code> rows and the
+contribution check against the drafted commit message and PR body, push, open a
+<strong>draft</strong> PR, write <code>publish.json</code>. A failing host-CI row or contribution check
+refuses the push.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Print the git and gh commands without running them.</td>
+</tr>
+<tr>
+<td><code>--no-pr</code></td>
+<td>Push the branch but don't open the draft PR.</td>
+</tr>
+<tr>
+<td><code>--no-issue</code></td>
+<td>No tracker id yet: the T4 check drops only the tracker-trailer rule and records <code>id_pending</code> (travels to the gate as <code>PDCA_PENDING_ID</code>).</td>
+</tr>
+<tr>
+<td><code>--by BY</code></td>
+<td>Who published; recorded in <code>publish.json</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Covered in: <a href="/guide/05-check.html#publishing-the-accepted-change">05</a>.</p>
+<h3 id="pdca-record--commit-finished-bundles-to-the-instance-repo"><code>pdca record</code> — commit finished bundles to the instance repo</h3>
+<pre><code>usage: pdca record [-h] [--dry-run] [issue_ids ...]
+</code></pre>
+<p>Commits every bundle whose cycle is over — <code>COMPLETE</code>, <code>DISCONTINUED</code>,
+<code>RESOLVED</code> — as one batch commit; with <code>[records] mode = &quot;pr&quot;</code> it pushes a
+<code>records/&lt;date&gt;</code> branch and opens one draft PR instead. A named id that is not
+terminal is excluded, loudly. Needs the <code>[records]</code> table in <code>pdca.toml</code>; once
+enabled, publish triggers it too. <code>--dry-run</code> prints the plan. Covered in:
+<a href="/guide/05-check.html#publishing-the-accepted-change">05</a>.</p>
+<h3 id="pdca-revert--undo-a-published-contribution"><code>pdca revert</code> — undo a published contribution</h3>
+<pre><code>usage: pdca revert [-h] [--dry-run] [--by BY] issue_id
+</code></pre>
+<p>Reads the bundle's <code>publish.json</code>: a <strong>merged</strong> PR gets a draft revert PR that
+reverse-applies the bundle's own <code>patch.diff</code> onto the base; an <strong>open</strong> PR is
+withdrawn (<code>gh pr close --delete-branch</code>). The revert PR stays a draft for you.
+<code>--by</code> is recorded in <code>revert.json</code>. Covered in: <a href="/guide/05-check.html#publishing-the-accepted-change">05</a>.</p>
+<h2 id="look-at-state">Look at state</h2>
+<h3 id="pdca-status--the-dashboard-also-bare-pdca"><code>pdca status</code> — the dashboard (also bare <code>pdca</code>)</h3>
+<pre><code>usage: pdca status [-h] [issue_id]
+</code></pre>
+<p>One line per bundle, cheap-first: state, id, and markers — <code>[N NEEDS-HUMAN]</code>
+or <code>[cheap: confirm]</code> on a bundle awaiting sign-off, <code>[blocked-by: …]</code> for an
+unsatisfied <code>Depends on</code>, <code>[oversized]</code> from the size signal, and for a
+<code>COMPLETE</code> bundle <code>[PR &lt;url&gt;]</code> (with <code>↑&lt;base&gt;</code> when the PR is stacked),
+<code>[unpublished]</code>, or <code>[close: no PR]</code>. With an id, that bundle only. Exit 0.
+Covered in: <a href="/guide/#the-whole-cycle-in-one-command">index</a>, <a href="/guide/05-check.html#publishing-the-accepted-change">05</a>.</p>
+<h3 id="pdca-queue--the-sign-off-burn-down"><code>pdca queue</code> — the sign-off burn-down</h3>
+<pre><code>usage: pdca queue [-h]
+</code></pre>
+<p>The <code>AWAITING_SIGNOFF</code> bundles, cheapest first — the order to work a batch's
+verdicts in. Exit 0.</p>
+<h3 id="pdca-waves--preview-the-schedule"><code>pdca waves</code> — preview the schedule</h3>
+<pre><code>usage: pdca waves [-h] [issue_ids ...]
+</code></pre>
+<p>Prints the dependency-wave plan <code>flow</code> would run for the given ids (none: every
+in-flight briefed bundle) without building anything. An unschedulable graph — a
+cycle, an unresolved <code>Depends on</code>, a <code>Merges with</code> group under merge mode — is
+reported as <code>unschedulable:</code> with exit 1. Covered in:
+<a href="/guide/03-plan.html#ordering-and-routing-the-batch">03</a>, <a href="/guide/07-crosscutting.html#waves-in-execution">07</a>.</p>
+<h3 id="pdca-size--the-a-priori-size-estimate"><code>pdca size</code> — the a-priori size estimate</h3>
+<pre><code>usage: pdca size [-h] [issue_ids ...]
+</code></pre>
+<p>Read-only. For each briefed bundle (or the ids given) prints the band — <code>ok</code>,
+<code>watch</code>, <code>oversized</code> — and the signals that fired, split into churn and patch
+size. Decides nothing and writes nothing. Covered in: <a href="/guide/07-crosscutting.html#the-estimate">07</a>.</p>
+<h2 id="decompose">Decompose</h2>
+<h3 id="pdca-split--propose-then-materialize-a-decomposition"><code>pdca split</code> — propose, then materialize, a decomposition</h3>
+<pre><code>usage: pdca split [-h] [--accept] [--ids IDS] [--force] issue_id
+</code></pre>
+<p>Without <code>--accept</code>, the splitter leaf drafts <code>split-proposal.md</code> — one full
+draft brief per child. With <code>--accept</code>, the deterministic half files one
+tracker sub-issue per child (unless <code>--ids</code> names existing ones, in proposal
+order), materializes the child bundles, rewrites the proposal's sibling labels
+to real ids, writes <code>split-lineage.json</code> everywhere, and closes the parent with
+<code>close-disposition</code> = <code>split</code>. Acceptance is transactional: everything is
+validated before any issue is filed or file written. A bundle already two
+splits deep is refused unless <code>--force</code>. Normally the planner runs both from
+inside the Plan session. Covered in: <a href="/guide/07-crosscutting.html#the-split">07</a>.</p>
+<h2 id="gates-and-checks">Gates and checks</h2>
+<h3 id="pdca-gates--run-the-deterministic-check-gates"><code>pdca gates</code> — run the deterministic Check gates</h3>
+<pre><code>usage: pdca gates [-h] [--working-tree] [--promotions] [issue_id]
+</code></pre>
+<p>The same code the driver and CI call. With an id, that bundle's full gate set
+is run and printed, nothing recorded. <code>--working-tree</code> runs the repo-scoped
+rows only — the CI merge re-gate. <code>--promotions</code> lists the advisory rows that
+have passed in their <code>promote_after</code> most recent frozen cycles and so have
+earned promotion to gating (you flip <code>gating = true</code> yourself). Exit 1 when the
+gating overall is <code>fail</code>, else 0. Covered in: <a href="/guide/01-render-and-integrate.html#the-gates--your-deterministic-check-oracles">01</a>,
+<a href="/guide/05-check.html#the-gates-run-automatically">05</a>.</p>
+<h3 id="pdca-registry-check--a-manifest-line-must-point-at-a-touched-path"><code>pdca registry-check</code> — a manifest line must point at a touched path</h3>
+<pre><code>usage: pdca registry-check [-h] [issue_id]
+</code></pre>
+<p>A pure diff analysis for a bundle-scoped gate row: every line a patch adds to a
+declared registry or manifest file (<code>[gates.registry_consistency] files</code>, with
+an optional extraction <code>pattern</code>) must reference a path the same patch touches;
+anything else is cross-bundle contamination. The id may also arrive as
+<code>$PDCA_BUNDLE</code>, which is how a gate row calls it. Exit 0 with no registry files
+declared or no patch; 1 on a violation; 2 when no bundle can be resolved.</p>
+<h3 id="pdca-contribcheck--the-t4-contribution-check"><code>pdca contribcheck</code> — the T4 contribution check</h3>
+<pre><code>usage: pdca contribcheck [-h] [--no-issue] [issue_id]
+</code></pre>
+<p>Fails a contribution whose PR body lacks a user-impact opener or whose commit
+message and PR body lack the tracker id. At Check it reports <code>deferred</code> (the
+texts are drafted at publish); publish runs it for real before the push.
+<code>--no-issue</code> (or <code>$PDCA_PENDING_ID</code>) drops only the tracker-id rule. Exit 0
+when nothing is wrong or there is no patch to contribute, 1 on a problem, 2
+when no bundle resolves. Covered in: <a href="/guide/05-check.html#the-gates-run-automatically">05</a>.</p>
+<h3 id="pdca-revalidate--re-gate-a-frozen-bundle-against-todays-engine"><code>pdca revalidate</code> — re-gate a frozen bundle against today's engine</h3>
+<pre><code>usage: pdca revalidate [-h] [--date DATE] issue_id
+</code></pre>
+<p>Re-runs the same gate set over a <code>COMPLETE</code> bundle and writes an additive,
+dated stamp <code>revalidation-&lt;date&gt;.json</code> recording each row's old → new result.
+It never touches <code>check-gates.json</code>, <code>check-gates.md</code> or §9: the original
+decision stands, and a changed result in either direction is a signal, not a
+verdict.</p>
+<h3 id="pdca-drift--which-published-patches-no-longer-apply"><code>pdca drift</code> — which published patches no longer apply</h3>
+<pre><code>usage: pdca drift [-h] [--no-fetch]
+</code></pre>
+<p>For every <code>COMPLETE</code> bundle with an open PR, <code>git apply --check</code>s its patch
+against the freshly fetched base in a throwaway worktree and reports the ones
+that need a rebase. Report-only: it mutates nothing and re-decides nothing.
+<code>--no-fetch</code> checks against already-fetched refs.</p>
+<h3 id="pdca-try--run-the-patched-build-yourself"><code>pdca try</code> — run the patched build yourself</h3>
+<pre><code>usage: pdca try [-h] issue_id
+</code></pre>
+<p>Materializes the bundle's patched tree from <code>patch.diff</code> and runs the
+project's <code>[manual_test].cmd</code> from it, inheriting your terminal, with no
+timeout — you quit the app to return. Advisory: it changes nothing in the
+bundle. Needs <code>[driver].worktree</code> on and a configured command; otherwise it
+prints a hint. Covered in: <a href="/guide/05-check.html#trying-the-build-by-hand--pdca-try-id">05</a>.</p>
+<h2 id="act">Act</h2>
+<h3 id="pdca-act--cross-cycle-review-tooling"><code>pdca act</code> — cross-cycle review tooling</h3>
+<pre><code>usage: pdca act [-h] {index,log,resolve} ...
+</code></pre>
+<p>Manual, out-of-turn Act review over frozen (<code>COMPLETE</code>) cycles. These carry no
+cadence gate — <code>[driver].act_cadence</code> throttles only the flow's automatic Act.
+<code>index</code> and <code>log</code> default to the cycles frozen since the last review (the
+frontier in <code>process/.act-reviewed</code>); <code>--all</code> or <code>--since</code> widens the scope.</p>
+<pre><code>usage: pdca act index [-h] [--since SINCE] [--all]
+usage: pdca act log [-h] [--since SINCE] [--all] --date DATE [--append]
+usage: pdca act resolve [-h] [--location LOCATION] [--date DATE] signal
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index</code></td>
+<td>Read-only index of frozen cycles, their §6/§7/§10 extracts, recurring signals, the per-cycle <code>sizing:</code> line and the &quot;⚠ Ineffective deltas&quot; audit. Writes nothing.</td>
+</tr>
+<tr>
+<td><code>log --date &lt;ISO&gt;</code></td>
+<td>Prints a scaffolded, dated act-log entry; its Process-deltas section is left <code>TODO</code> on purpose. With <code>--append</code> it is written to <code>process/act-log.md</code> and the review frontier advances, so the flow's next automatic Act won't re-cover these cycles. Exits 1 when no frozen cycle exists.</td>
+</tr>
+<tr>
+<td><code>resolve &lt;signal&gt;</code></td>
+<td>Marks a tracked recurring signal as a delta you applied, in <code>process/act-ledger.json</code>; <code>--location path:line</code> says where. A later Act flags it as ineffective if the miss recurs after that date.</td>
+</tr>
+</tbody>
+</table>
+<p>Covered in: <a href="/guide/06-act.html">06</a>.</p>
+<h3 id="pdca-triage--ingest-a-published-prs-review-findings"><code>pdca triage</code> — ingest a published PR's review findings</h3>
+<pre><code>usage: pdca triage [-h] [--repo REPO] [--date DATE] pr
+</code></pre>
+<p>Pulls the PR's reviews and review comments through <code>gh api</code>, classifies each
+finding as BUG, CONVENTION, NOISE or TEST-GAP, routes by class (a BUG on a
+merged PR files a tracker issue with a carry-forward note; the rest append
+candidate gate, rubric and exclusion entries to <code>process/act-log.md</code>), and
+registers every finding in the Act ledger under <code>codex-pr:&lt;slug&gt;</code>. Proposes
+only: it never edits <code>pdca.toml</code> or the rubric. <code>pr</code> is a URL, <code>OWNER/REPO#N</code>,
+or a bare number with <code>--repo</code>. Re-running ingests only new findings. Covered
+in: <a href="/guide/06-act.html#external-review-findings--pdca-triage-issue-316">06</a>.</p>
+<h2 id="maintenance">Maintenance</h2>
+<h3 id="pdca-doctor--report-every-prerequisite-change-nothing"><code>pdca doctor</code> — report every prerequisite, change nothing</h3>
+<pre><code>usage: pdca doctor [-h] [--strict]
+</code></pre>
+<p>One row per prerequisite — <code>OK</code>, <code>MISSING</code>, <code>UNAUTH</code> or <code>WARN</code> — each with a
+fix hint. Read-only and idempotent: it installs nothing and edits nothing.
+Run it after <code>make install</code>, and again whenever you add a gate, change a leaf's
+family, or a red gate might be a missing tool rather than a bad patch.</p>
+<p><strong>Rows derived from <code>pdca.toml</code></strong>, so they follow your edits with no extra
+config:</p>
+<ul>
+<li>every distinct command-leaf <code>argv[0]</code> on <code>PATH</code>, with a per-family auth probe
+(<code>UNAUTH</code> for a Codex CLI without a login; <code>WARN</code> when no Claude credentials
+are found) — the builder's family is REQUIRED, the others optional;</li>
+<li><code>git</code> with an identity, and <code>gh</code> present and authenticated (publish, merge
+and revert need it);</li>
+<li>the bundle root writable, and free space where the harness cuts worktrees;</li>
+<li>the tracker <code>notes_cmd</code>'s tool resolvable;</li>
+<li>the leaf sandbox's dependencies (<code>bubblewrap</code>, <code>socat</code>) when a bounded
+<code>[leaves.sandbox]</code> exemption will be seeded — REQUIRED, because a sandbox
+that cannot start does not fail, it silently does not confine.</li>
+</ul>
+<p><strong>Rows you declare</strong>, one <code>[[doctor.checks]]</code> table each:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>The row's name. A brief's <code>External dependencies</code> token must equal one of these.</td>
+</tr>
+<tr>
+<td><code>cmd</code></td>
+<td>Run with cwd = project root; exit 0 ⇒ <code>OK</code>. Keep it cheap and side-effect-free: the dependency guard runs it at every beat it is consulted.</td>
+</tr>
+<tr>
+<td><code>hint</code></td>
+<td>What a human does to fix it.</td>
+</tr>
+<tr>
+<td><code>group</code></td>
+<td>Optional section header the row prints under.</td>
+</tr>
+<tr>
+<td><code>level</code></td>
+<td>The status when <code>cmd</code> fails: <code>MISSING</code> (default) or <code>WARN</code> for an optional tool.</td>
+</tr>
+<tr>
+<td><code>required</code></td>
+<td>A failing required row makes doctor exit non-zero (default false).</td>
+</tr>
+<tr>
+<td><code>per_lane</code></td>
+<td>One row per <code>[driver].lanes</code> slot, with <code>{lane}</code> and <code>{lanes}</code> filled in; nothing when lanes ≤ 1.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit codes:</strong> 0 when every REQUIRED row passes; 1 when a REQUIRED row failed
+(&quot;REQUIRED checks failed — fix the lines above first&quot;); with <code>--strict</code>, 1 on
+<em>any</em> non-OK row, <code>WARN</code> included — the CI setting.</p>
+<p>The same rows are the registry a brief's <code>External dependencies</code> field is
+checked against, at Plan exit, at Do's exit and at Check, so a doctor row is
+not only a one-time readiness check. Covered in:
+<a href="/guide/01-render-and-integrate.html#pdca-doctor--verify-prerequisites-change-nothing">01</a>,
+<a href="/guide/03-plan.html#entry-and-exit-the-guards-around-plan">03</a>,
+<a href="/guide/05-check.html#an-unregistered-dependency-is-a-6-item-issue-263">05</a>.</p>
+<h3 id="pdca-cleanup--reconcile-bundles-with-the-tracker"><code>pdca cleanup</code> — reconcile bundles with the tracker</h3>
+<pre><code>usage: pdca cleanup [-h] [--apply] [--repo REPO] [--by BY] [issue_ids ...]
+</code></pre>
+<p>Matches each bundle's state against its tracker issue and plans the matching
+action: a closed issue resolves a notes-only bundle (<code>RESOLVED</code>) or
+discontinues one awaiting sign-off; a <code>COMPLETE</code> or <code>DISCONTINUED</code> bundle whose
+issue is still open gets it commented and closed; a merged PR on an unaccepted
+bundle is reported, never auto-accepted. Dry run by default; <code>--apply</code>
+executes. <code>--repo OWNER/REPO</code> names the tracker when it is not the configured
+GitHub source; <code>--by</code> is the §9 attribution for discontinue records. A missing
+or unauthenticated <code>gh</code> aborts before any write. Covered in:
+<a href="/guide/07-crosscutting.html#housekeeping-sweep--cleanup">07</a>.</p>
+<h3 id="pdca-sweep--reclaim-the-harnesss-worktree-footprint"><code>pdca sweep</code> — reclaim the harness's worktree footprint</h3>
+<pre><code>usage: pdca sweep [-h] [--remove] [--dry-run]
+</code></pre>
+<p>Cleans the harness's own lane, integration and overflow worktrees — never
+bundle artifacts, never the primary checkout. Default: strip build state and
+keep the checkouts warm; <code>--remove</code> deletes the lane worktrees too (Do and
+<code>try</code> recreate them on demand); <code>--dry-run</code> reports only. Runs automatically at
+the publish/freeze boundary per <code>[driver].sweep_worktrees</code>; the manual command
+works even when that is <code>&quot;off&quot;</code>. Exit 0. Covered in:
+<a href="/guide/07-crosscutting.html#housekeeping-sweep--cleanup">07</a>.</p>
+<h2 id="environment-variables">Environment variables</h2>
+<p>Two groups. The first you may set to override <code>pdca.toml</code> for one run; the
+second the driver exports to the gate commands and leaves it spawns, so your
+scripts can read them.</p>
+<table>
+<thead>
+<tr>
+<th>You set</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PDCA_LANES</code></td>
+<td>Worker-pool size for one run (<code>[driver].lanes</code>; <code>--lanes</code> wins over both).</td>
+</tr>
+<tr>
+<td><code>PDCA_LANE</code></td>
+<td>Pin a standalone <code>pdca flow &lt;id&gt;</code> process to lane slot <code>k</code> instead of auto-claiming one.</td>
+</tr>
+<tr>
+<td><code>PDCA_MAX_PASSES</code></td>
+<td>The per-wave sign-off pass budget (<code>[driver].max_passes</code>).</td>
+</tr>
+<tr>
+<td><code>PDCA_AUTO_ITERATE</code></td>
+<td>Turn auto-iterate on for one run (<code>[driver].auto_iterate</code>).</td>
+</tr>
+<tr>
+<td><code>PDCA_MAX_AUTO_ITERS</code></td>
+<td>The auto-iterate hard cap for one run (<code>[driver].max_auto_iters</code>).</td>
+</tr>
+<tr>
+<td><code>PDCA_LEAVES_MODE</code></td>
+<td>Force every leaf's mode (<code>stub</code> or <code>command</code>) regardless of <code>pdca.toml</code>; <code>--rehearse</code> sets <code>stub</code>.</td>
+</tr>
+<tr>
+<td><code>PDCA_GATES_MODE</code></td>
+<td><code>stub</code> empties the configured checks into the all-PASS stub rows; <code>--rehearse</code> sets it.</td>
+</tr>
+<tr>
+<td><code>PDCA_BUNDLE_ROOT</code></td>
+<td>Redirect the bundle root; <code>--rehearse</code> points it at <code>.rehearse/</code>.</td>
+</tr>
+<tr>
+<td><code>PDCA_NO_INHIBIT</code></td>
+<td>Same as <code>flow --no-inhibit</code>.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>The driver exports</th>
+<th>To whom, meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PDCA_WORKTREE</code></td>
+<td>Gates and leaves: the per-cycle worktree Do edited — the tree a bundle-scoped gate must test.</td>
+</tr>
+<tr>
+<td><code>PDCA_TARGET</code></td>
+<td>The reviewer and advisory leaves: the read-only grounding checkout (the same worktree, patch applied).</td>
+</tr>
+<tr>
+<td><code>PDCA_BUNDLE</code></td>
+<td>Gates, leaves, <code>notes_cmd</code> and plan sources: the bundle directory.</td>
+</tr>
+<tr>
+<td><code>PDCA_LANE</code></td>
+<td>Gates, when lanes &gt; 1: this worker's slot, <code>0..N-1</code>, for namespacing shared resources. Unset on the serial path.</td>
+</tr>
+<tr>
+<td><code>PDCA_SOURCES</code></td>
+<td>A <code>command</code> plan source: the bundle's <code>sources/</code> directory to write into.</td>
+</tr>
+<tr>
+<td><code>PDCA_BASE</code></td>
+<td>The per-fix verifier: the brief's <code>Onto branch</code>, when set.</td>
+</tr>
+<tr>
+<td><code>PDCA_VERIFY_BASE</code></td>
+<td>The per-fix verifier: the wave's folded integration branch, for a wave &gt; 0 bundle.</td>
+</tr>
+<tr>
+<td><code>PDCA_BRIEF_BASE</code></td>
+<td>The per-fix verifier: the brief's <code>Repo + branch target</code> base, resolved by the driver.</td>
+</tr>
+<tr>
+<td><code>PDCA_PENDING_ID</code></td>
+<td>The T4 contribution check: set by <code>publish --no-issue</code>, so the gate knows which rule it is excusing.</td>
+</tr>
+</tbody>
+</table>
+<p>The three base variables form a ladder the per-fix red→green row resolves in
+that order; Wyrd's <code>run-verify.sh</code> in <a href="/guide/01-render-and-integrate.html#the-gates--your-deterministic-check-oracles">step 01</a>
+reads them exactly so. Every <code>pdca.toml</code> key those commands read is in the
+<a href="/guide/09-configuration-reference.html">configuration reference</a>.</p>
+<p>← <a href="/guide/07-crosscutting.html">07 Cross-cutting</a> · <a href="/guide/">Index</a> · next: <a href="/guide/09-configuration-reference.html">09 Configuration reference →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3. Context and scope — PDCA Harness</title>
+<meta name="description" content="flowchart LR">
+<meta property="og:title" content="3. Context and scope — PDCA Harness">
+<meta property="og:description" content="flowchart LR">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="3-context-and-scope">3. Context and scope</h1>
+<blockquote>
+<p>Living document. The harness from outside. Open questions are marked <strong>[OPEN]</strong> inline.</p>
+</blockquote>
+<h2 id="31-system-context">3.1 System context</h2>
+<div class="mermaid">
+flowchart LR
+    H([&quot;Maintainer&quot;])
+    subgraph INST[&quot;Rendered instance (e.g. pdca-pdca)&quot;]
+      D[&quot;pdca driver&lt;br/&gt;src/pdca_harness&quot;]
+      B[(&quot;results/issue_*/&lt;br/&gt;bundles&quot;)]
+      PR[&quot;process/&lt;br/&gt;act-log · ledger&quot;]
+    end
+    T[&quot;Target repo&lt;br/&gt;(code under change)&quot;]
+    GH[&quot;GitHub&lt;br/&gt;issues · PRs · CI&quot;]
+    M[&quot;Model CLIs&lt;br/&gt;claude · codex · gemini&quot;]
+    TPL[&quot;pdca-harness&lt;br/&gt;Copier template&quot;]
+    H -- &quot;brief, sign-off, Act&quot; --&gt; D
+    D -- &quot;read / write&quot; --&gt; B
+    D -- &quot;Act review&quot; --&gt; PR
+    D -- &quot;worktrees, gates, branches&quot; --&gt; T
+    D -- &quot;gh: issues, draft PRs&quot; --&gt; GH
+    D -- &quot;leaf sessions&quot; --&gt; M
+    TPL -- &quot;copier copy / update&quot; --&gt; INST
+</div>
+<h2 id="32-external-interfaces">3.2 External interfaces</h2>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Direction</th>
+<th>Contract</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docs/INTEGRATION.md</code> + <code>pdca.toml</code> in the instance</td>
+<td>in</td>
+<td>The instance's concretization: tracker, branch targets, fixtures, gates, leaves (rendered from <code>template/docs/INTEGRATION.md.jinja</code>, <code>template/pdca.toml.jinja</code>).</td>
+</tr>
+<tr>
+<td>Tracker (<code>gh issue view</code>, CSV export)</td>
+<td>in</td>
+<td>Source documents for Plan (<code>sources.py</code>).</td>
+</tr>
+<tr>
+<td>Gate scripts (<code>[[gates.checks]]</code>)</td>
+<td>out/in</td>
+<td>rc 0 pass, rc 77 or a <code>PDCA-UNVERIFIABLE:</code> line unverifiable, anything else fail. <strong>[OPEN]</strong> written down only in code and spec doc 04 until the bundle-format spec (#712).</td>
+</tr>
+<tr>
+<td>Model CLIs</td>
+<td>out/in</td>
+<td>Prompt on stdin; <code>stream-json</code> (claude) or JSON events (codex) back; profiles in <code>families.py</code>.</td>
+</tr>
+<tr>
+<td>GitHub PRs</td>
+<td>out</td>
+<td>Draft PRs only; never ready, merge or approve (ADR-0004).</td>
+</tr>
+<tr>
+<td>Instance git</td>
+<td>out</td>
+<td><code>pdca record</code> commits finished bundles; Act writes <code>process/</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="33-out-of-context">3.3 Out of context</h2>
+<p>Merging PRs, CI configuration of the target project, model hosting, and scheduling runs. Two
+batch-housekeeping steps — choosing the next batch and consolidating an earlier run's PRs —
+are done by a person today; #698 brings them into the Plan beat.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+<script src="/assets/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral"});</script>
+</body>
+</html>

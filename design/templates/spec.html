@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: &lt;title&gt; -- &lt;version&gt; — PDCA Harness</title>
+<meta name="description" content="architecture docs: once a spec version is stable, edits require a new">
+<meta property="og:title" content="Spec: &lt;title&gt; -- &lt;version&gt; — PDCA Harness">
+<meta property="og:description" content="architecture docs: once a spec version is stable, edits require a new">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="spec----">Spec: <title> -- <version></h1>
+<blockquote>
+<p>Normative specification. <strong>Status: DRAFT (unstable -- will change).</strong> This
+document uses <a href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a> keywords:
+MUST, SHOULD, MAY.</p>
+</blockquote>
+<!-- Specifications are normative, versioned contracts. They are stricter than
+     architecture docs: once a spec version is stable, edits require a new
+     version or a superseding spec. Number/path the file by domain and version,
+     for example ../specs/<domain>/v<N>.md, and add conformance vectors whenever
+     the contract affects bytes, wire behavior, or compatibility. -->
+<h2 id="motivation">Motivation</h2>
+<p>What contract needs to be written down? Why does it need to be stable across
+implementations, deployments, upgrades, or time?</p>
+<h2 id="scope">Scope</h2>
+<p>What this specification covers and, just as importantly, what it does not cover.
+Name adjacent specs, ADRs, proposals, and implementation-first areas.</p>
+<h2 id="conventions">Conventions</h2>
+<p>Define terminology, units, encoding rules, ordering rules, RFC 2119 usage, and
+any assumptions a conforming implementation relies on.</p>
+<h2 id="requirements">Requirements</h2>
+<p>The normative contract. Be precise enough that an independent implementation can
+conform without reading the reference code.</p>
+<h2 id="versioning-and-compatibility">Versioning and compatibility</h2>
+<p>What changes are compatible within this version? What changes require a version
+bump? How do old data, old clients, or mixed-version deployments behave?</p>
+<h2 id="conformance">Conformance</h2>
+<p>How does an implementation prove it conforms? Reference required test vectors,
+property tests, fault-injection runs, or interoperability checks.</p>
+<h2 id="open-questions">Open questions</h2>
+<p>Mark unresolved points explicitly. A stable spec should not retain open
+questions that affect compatibility or conformance.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

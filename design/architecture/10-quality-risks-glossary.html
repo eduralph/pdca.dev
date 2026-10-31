@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10–13. Quality, risks, glossary, and testing strategy — PDCA Harness</title>
+<meta name="description" content="about 2,460 offline tests run in under five minutes">
+<meta property="og:title" content="10–13. Quality, risks, glossary, and testing strategy — PDCA Harness">
+<meta property="og:description" content="about 2,460 offline tests run in under five minutes">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="1013-quality-risks-glossary-and-testing-strategy">10–13. Quality, risks, glossary, and testing strategy</h1>
+<blockquote>
+<p>Living document. Combines arc42 sections 10 (quality scenarios), 11 (risks and technical
+debt) and 12 (glossary), plus the testing strategy (section 13). Figures are from
+<a href="/design/proposals/accepted/0001-approach-review-2026-10.html">proposal 0001</a> (2026-10-15). Open
+questions are marked <strong>[OPEN]</strong> inline.</p>
+</blockquote>
+<h2 id="10-quality-scenarios">10. Quality scenarios</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Goal</th>
+<th>Scenario</th>
+<th>Expected response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q1</td>
+<td>Integrity of the accept</td>
+<td>A leaf writes <code>- Outcome: accepted</code> into §9</td>
+<td>Refused; the bundle stays AWAITING_SIGNOFF. <strong>[OPEN]</strong> not enforced for the sign-off session yet (#710).</td>
+</tr>
+<tr>
+<td>Q2</td>
+<td>Integrity of the accept</td>
+<td>The human records <code>accept</code> while one §6 row is open</td>
+<td>Refused by C6 with the open rows listed.</td>
+</tr>
+<tr>
+<td>Q3</td>
+<td>Independent review</td>
+<td>Builder and reviewer resolve to the same vendor</td>
+<td>Refused by <code>doctor</code>, or a recorded exemption adds a §6 note. <strong>[OPEN]</strong> #710.</td>
+</tr>
+<tr>
+<td>Q4</td>
+<td>Resumability</td>
+<td><code>^C</code> during a wave; the command is re-run</td>
+<td>Every bundle resumes from its files; nothing is redone that has an artifact.</td>
+</tr>
+<tr>
+<td>Q5</td>
+<td>Maintainer attention</td>
+<td>A bundle reaches sign-off</td>
+<td>Every §6 row needs a person; the ritual rate is reported. <strong>[OPEN]</strong> #712.</td>
+</tr>
+<tr>
+<td>Q6</td>
+<td>Cost awareness</td>
+<td>Act reviews a window of bundles</td>
+<td>Tokens per bundle and per round are reported. <strong>[OPEN]</strong> #711, #718.</td>
+</tr>
+<tr>
+<td>Q7</td>
+<td>Fail closed</td>
+<td>A leaf exits 0 without its artifact</td>
+<td>The run fails for that bundle and exits non-zero. <strong>[OPEN]</strong> #714, #693.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="11-risks-and-technical-debt">11. Risks and technical debt</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Risk or debt</th>
+<th>Evidence</th>
+<th>Addressed by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R1</td>
+<td>Accept-path holes on the interactive path</td>
+<td>Sign-off session can edit §9; vendor rule unchecked; builder not confined</td>
+<td>#710</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>Check produces ritual</td>
+<td><code>Confidence: medium</code> hardcoded (<code>assemble.py:622</code>); ~30% of 1,263 §6 rows can never be cleared by a leaf</td>
+<td>#717, step 1 (#712)</td>
+</tr>
+<tr>
+<td>R3</td>
+<td>No cost or time bound on leaves</td>
+<td><code>_invoke</code> passes no timeout (<code>leaves.py:680</code>); no token record anywhere</td>
+<td>step 2 (#711)</td>
+</tr>
+<tr>
+<td>R4</td>
+<td>Scope and weight</td>
+<td>28,046 driver lines; <code>leaves.py</code> 4,706; cyclic imports; two drivers</td>
+<td>steps 2–4</td>
+</tr>
+<tr>
+<td>R5</td>
+<td>State lives in model-authored Markdown</td>
+<td>Every accept-path reader parses prose; #527/#606/#634/#642 recur</td>
+<td>step 1 (#712)</td>
+</tr>
+<tr>
+<td>R6</td>
+<td>Size is the dominant cost and its controls are soft</td>
+<td>Patches over 250 KB take a median of 8.5 rounds; a split child outgrew its parent</td>
+<td>step 5 (#714)</td>
+</tr>
+<tr>
+<td>R7</td>
+<td>Contain-and-degrade hides failures</td>
+<td><code>flow._isolate</code> swallows every exception; nine bundles recorded &quot;0 findings&quot; from a leaf that never started</td>
+<td>step 5 (#714)</td>
+</tr>
+<tr>
+<td>R8</td>
+<td>Narrow calibration base</td>
+<td>Sizing weights from 86 bundles of one Rust project</td>
+<td>autobook and nl-shell data</td>
+</tr>
+<tr>
+<td>R9</td>
+<td>Instance patches drift from upstream</td>
+<td>wyrd carries ~2,300 lines of local <code>src/</code> patches</td>
+<td>step 5 <code>pdca_ext/</code> (#714)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="12-glossary">12. Glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Beat</td>
+<td>One of Plan, Do, Check, Act.</td>
+</tr>
+<tr>
+<td>Bundle</td>
+<td>One contribution's directory, <code>results/issue_&lt;id&gt;/</code>; its files are its state.</td>
+</tr>
+<tr>
+<td>Leaf</td>
+<td>A point where a model runs inside a beat (planner, builder, reviewer, sign-off, publisher, Act, advisory, sizer, splitter).</td>
+</tr>
+<tr>
+<td>Brief</td>
+<td><code>brief.md</code>, the spec every later step is measured against.</td>
+</tr>
+<tr>
+<td>§6 NEEDS-HUMAN</td>
+<td>The checklist in <code>SUMMARY.md</code> of items only a person can clear.</td>
+</tr>
+<tr>
+<td>§9</td>
+<td>The sign-off section of <code>SUMMARY.md</code> holding the decision.</td>
+</tr>
+<tr>
+<td>C6</td>
+<td>The accept guard: no <code>accept</code> while a §6 row is open.</td>
+</tr>
+<tr>
+<td>C4</td>
+<td>The per-fix red→green gate: the test fails without the fix and passes with it.</td>
+</tr>
+<tr>
+<td>Disposition</td>
+<td>The §9 outcome: accepted, merged-wider, iterated-to-Do, iterated-to-Plan, discontinued.</td>
+</tr>
+<tr>
+<td>Wave</td>
+<td>A set of bundles with no declared edges between them, run together.</td>
+</tr>
+<tr>
+<td>Lane</td>
+<td>A parallel worker running one bundle at a time.</td>
+</tr>
+<tr>
+<td>Integration line</td>
+<td><code>pdca-integration/&lt;base&gt;-r&lt;key&gt;</code>, the branch stack mode folds accepted waves onto.</td>
+</tr>
+<tr>
+<td>Carry</td>
+<td>Putting an earlier run's finished prerequisite onto the line before wave 0.</td>
+</tr>
+<tr>
+<td>Instance</td>
+<td>A project rendered from the template.</td>
+</tr>
+<tr>
+<td>Ritual rate</td>
+<td>Share of §6 rows no leaf can clear (planned, #712).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="13-testing-strategy">13. Testing strategy</h2>
+<ul>
+<li><strong>Offline first.</strong> Every leaf has a stub, so the whole state machine runs without a model;
+about 2,460 offline tests run in under five minutes.</li>
+<li><strong>Red before green.</strong> A fix ships with a test that fails without it (ADR-0006); the same rule
+applies to harness changes made through pdca-pdca.</li>
+<li><strong>Real git, stubbed <code>gh</code>.</strong> Integration-line, carry and merge behaviour is tested against
+real repositories with a stubbed <code>gh</code>.</li>
+<li><strong>Template round-trip.</strong> The root suite renders the template and runs <code>copier update</code> from
+the previous release.</li>
+<li><strong>[OPEN]</strong> Most tests are coupled to module shapes rather than behaviour (about 122
+<code>subprocess</code>/<code>_invoke</code> patches); step 2 moves them onto one fake runner, and step 1 adds
+golden-file tests against frozen bundles.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

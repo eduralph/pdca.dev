@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting — by symptom — PDCA Harness</title>
+<meta name="description" content="← 10 Upgrading an instance · Index">
+<meta property="og:title" content="Troubleshooting — by symptom — PDCA Harness">
+<meta property="og:description" content="← 10 Upgrading an instance · Index">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="troubleshooting--by-symptom">Troubleshooting — by symptom</h1>
+<p>← <a href="/guide/10-upgrading-an-instance.html">10 Upgrading an instance</a> · <a href="/guide/">Index</a></p>
+<p>The walkthrough explains each failure where it belongs; this page collects them
+by what you see. The quoted text is what the driver prints. Every command's
+exit codes are in the <a href="/guide/08-command-reference.html">command reference</a>.</p>
+<h2 id="nothing-runs">Nothing runs</h2>
+<p><strong><code>no pdca.toml found … — run inside a rendered project</code>, exit 2.</strong> Every
+command loads <code>pdca.toml</code> from the current directory. Change into the rendered
+project, not the target checkout.</p>
+<p><strong><code>pdca: invalid pdca.toml — …</code>, exit 2.</strong> The file does not parse or a value is
+wrong. The usual causes, in order of frequency:</p>
+<ul>
+<li>conflict markers (<code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>) left by a <code>copier update</code>
+(<a href="/guide/10-upgrading-an-instance.html#what-copier-update-does">10</a>);</li>
+<li>a table declared twice, most often a second <code>[leaves.sandbox]</code> header
+(&quot;Cannot declare ('leaves','sandbox') twice&quot;);</li>
+<li>a bare <code>[driver]</code> key written below <code>[driver.sizing]</code> or
+<code>[driver.size_signal]</code>, which TOML files under the sub-table. The symptom is
+subtler: no error, the key is simply ignored (<a href="/guide/09-configuration-reference.html">09</a>);</li>
+<li>a quoted boolean: <code>dependency_halt = &quot;true&quot;</code> or <code>network_access = &quot;true&quot;</code> is a
+string and stays off.</li>
+</ul>
+<p><strong><code>config: … — merge mode will refuse every PR until …</code>.</strong> <code>[driver].expected_checks</code>
+is malformed. It takes a list of check names or one bare name; merge mode fails
+closed on anything else.</p>
+<p><strong><code>pdca flow: no working systemd-inhibit/caffeinate …</code>.</strong> The flow could not hold
+a suspend inhibitor. Pass <code>--no-inhibit</code> or set <code>PDCA_NO_INHIBIT=1</code>; the run is
+otherwise unaffected.</p>
+<p><strong><code>copier update</code> fails on the first run after rendering.</strong> <code>_src_path</code> in
+<code>.copier-answers.yml</code> is a relative path; Copier resolves it from the project
+directory. Hand-edit it to the template URL or an absolute path
+(<a href="/guide/01-render-and-integrate.html#1a-render-the-template">01</a>).</p>
+<h2 id="a-bundle-stops-where-you-did-not-expect">A bundle stops where you did not expect</h2>
+<p><strong><code>PolicyHold</code> with an unregistered token, before Do.</strong> The brief's
+<code>External dependencies</code> names a token that matches no <code>[[doctor.checks]]</code> row,
+or the row's command exits non-zero on this machine. Register the row (its
+<code>cmd</code> must detect the tool, its <code>hint</code> must say how to install it), or annotate
+the token <code>(no-check: &lt;why&gt;)</code> for a dependency nothing can detect. The guard is
+re-evaluated every beat, so no re-plan is needed
+(<a href="/guide/03-plan.html#the-two-guards">03</a>). <code>signoff: &lt;bundle&gt; is held at &lt;state&gt;</code> after
+an iterate is the same guard firing on the way back to Do.</p>
+<p><strong><code>cannot accept — §6 NEEDS-HUMAN still open (C6)</code>.</strong> Tick every <code>- [ ]</code> in
+the §6 the driver assembled, which is the <strong>last</strong> <code>## 6. NEEDS-HUMAN</code> heading in
+<code>SUMMARY.md</code>. A §6 block a reviewer quoted sits in §5 and does not count. A
+gating row that failed also lands in §6, so a red gate blocks accept until you
+override it consciously or choose <code>--iterate-*</code> or <code>--discontinue</code>
+(<a href="/guide/05-check.html#the-c6-accept-guard">05</a>).</p>
+<p><strong><code>flow: &lt;bundle&gt; — auto-iterate budget spent</code>, or a <code>size backstop</code> item in §6.</strong>
+Auto-iterate hit <code>[driver].max_auto_iters</code>, or the patch crossed a
+<code>[driver.size_signal]</code> threshold. Either way the bundle waits for you; the second
+case recommends <code>iterate-plan</code>, since rebuilding an oversized slice produces
+implementation-shaped findings every round
+(<a href="/guide/07-crosscutting.html#auto-iterate-the-driver-deciding-for-itself">07</a>).</p>
+<p><strong><code>revalidate refuses &lt;bundle&gt;: not COMPLETE</code></strong> or
+<strong><code>split: &lt;bundle&gt; is &lt;state&gt; — refusing to split a frozen bundle</code>.</strong> Both act
+only on the state they name. <code>--accept</code> on a bundle two splits deep is refused
+too, unless <code>--force</code>.</p>
+<p><strong><code>pdca act log</code> exits 1.</strong> No frozen (<code>COMPLETE</code>) cycle exists yet, or none
+since the last review; <code>--all</code> widens the scope.</p>
+<h2 id="a-batch-run-stops-holds-or-exits-3">A batch run stops, holds, or exits 3</h2>
+<p><strong><code>unschedulable: …</code></strong> (<code>pdca waves</code>, exit 1) or <strong><code>pdca flow</code> exit 2 before any
+build.</strong> The dependency graph cannot be scheduled: a cycle, a <code>Depends on</code> that
+is neither in the batch nor <code>COMPLETE</code>, or a <code>Merges with</code> group under
+<code>wave_mode = &quot;merge&quot;</code>. The message names the bundle and the edge
+(<a href="/guide/03-plan.html#ordering-and-routing-the-batch">03</a>).</p>
+<p><strong><code>flow: &lt;bundle&gt; is &lt;reason&gt; — refusing to drive it</code></strong> or
+<strong><code>refusing to start a second driver over …</code>.</strong> A live <code>pdca flow</code> already holds
+that bundle's claim (<code>process/.drive-claims/</code>). One driver per bundle; wait for
+that run to end, or pin lanes with <code>PDCA_LANE</code> for runs that share a workspace
+(<a href="/guide/07-crosscutting.html#lanes">07</a>).</p>
+<p><strong><code>flow: &lt;bundle&gt; held — prerequisite(s) … not merged</code>.</strong> A plain <code>Depends on</code>
+names a bundle this run is not driving, and its PR has not merged into the
+dependent's base. Name the prerequisite in the same <code>pdca flow &lt;ids&gt;</code> so the run
+carries it onto its line, or wait for the merge and re-run
+(<a href="/guide/07-crosscutting.html#waves-in-execution">07</a>).</p>
+<p><strong><code>flow: &lt;bundle&gt; held — it </code>Conflicts with<code> …</code></strong>, <strong><code>held out of this run's integration line</code></strong>, and a run that <strong>exits 3</strong> with every bundle <code>COMPLETE</code>.
+A fold left a bundle off the line: its publish pushed no branch, or its branch
+conflicts with a same-wave bundle that merged before it. The run names the pair
+and the files, and the step: declare <code>Conflicts with: &lt;the other id&gt;</code> in the held
+bundle's brief and rebuild it on a base that holds the other one, once that PR
+has merged. Exit 3 is the signal that this happened with nothing else wrong.</p>
+<p><strong><code>flow: wave k did not integrate … STOPPING</code>.</strong> The integration line could not
+be advanced: a carried PR branch was rewritten (force-pushed, re-published, or
+&quot;Update with rebase&quot;), the base would undo work a bundle put on the line, or the
+line on origin holds a commit the run cannot account for. The message says which
+and what to do; the common fix is to restore the branch or delete the stale
+<code>pdca-integration/&lt;base&gt;-r&lt;key&gt;</code> on origin, then re-issue the same command.</p>
+<p><strong><code>merge: &lt;bundle&gt; … was NOT merged — … STOP</code></strong> (merge mode). The driver read a
+red, pending or empty check rollup, the branch update failed, or the PR's base
+was not the bundle's target base. The PR is returned to draft; fix CI or the
+base and re-run. Raise <code>[driver].merge_wait_secs</code> if your checks are slow to
+register.</p>
+<h2 id="a-gate-or-review-did-not-say-pass-or-fail">A gate or review did not say pass or fail</h2>
+<p><strong>A row reads <code>unverifiable</code>.</strong> The oracle did not answer: the command exceeded
+its wall clock (<code>timeout_secs</code> or <code>[gates].default_timeout_secs</code>), a tool it
+needs is missing, or the test target ran zero tests. Read
+<code>gate-logs/&lt;id&gt;.log</code> in the bundle, then <code>pdca doctor</code>. A per-fix verifier that
+cannot compile the test on the red leg reports it this way on purpose: a test
+that calls a symbol the fix adds does not prove a red
+(<a href="/guide/03-plan.html#what-a-real-brief-looks-like">03</a>).</p>
+<p><strong><code>runner '…' not found on PATH</code>.</strong> <code>[gates].runner</code> names a command the shell
+cannot find from the project root. Fix the path or the <code>PATH</code> the driver runs
+under; <code>make install</code> puts the console script on it.</p>
+<p><strong>A row reads <code>deferred</code>.</strong> Normal for the contribution check at Check: the
+commit message and PR body do not exist yet. Publish runs it for real
+(<a href="/guide/05-check.html#the-gates-run-automatically">05</a>).</p>
+<p><strong>A row reads <code>pass</code> with <code>flaky = true</code>, and §6 has an item for it.</strong> The
+gating row failed once and passed on the confirm run. Look at both runs in the
+log before accepting; turn the re-run off per row with <code>confirm_fail = false</code> for
+model-backed rows (<a href="/guide/05-check.html#gates--the-deterministic-oracles">05</a>).</p>
+<p><strong>The reviewer says it &quot;could not independently rerun&quot; the test, with
+<code>Operation not permitted</code> on a loopback bind.</strong> The leaf sandbox refuses
+<code>bind()</code> on 127.0.0.1 unless <code>allowLocalBinding</code> is seeded; the shipped
+<code>.claude/settings.json</code> sets it, so check it was not removed. If a <strong>gate</strong> fails
+the same way, you launched <code>pdca</code> from a sandboxed shell: gates inherit your
+shell's sandbox, not the leaf's (<a href="/guide/05-check.html#runtime-tests-that-bind-a-loopback-socket">05</a>).</p>
+<p><strong>A Docker-backed gate skips inside the reviewer on a Docker-capable host.</strong> The
+leaf sandbox denies the Docker socket. Name the command in
+<code>[leaves.sandbox] unsandboxed_commands</code> (Claude) or set <code>network_access = true</code>
+(Codex) (<a href="/guide/05-check.html#docker-backed-conformance-gates-opt-in">05</a>).</p>
+<p><strong>A leaf fails to start after you added a sandbox exemption.</strong> The leaf now
+loads project settings only, so authentication kept in your user settings
+(<code>apiKeyHelper</code>, <code>env.ANTHROPIC_API_KEY</code>) is not seen. Move it into the
+environment. The error is in the bundle's <code>*.error.log</code>.</p>
+<p><strong><code>leaves: memory bound … is configured but this host cannot enforce it</code>.</strong> No
+usable <code>systemd-run --user --scope</code> (no systemd, a container, macOS). The leaves
+run unbounded; the note is the only effect.</p>
+<p><strong>An advisory review came back empty or as a placeholder.</strong> The leaf did not
+deliver (a missing CLI, a sandbox that could not start). §6 shows it only while
+it lasts: the next Check runs the leaf again.</p>
+<h2 id="the-run-died-or-the-machine-ran-out-of-something">The run died or the machine ran out of something</h2>
+<p><strong>The driver vanished mid-Check with nothing in any log.</strong> <code>systemd-oomd</code> killed
+the whole terminal cgroup for memory pressure, usually two reviewer leaves
+building cold trees at once. Set <code>[driver].leaf_memory_max</code> so a leaf that
+overruns dies alone and the run records it
+(<a href="/guide/07-crosscutting.html#bounding-what-a-leaf-may-use">07</a>).</p>
+<p><strong>A gating gate goes red with <code>Disk quota exceeded</code> or <code>No space left</code>.</strong> Lane
+worktrees have accumulated build state. <code>pdca sweep</code> reclaims it;
+<code>[driver].sweep_worktrees</code> controls the automatic sweep; <code>[doctor].min_free_gb</code>
+makes the doctor warn before it happens
+(<a href="/guide/07-crosscutting.html#housekeeping-sweep--cleanup">07</a>).</p>
+<p><strong>A leaked test process is still running after the gate finished.</strong> The driver
+sweeps each gate's process group on exit and prints one note naming the
+command. If something survives, it was started outside that group; kill it and
+report it.</p>
+<p><strong>A bundle's Check artifacts were overwritten by older ones.</strong> Someone ran
+<code>git stash</code> (or switched branches) in the harness checkout under a live flow.
+Bundles are untracked files while in flight; a stash sweeps them up. Do
+harness-repo maintenance in a separate worktree
+(<a href="/guide/04-do.html#the-harness-checkout-is-not-isolated--dont-do-git-maintenance-under-a-live-flow-issue-130">04</a>).</p>
+<h2 id="publishing">Publishing</h2>
+<p><strong><code>publish: checkout not found: &lt;repo&gt; — …</code>.</strong> The target repo's checkout is not
+at the sibling default <code>../&lt;repo-last-segment&gt;</code>. Map it in
+<code>[publisher.checkouts]</code> (<a href="/guide/09-configuration-reference.html#publisher-and-the-contribution-model">09</a>).</p>
+<p><strong>Publish refused the push on a host-CI row or the contribution check.</strong> A
+<code>[gates].host_ci</code> command failed against the exact base to be pushed, or the PR
+body lacks a <code>**User impact:**</code> opener, or the commit message or PR body lacks
+the tracker id. Fix the drafted texts and publish again; <code>--no-issue</code> drops only
+the tracker-id rule for a ticketless change.</p>
+<p><strong><code>publish: no open PR with head &lt;owner&gt;:&lt;branch&gt; on &lt;repo&gt; — refusing</code>.</strong>
+Publish expected to update an existing PR (an <code>Onto branch</code> or a re-publish) and
+found none; check the branch name and the fork owner.</p>
+<p><strong>A <code>COMPLETE</code> bundle shows <code>[unpublished]</code> in <code>pdca status</code>.</strong> Publish did not
+run or did not complete (dry run, <code>--no-publish</code>, a refused push). Run
+<code>pdca publish &lt;id&gt;</code>. If a later run's fold has replaced the integration line the
+bundle was built on, publish refuses and pushes nothing; re-drive the bundle in
+a new run (<a href="/guide/07-crosscutting.html#waves-in-execution">07</a>).</p>
+<p><strong>The stacked PR shows its prerequisite's commits.</strong> Expected until the
+prerequisite merges; afterwards press &quot;Update branch&quot; on the host and the diff
+is the bundle's own change (<a href="/guide/05-check.html#publishing-the-accepted-change">05</a>).</p>
+<h2 id="interactive-leaves">Interactive leaves</h2>
+<p><strong>The planner or sign-off REPL opened with no prompt, and Remote Control
+reported an error.</strong> <code>--remote-control</code> sits last in the leaf's <code>argv</code>; the
+driver appends the seed prompt after the argv and the flag swallowed it as a
+session name. Move the flag anywhere but last
+(<a href="/guide/01-render-and-integrate.html#the-leaves--one-command-per-beat">01</a>).</p>
+<p><strong>The leaf prompts you for permission file by file.</strong> Run <code>make setup</code> once; it
+grants the interactive leaves read of the sibling workspace. Folder trust is
+separate and global: the first interactive flow asks once
+(<a href="/guide/01-render-and-integrate.html#make-setup--grant-the-interactive-claude-leaves-workspace-read">01</a>).</p>
+<p><strong>The session ended and the driver printed a FAIL from the exit check.</strong> The
+session did not leave its expected artifact well-formed. The report lists the
+items; fix them and re-run the beat. <code>/handoff &lt;id&gt;</code> inside the session shows the
+same check before you leave. A deliberate walk-away is recorded with
+<code>handoff_guard.py --abandon &quot;&lt;why&gt;&quot;</code>.</p>
+<p><strong><code>pdca try</code> prints a configure-me hint.</strong> <code>[manual_test].cmd</code> is empty or
+<code>[driver].worktree</code> is off (<a href="/guide/09-configuration-reference.html#manual_test">09</a>).</p>
+<p>← <a href="/guide/10-upgrading-an-instance.html">10 Upgrading an instance</a> · <a href="/guide/">Index</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

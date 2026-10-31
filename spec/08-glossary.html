@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -42,7 +44,7 @@ definition; the doc that <em>owns</em> the term (where it is defined and treated
 is named in parentheses. This glossary does not restate the model — it points back
 into it. When a term and a doc disagree, the doc wins.</p>
 </blockquote>
-<h2>The cycle and its four beats</h2>
+<h2 id="the-cycle-and-its-four-beats">The cycle and its four beats</h2>
 <p>(docs <a href="/spec/00-overview.html">00</a>, <a href="/spec/01-the-quality-cycle.html">01</a>)</p>
 <ul>
 <li><strong>PDCA quality cycle</strong> — one contribution turns one cycle: Plan → Do → Check → Act →
@@ -67,7 +69,7 @@ boundary between them is <strong>the seam</strong>: Act is not a re-vote on a co
 <li><strong>Human touch points</strong> — the three places judgment is irreducible: <em>Plan-authoring</em>,
 <em>Check sign-off</em>, <em>Act</em>. Three touches across the four beats (Do has none) (<a href="/spec/03-cycle-automation.html">03</a>).</li>
 </ul>
-<h2>Leaves — the model touchpoints</h2>
+<h2 id="leaves--the-model-touchpoints">Leaves — the model touchpoints</h2>
 <p>(doc <a href="/spec/03-cycle-automation.html">03</a>)</p>
 <ul>
 <li><strong>Leaf / model leaf</strong> — a point where a model is invoked. The leaves fill <em>artifacts</em>;
@@ -103,7 +105,7 @@ ladder climbs by attempt number so a repeatedly-failing bundle gets a stronger b
 Each layer is default-open, so a parallel wave can run different bundles on different
 backends (<a href="/spec/03-cycle-automation.html">03</a>).</li>
 </ul>
-<h2>The bundle and its artifacts</h2>
+<h2 id="the-bundle-and-its-artifacts">The bundle and its artifacts</h2>
 <p>(doc <a href="/spec/02-cycle-artifacts.html">02</a>)</p>
 <ul>
 <li><strong>Bundle</strong> — the per-cycle directory <code>&lt;bundle_root&gt;/issue_&lt;id&gt;/</code> holding every artifact
@@ -140,7 +142,7 @@ closes the cycle.</li>
 <li><strong>process/act-log.md</strong> — the append-only log of process deltas, one dated entry per
 Act review.</li>
 </ul>
-<h2>Bundle states</h2>
+<h2 id="bundle-states">Bundle states</h2>
 <p>(doc <a href="/spec/03-cycle-automation.html">03</a>) — each is derived from which files exist:</p>
 <ul>
 <li><strong>UNPLANNED</strong> — no <code>brief.md</code> yet (ready for Plan).</li>
@@ -160,7 +162,7 @@ Plan. Distinct from DISCONTINUED, which abandons a bundle that <em>did</em> run 
 <li><strong>iterate-to-Do</strong> — the fix was wrong, the spec right: rebuild against the same brief.</li>
 <li><strong>iterate-to-Plan</strong> — the spec was wrong: re-author the brief (old attempt archived to <code>iteration-v&lt;N&gt;/</code>).</li>
 </ul>
-<h2>Check — the 5/5/1, gates and judgment</h2>
+<h2 id="check--the-551-gates-and-judgment">Check — the 5/5/1, gates and judgment</h2>
 <p>(docs <a href="/spec/01-the-quality-cycle.html">01</a>, <a href="/spec/02-cycle-artifacts.html">02</a>, <a href="/spec/04-validation-tooling.html">04</a>)</p>
 <ul>
 <li><strong>5/5/1</strong> — the anatomy of Check: <strong>5 correctness</strong> (a chain) + <strong>5 conformance</strong> (a
@@ -217,7 +219,7 @@ earlier, not adding a new one. The size guard is <strong>advisory only</strong> 
 (Do), <strong>C-</strong> (Check), <strong>A-</strong> (Act) — e.g. P1, P8, C6, A1. A repo may add prefixed rules
 that <em>tighten</em> a generic one, never weaken it (<a href="/spec/06-quality-cycle-guidelines.html">06</a>).</li>
 </ul>
-<h2>Sign-off, iteration and disposition</h2>
+<h2 id="sign-off-iteration-and-disposition">Sign-off, iteration and disposition</h2>
 <p>(docs <a href="/spec/02-cycle-artifacts.html">02</a>, <a href="/spec/03-cycle-automation.html">03</a>, <a href="/spec/06-quality-cycle-guidelines.html">06</a>)</p>
 <ul>
 <li><strong>Sign-off (Check sign-off)</strong> — the human step completing Check: clear §6, weigh the
@@ -238,7 +240,7 @@ Check.</li>
 <li><strong>Sign-off queue</strong> — the cheap-first burn-down of AWAITING_SIGNOFF bundles (empty §6 +
 a close disposition come first; adjudication-heavy ones last).</li>
 </ul>
-<h2>Publish — Check's contribution arm</h2>
+<h2 id="publish--checks-contribution-arm">Publish — Check's contribution arm</h2>
 <p>(doc <a href="/spec/03-cycle-automation.html">03</a>)</p>
 <ul>
 <li><strong>Publish</strong> — the closing <strong>step of Check</strong> (not a beat): contribute an accepted fix as
@@ -255,7 +257,7 @@ no longer applies or no open PR has that head (<a href="/spec/02-cycle-artifacts
 <li><strong>issue trailer</strong> — the commit/PR line linking to the issue (<code>[tracker].issue_trailer</code>,
 e.g. <code>Fixes #&lt;id&gt;</code>); the T4 gate enforces it.</li>
 </ul>
-<h2>Automation — driver, flow and maturity</h2>
+<h2 id="automation--driver-flow-and-maturity">Automation — driver, flow and maturity</h2>
 <p>(doc <a href="/spec/03-cycle-automation.html">03</a>)</p>
 <ul>
 <li><strong>Driver / orchestrator</strong> — the deterministic state machine over the bundle: read file
@@ -328,7 +330,7 @@ shared file but declared no <code>Conflicts with</code> — a likely planner omi
 gates over the folded integration tip before the next wave builds, so a combination red though
 each fix was green <em>alone</em> STOPs the run (<a href="/spec/09-parallel-lanes.html">09</a>).</li>
 </ul>
-<h2>Discipline and guardrails</h2>
+<h2 id="discipline-and-guardrails">Discipline and guardrails</h2>
 <p>(docs <a href="/spec/01-the-quality-cycle.html">01</a>, <a href="/spec/03-cycle-automation.html">03</a>, <a href="/spec/06-quality-cycle-guidelines.html">06</a>)</p>
 <ul>
 <li><strong>STOP discipline</strong> — pushing to a draft branch and opening a <em>draft</em> PR MAY happen during
@@ -341,7 +343,7 @@ not a global deny.</li>
 <li><strong>Auto-fixable vs decision-level FAIL</strong> — a mechanical FAIL (lint/format/genuinely-red) is
 auto-fixed and re-run; a FAIL needing a human call goes to §6 NEEDS-HUMAN.</li>
 </ul>
-<h2>Process, integration and the per-repo spec</h2>
+<h2 id="process-integration-and-the-per-repo-spec">Process, integration and the per-repo spec</h2>
 <p>(docs <a href="/spec/01-the-quality-cycle.html">01</a>, <a href="/spec/05-repository-integration.html">05</a>, <a href="/spec/06-quality-cycle-guidelines.html">06</a>)</p>
 <ul>
 <li><strong>Process baseline</strong> — what Plan inherits from prior Act: the brief template, the
@@ -393,6 +395,8 @@ PRs). Same tools, different subjects.</li>
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

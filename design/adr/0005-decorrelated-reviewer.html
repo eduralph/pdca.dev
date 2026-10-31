@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0005. The reviewer is a different vendor from the builder and never sees `build-notes.md` — PDCA Harness</title>
+<meta name="description" content="A reviewer that shares the builder&#x27;s model, prompt history or rationale shares its blind">
+<meta property="og:title" content="0005. The reviewer is a different vendor from the builder and never sees `build-notes.md` — PDCA Harness">
+<meta property="og:description" content="A reviewer that shares the builder&#x27;s model, prompt history or rationale shares its blind">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0005-the-reviewer-is-a-different-vendor-from-the-builder-and-never-sees-build-notesmd">0005. The reviewer is a different vendor from the builder and never sees <code>build-notes.md</code></h1>
+<h2 id="context">Context</h2>
+<p>A reviewer that shares the builder's model, prompt history or rationale shares its blind
+spots: it tends to agree with the reasoning it was shown rather than check the result. Review
+is only worth its cost if its errors are independent of the builder's.</p>
+<h2 id="decision">Decision</h2>
+<p>Decorrelate the reviewer from the builder by construction:</p>
+<ul>
+<li><strong>No builder rationale.</strong> The builder writes <code>build-notes.md</code>; the driver withholds it. The
+reviewer runs in a temporary directory holding only <code>patch.diff</code>, <code>brief.md</code>,
+<code>check-gates.json</code> and the gate logs (builder/reviewer subagents, <code>a6cecb5</code>, 2026-06-04).</li>
+<li><strong>Different vendor by default.</strong> The reviewer runs on a different model family from the
+builder (copier answer <code>reviewer_family</code>, &quot;MUST differ from builder&quot;). Vendor differences are
+data in <code>families.py</code> (<code>2ee991e</code>, 2026-07-02), so a codex reviewer against a claude builder
+is a configuration change.</li>
+<li><strong>Advisory leaves by complement.</strong> Advisory reviewers are picked against the builder that
+actually ran, including an escalated one (#200, 2026-07-01). A same-vendor fallback leaves a
+§6 note instead of passing silently (#605).</li>
+<li><strong>The reviewer reproduces.</strong> The reviewer gets a disposable git copy of base + patch so it
+can re-run the red leg itself (#419, 2026-08-06).</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>&quot;The reviewer agrees&quot; becomes &quot;a different model reproduced it&quot;. Running two vendors means
+two CLIs, two authentication set-ups and two sets of quirks for every instance. The
+&quot;MUST differ&quot; rule is copier help text, not a check; #710 adds a <code>doctor</code> row for it.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

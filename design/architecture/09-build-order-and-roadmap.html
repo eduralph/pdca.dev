@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>9. Build order and roadmap — PDCA Harness</title>
+<meta name="description" content="A strangler migration : each step keeps the suite green, opens with its ADR, and is">
+<meta property="og:title" content="9. Build order and roadmap — PDCA Harness">
+<meta property="og:description" content="A strangler migration : each step keeps the suite green, opens with its ADR, and is">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="9-build-order-and-roadmap">9. Build order and roadmap</h1>
+<blockquote>
+<p>Living document. Summary of <a href="/design/proposals/accepted/0002-target-architecture.html">proposal 0002</a>
+(target architecture and migration order), which holds the detail. GitHub milestones carry
+the same numbers. Open questions are marked <strong>[OPEN]</strong> inline.</p>
+</blockquote>
+<h2 id="the-order">The order</h2>
+<p>A strangler migration (ADR-0016): each step keeps the suite green, opens with its ADR, and is
+done only when its exit gate is met.</p>
+<div class="mermaid">
+flowchart LR
+    S1[&quot;1 · Records + renderer&lt;br/&gt;#712 · opens 0.62&quot;]
+    S2[&quot;2 · LeafRunner seam&lt;br/&gt;#711 · opens 0.61&quot;]
+    S3[&quot;3 · Role extraction&lt;br/&gt;#716 · 0.64&quot;]
+    S4[&quot;4 · Pure machine&lt;br/&gt;#713 · 0.70&quot;]
+    S5[&quot;5 · Policies + outcomes&lt;br/&gt;#714 · 0.67&quot;]
+    S6[&quot;6 · Orchestration strategies&lt;br/&gt;#715 · 0.70&quot;]
+    S2 --&gt; S3
+    S1 --&gt; S4
+    S1 --&gt; S5
+    S4 --&gt; S5
+    S5 --&gt; S6
+</div>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Issue</th>
+<th>ADR</th>
+<th>Exit gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 Records + renderer (bundle-format spec first)</td>
+<td>#712</td>
+<td>0009</td>
+<td>No <code>_section_span</code>, <code>_OUTCOME_RE</code>, <code>_needs_human_rows</code> or <code>_FIELD_RE</code> call in the accept path.</td>
+</tr>
+<tr>
+<td>2 LeafRunner seam (budgets, token ledger)</td>
+<td>#711</td>
+<td>0010</td>
+<td><code>leaves.py</code> has no direct <code>subprocess</code> use; every attempt has a token row.</td>
+</tr>
+<tr>
+<td>3 Role extraction</td>
+<td>#716</td>
+<td>0011</td>
+<td><code>leaves.py</code> under 800 lines; reviewer verdicts arrive as schema-validated JSON.</td>
+</tr>
+<tr>
+<td>4 Pure machine</td>
+<td>#713</td>
+<td>0012</td>
+<td><code>flow.flow</code> deleted; <code>_drive_and_act</code> under 120 lines.</td>
+</tr>
+<tr>
+<td>5 Policies + outcomes</td>
+<td>#714</td>
+<td>0013, 0014</td>
+<td>wyrd's local patches expressible as <code>pdca_ext/</code> policies; <code>pdca flow</code> exits non-zero on a held or failed bundle.</td>
+</tr>
+<tr>
+<td>6 Orchestration strategies</td>
+<td>#715</td>
+<td>0015</td>
+<td>Every open stack-mode issue closed by an invariant or reproduced by a generated case.</td>
+</tr>
+</tbody>
+</table>
+<p>Milestones: finish 0.60 (stack-mode fixes) → 0.61 opens with step 2 → 0.62 opens with step 1
+→ 0.63 → step 3 in 0.64, before the interactive-leaf work of 0.65 → step 5 in 0.67 → steps 4
+and 6 in 0.70.</p>
+<h2 id="where-to-start-contributing">Where to start contributing</h2>
+<ul>
+<li>The 0.61 bugs, starting with #710 (sign-off can write §9).</li>
+<li>#711 (step 2) and #717 (compute or drop <code>Confidence</code>) are self-contained.</li>
+<li>Read ADR-0003 to ADR-0006 before touching the accept path.</li>
+</ul>
+<h2 id="later">Later</h2>
+<ul>
+<li>A &quot;lite&quot; profile (brief, gates, red/green, one cross-vendor review, draft PR) for small
+projects — proposal 0001, improvement 9; not needed yet.</li>
+<li>Eval-gated prompt changes — improvement 7; waits for the token ledger.</li>
+<li>Batch selection and consolidation as Plan-beat leaves — #698 (#699–#701), built behind the
+step-2 runner.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+<script src="/assets/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral"});</script>
+</body>
+</html>

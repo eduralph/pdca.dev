@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Specifications — PDCA Harness</title>
+<meta name="description" content="Normative, versioned contracts ). Write one from">
+<meta property="og:title" content="Specifications — PDCA Harness">
+<meta property="og:description" content="Normative, versioned contracts ). Write one from">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="specifications">Specifications</h1>
+<p>Normative, versioned contracts (see <a href="/design/"><code>../README.md</code></a>). Write one from
+<a href="/design/templates/spec.html"><code>../templates/spec.md</code></a>, at <code>&lt;domain&gt;/v1.md</code>, before a second consumer
+depends on a format.</p>
+<h2 id="index">Index</h2>
+<table>
+<thead>
+<tr>
+<th>Spec</th>
+<th>Where</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The PDCA quality-cycle model (beats, artifacts, automation, gating)</td>
+<td><a href="/spec/"><code>template/PCDA/quality-cycle/</code></a>, by reference</td>
+<td>Stable; vendored into every rendered project</td>
+</tr>
+<tr>
+<td>Bundle document format v1 (<code>brief.md</code>, <code>SUMMARY.md</code>, the JSON records, the gate marker protocol, the decision tokens)</td>
+<td><code>bundle-format/v1.md</code></td>
+<td>Planned — migration step 1, <a href="https://github.com/eduralph/pdca-harness/issues/712">#712</a></td>
+</tr>
+<tr>
+<td>Role output schemas</td>
+<td><code>roles/</code></td>
+<td>Planned — migration step 3, <a href="https://github.com/eduralph/pdca-harness/issues/716">#716</a></td>
+</tr>
+</tbody>
+</table>
+<p>The quality-cycle model stays in <code>template/PCDA/</code> so that every rendered project carries the
+same text; this index points at it instead of holding a second copy.</p>
+<p>Until the bundle-format spec exists, the shape of the bundle files is defined in three places
+that can disagree: spec doc 02 (cycle artifacts), the <code>templates/*.tpl</code> files, and the parsers
+in <code>assemble.py</code>, <code>signoff.py</code>, <code>state.py</code> and <code>autoiterate.py</code>. That gap is risk R5 in
+<a href="/design/architecture/10-quality-risks-glossary.html#11-risks-and-technical-debt">architecture §11</a>.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0002. Apache-2.0 license and DCO sign-off — PDCA Harness</title>
+<meta name="description" content="The harness started under MIT and was relicensed to GPLv3 the">
+<meta property="og:title" content="0002. Apache-2.0 license and DCO sign-off — PDCA Harness">
+<meta property="og:description" content="The harness started under MIT and was relicensed to GPLv3 the">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0002-apache-20-license-and-dco-sign-off">0002. Apache-2.0 license and DCO sign-off</h1>
+<h2 id="context">Context</h2>
+<p>The harness started under MIT (commit <code>3ca179a</code>, 2026-06-04) and was relicensed to GPLv3 the
+same day (<code>c81cece</code>). It is a Copier template: its files are rendered into other people's
+repositories, which may be proprietary. A copyleft license on files that end up inside a
+user's project is a barrier to using the template at all. Contributions also needed a clear
+statement of origin without a contributor license agreement.</p>
+<h2 id="decision">Decision</h2>
+<p>We license pdca-harness under Apache-2.0 and gate contributions on the Developer Certificate
+of Origin 1.1 (<code>git commit -s</code>), with a <code>NOTICE</code> file (commit <code>d6f4786</code>, #67, 2026-06-20).
+Rendered projects receive the same <code>LICENSE</code>, <code>NOTICE</code> and <code>DCO</code>.</p>
+<h2 id="consequences">Consequences</h2>
+<p>The template can be rendered into any project. Every commit MUST carry a <code>Signed-off-by</code>
+trailer. Apache-2.0 includes a patent
+grant, which MIT did not. Relicensing again would need every contributor's agreement.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

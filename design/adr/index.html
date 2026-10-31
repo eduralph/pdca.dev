@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture Decision Records — PDCA Harness</title>
+<meta name="description" content="Numbered, immutable records of significant decisions and why they were made. An ADR is">
+<meta property="og:title" content="Architecture Decision Records — PDCA Harness">
+<meta property="og:description" content="Numbered, immutable records of significant decisions and why they were made. An ADR is">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="architecture-decision-records">Architecture Decision Records</h1>
+<p>Numbered, immutable records of significant decisions and <em>why</em> they were made. An ADR is
+never edited after acceptance; a later ADR supersedes it, and this index records the
+supersession. Format follows the lightweight Nygard template (see ADR-0001).</p>
+<p>ADRs 0001–0008 were backfilled on 2026-10-15: they record decisions the harness had already
+made, each dated to the commit or issue that made it. ADRs 0009–0015 are written as the first
+PR of each migration step (see <a href="/design/architecture/09-build-order-and-roadmap.html">architecture §9</a>).</p>
+<h2 id="how-an-adr-is-made">How an ADR is made</h2>
+<p>The rules are in ADR-0001 (lifecycle), ADR-0019 (supersession) and
+<a href="/governance/governance.html">GOVERNANCE.md</a> (who accepts). In order:</p>
+<ol>
+<li><strong>Open an issue</strong> that states the question. Every pull request needs one, and the
+discussion before there is a draft belongs there.</li>
+<li><strong>Take the next number.</strong> One more than the highest number in the index and in any open
+pull request that adds an ADR. Numbers are never reused, not even for an ADR that was
+dropped.</li>
+<li><strong>Write it from the template.</strong> Copy <a href="/design/templates/adr.html"><code>../templates/adr.md</code></a> to
+<code>NNNN-short-title.md</code>, keep <code>status: Proposed</code> with nothing after it on that line, and
+write Context, Decision and Consequences. Mark anything still undecided <strong>[OPEN]</strong>.</li>
+<li><strong>Add it to the index</strong> below, with status <code>Proposed</code>, in the same pull request.</li>
+<li><strong>Open the pull request</strong> with <code>Refs #N</code> for the issue. Discussion happens there; a
+Proposed ADR may be edited freely, before and after it merges.</li>
+<li><strong>Accept it.</strong> When the architecture board (<a href="http://GOVERNANCE.md">GOVERNANCE.md</a>) agrees and no <strong>[OPEN]</strong>
+items are left, change <code>status:</code> to <code>Accepted</code> and the index row to match, then merge.
+This edit is the act of acceptance; only a maintainer makes it, never an agent. From
+here the file is frozen (<code>docs-immutability</code>).</li>
+<li><strong>Change it later only by superseding it</strong> (ADR-0019): a new ADR with
+<code>supersedes: NNNN</code>, the old file's <code>status:</code> changed to <code>Superseded</code> (optionally with
+<code>superseded-by:</code>) and nothing else, and the old index row changed to
+<code>Superseded by NNNN</code>, all in one pull request.</li>
+</ol>
+<p>ADR-0001 has no Rejected status: if the board does not agree, close the pull request
+without merging it.</p>
+<p><code>docs-check</code> keeps this index honest: every ADR is listed once, its status here matches its
+frontmatter, and both sides of every supersession agree. Run
+<code>python3 -I .github/docs-check/adr_index.py</code> before pushing.</p>
+<h2 id="index">Index</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Title</th>
+<th>Decided</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="/design/adr/0001-record-architecture-decisions.html">0001</a></td>
+<td>Record architecture decisions</td>
+<td>2026-10-15</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0002-apache-2-and-dco.html">0002</a></td>
+<td>Apache-2.0 license and DCO sign-off</td>
+<td>2026-06-20</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0003-file-derived-bundle-state.html">0003</a></td>
+<td>Bundle state is derived from which files exist; no database</td>
+<td>2026-06-04</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0004-no-model-writes-the-decision.html">0004</a></td>
+<td>No model writes §9; <code>accept</code> is refused while a NEEDS-HUMAN item is open (C6)</td>
+<td>2026-06-04</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0005-decorrelated-reviewer.html">0005</a></td>
+<td>The reviewer is a different vendor from the builder and never sees <code>build-notes.md</code></td>
+<td>2026-06-04</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0006-red-green-is-the-blocking-evidence.html">0006</a></td>
+<td>Red-before / green-after is the only evidence allowed to block a sign-off</td>
+<td>2026-06-05</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0007-copier-template-distribution.html">0007</a></td>
+<td>Distribution is a Copier template; instances concretize and update</td>
+<td>2026-06-04</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0008-stdlib-only-python.html">0008</a></td>
+<td>The driver is pure stdlib, Python ≥ 3.11</td>
+<td>2026-06-04</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0009</td>
+<td>The bundle document format is a versioned spec; Markdown is rendered from typed records</td>
+<td>step 1</td>
+<td>Planned (<a href="https://github.com/eduralph/pdca-harness/issues/712">#712</a>)</td>
+</tr>
+<tr>
+<td>0010</td>
+<td>Leaves run behind a <code>LeafRunner</code> protocol; budgets and token telemetry live in the runner</td>
+<td>step 2</td>
+<td>Planned (<a href="https://github.com/eduralph/pdca-harness/issues/711">#711</a>)</td>
+</tr>
+<tr>
+<td>0011</td>
+<td>A role is data: prompt, input manifest, output schema, stub</td>
+<td>step 3</td>
+<td>Planned (<a href="https://github.com/eduralph/pdca-harness/issues/716">#716</a>)</td>
+</tr>
+<tr>
+<td>0012</td>
+<td>One driver; transitions are pure functions over records</td>
+<td>step 4</td>
+<td>Planned (<a href="https://github.com/eduralph/pdca-harness/issues/713">#713</a>)</td>
+</tr>
+<tr>
+<td>0013</td>
+<td>Policies implement a <code>Policy</code> protocol discovered from <code>pdca.toml</code> or an instance's <code>pdca_ext/</code></td>
+<td>step 5</td>
+<td>Planned (<a href="https://github.com/eduralph/pdca-harness/issues/714">#714</a>)</td>
+</tr>
+<tr>
+<td>0014</td>
+<td>Every phase returns <code>Ok / Held / FailedInfra</code>, recorded in <code>run.json</code> and the exit code</td>
+<td>step 5</td>
+<td>Planned (<a href="https://github.com/eduralph/pdca-harness/issues/714">#714</a>)</td>
+</tr>
+<tr>
+<td>0015</td>
+<td>Integration modes are strategy objects with stated invariants and property tests</td>
+<td>step 6</td>
+<td>Planned (<a href="https://github.com/eduralph/pdca-harness/issues/715">#715</a>)</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0016-strangler-migration.html">0016</a></td>
+<td>The migration is a strangler, never a rewrite</td>
+<td>2026-10-15</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0017-issue-priority-and-automated-triage.html">0017</a></td>
+<td>Issue priority and automated triage: severity × reach set P0–P3 with security and decision-integrity overrides; a GitHub Action applies it to this repository's issues with one Claude API call per issue</td>
+<td>—</td>
+<td>Proposed</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0018-proposal-and-spec-process.html">0018</a></td>
+<td>Proposal and specification process, lifecycle, and immutability</td>
+<td>—</td>
+<td>Proposed</td>
+</tr>
+<tr>
+<td><a href="/design/adr/0019-supersession.html">0019</a></td>
+<td>How a frozen document is superseded</td>
+<td>—</td>
+<td>Proposed</td>
+</tr>
+</tbody>
+</table>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

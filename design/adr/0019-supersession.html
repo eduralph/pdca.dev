@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0019. How a frozen document is superseded — PDCA Harness</title>
+<meta name="description" content="ADR-0001 and ADR-0018 freeze ratified documents, and both name superseded as a later">
+<meta property="og:title" content="0019. How a frozen document is superseded — PDCA Harness">
+<meta property="og:description" content="ADR-0001 and ADR-0018 freeze ratified documents, and both name superseded as a later">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0019-how-a-frozen-document-is-superseded">0019. How a frozen document is superseded</h1>
+<h2 id="context">Context</h2>
+<p>ADR-0001 and ADR-0018 freeze ratified documents, and both name <em>superseded</em> as a later
+state. A reader who opens an old document needs to see that it has been replaced, and the
+class index needs to say so too. Editing the frozen file in any other way must stay
+impossible.</p>
+<h2 id="decision">Decision</h2>
+<p>Supersession is recorded in three places, in the same pull request:</p>
+<ol>
+<li>The <strong>new</strong> document carries <code>supersedes: &lt;old number or path&gt;</code> in its frontmatter. It is
+a new file, which the immutability check always allows.</li>
+<li>The <strong>old</strong> document receives a <em>supersession stamp</em>: its <code>status:</code> changes to
+<code>Superseded</code> (ADRs) or <code>superseded</code> (proposals, specs), optionally with a
+<code>superseded-by:</code> frontmatter field. Nothing else in the file may change. The
+<code>docs-immutability</code> check allows exactly this edit and nothing more: the body and every
+other frontmatter line must stay byte-for-byte identical, and a superseded document is
+frozen again.</li>
+<li>The <strong>class index</strong> (<code>adr/README.md</code>, <code>proposals/README.md</code>, <code>specs/README.md</code>) marks the
+old entry <em>superseded by NNNN</em>. Each class MUST keep such an index; it is the place to
+look up a document's current status.</li>
+</ol>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>An old document shows on its own page that it was replaced, and the index agrees.</li>
+<li>The record itself never changes, so references to it stay trustworthy.</li>
+<li>Every ratification or supersession includes an index edit, which is always allowed.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

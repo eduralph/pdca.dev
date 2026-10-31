@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0017. Issue priority and automated triage: severity and reach set P0–P3, and a GitHub Action applies it to this repository&#x27;s issues with one Claude API call per issue — PDCA Harness</title>
+<meta name="description" content="pdca-harness has over 150 open issues, from the maintainer, from the instances that run it and from review findings deferred out of pull requests. An issue gets bug, enhancement...">
+<meta property="og:title" content="0017. Issue priority and automated triage: severity and reach set P0–P3, and a GitHub Action applies it to this repository&#x27;s issues with one Claude API call per issue — PDCA Harness">
+<meta property="og:description" content="pdca-harness has over 150 open issues, from the maintainer, from the instances that run it and from review findings deferred out of pull requests. An issue gets bug, enhancement...">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0017-issue-priority-and-automated-triage-severity-and-reach-set-p0p3-and-a-github-action-applies-it-to-this-repositorys-issues-with-one-claude-api-call-per-issue">0017. Issue priority and automated triage: severity and reach set P0–P3, and a GitHub Action applies it to this repository's issues with one Claude API call per issue</h1>
+<h2 id="context">Context</h2>
+<p>pdca-harness has over 150 open issues, from the maintainer, from the instances that run it (Stemma, Wyrd, nl-shell, Autobook) and from review findings deferred out of pull requests. An issue gets <code>bug</code>, <code>enhancement</code> or <code>documentation</code>, and the <code>new</code> label while it has no milestone (the Issue triage workflow). Nothing records how urgent it is, so ordering the backlog means rereading issues one by one.</p>
+<p>Triage needs the rules written down, so that two people, or the same person on different days, put the same issue at the same priority, and so that a bot can apply them with the maintainer making the final call. The structure is the one Stemma, Wyrd and nl-shell already use: severity and reach give a priority from a fixed table, and a short list of overrides moves some issues up. The severity meanings, areas and overrides below are the harness's own, taken from what it promises.</p>
+<p>Four things shape the scheme and how it runs.</p>
+<ul>
+<li><strong>What the harness promises.</strong> Its value is the accept path: no model writes the decision and <code>accept</code> is refused while a NEEDS-HUMAN item is open (ADR-0004); the reviewer is decorrelated from the builder (ADR-0005); only red-before / green-after evidence may block a sign-off, and a check that cannot run becomes a NEEDS-HUMAN item, not a pass (ADR-0006); bundle state is what the files say (ADR-0003); instances take changes by <code>copier update</code> (ADR-0007). A bug that lets an unreviewed or unevidenced change be signed off breaks the reason the harness exists, even when it needs an unusual bundle to show. Architecture §8.10 and risk R1 already list such holes.</li>
+<li><strong>What a hostile input can reach.</strong> Leaves read tracker text that anyone can write and run with <code>Edit</code>, <code>Write</code> and <code>Bash</code> (§8.10). An attack through that text is rare by construction and still what the sandboxes and guards are built against.</li>
+<li><strong>The repository is public.</strong> Anyone can open an issue, so whatever reads issues reads text written by strangers, and whatever an issue triggers, a stranger can trigger. Issue text is already public, so sending it to a model provider exposes little that was not already exposed. But a report can carry a token pasted from a log, or describe a vulnerability that should not be public. Such a report belongs in GitHub's private vulnerability reporting, which is on for this repository and described in <a href="http://SECURITY.md">SECURITY.md</a>.</li>
+<li><strong>Whoever sets the milestone starts the work.</strong> The harness's own PDCA instance picks up issues on the open milestone, so the milestone must stay a human decision.</li>
+</ul>
+<h2 id="decision">Decision</h2>
+<p>We will qualify every issue with three labels, derive a priority from two of them with a fixed table, and apply a short list of overrides (sections 1–3). Section 4 says what an automated triager may and may not do, and section 5 how ours runs.</p>
+<h3 id="1-labels-describing-the-issue">1. Labels describing the issue</h3>
+<p><strong>Severity: how bad it is when it happens</strong></p>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sev:critical</code></td>
+<td>A model writes or changes §9, or <code>accept</code> succeeds while a NEEDS-HUMAN item is open (ADR-0004); a change can be signed off without red-green evidence, or a gate reports a pass it did not run (ADR-0006); a leaf merges, approves or marks a pull request ready, or escapes its sandbox or worktree to write the target project; <code>copier update</code> or a render silently drops or overwrites an instance's own changes (ADR-0007); tracker or leaf text reaches code execution outside a leaf</td>
+</tr>
+<tr>
+<td><code>sev:major</code></td>
+<td>Bundle state is misread or a bundle is lost (ADR-0003); the reviewer sees <code>build-notes.md</code> or runs on the builder's vendor without a §6 note (ADR-0005); a guard or STOP-discipline check is off or bypassable without harm yet; <code>copier update</code> or a render fails for an instance; the driver crashes or a cycle cannot advance with no workaround; a check that cannot run is recorded as a fail or hidden instead of becoming a NEEDS-HUMAN item</td>
+</tr>
+<tr>
+<td><code>sev:minor</code></td>
+<td>Wrong behaviour with a workaround, a cost, time or size regression, or misleading output, logs or SUMMARY text</td>
+</tr>
+<tr>
+<td><code>sev:trivial</code></td>
+<td>Cosmetic, wording, docs, or a test-only gap</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Reach: how likely someone hits it</strong></p>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reach:common</code></td>
+<td>A normal cycle with a default or documented configuration triggers it</td>
+</tr>
+<tr>
+<td><code>reach:edge</code></td>
+<td>Needs an unusual configuration, target project, bundle shape, model behaviour or timing</td>
+</tr>
+<tr>
+<td><code>reach:adversarial</code></td>
+<td>Only triggers when someone sets it up on purpose: hostile issue or tracker text, a pull request crafted to fool a gate, a leaf deliberately acting against its role</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Area: where the issue lives</strong> (for routing and assignment)</p>
+<p>Following the target layers of the building block view (architecture §5.1, §5.2): <code>area:records</code>, <code>area:machine</code>, <code>area:leaves</code>, <code>area:gates</code>, <code>area:publish</code> (worktrees, draft PRs, tracker sources), <code>area:roles</code>, <code>area:policies</code>, <code>area:orchestration</code>, <code>area:act</code>, <code>area:cli</code> (the <code>pdca</code> command, configuration, doctor, the guard), <code>area:template</code> (Copier and <code>copier update</code>), <code>area:spec</code> (the vendored quality-cycle model), plus <code>area:docs</code>, <code>area:tests</code> and <code>area:ci</code>. An issue gets one or two. The areas follow the target layers rather than today's modules, so they survive the strangler migration (ADR-0016).</p>
+<h3 id="2-priority-from-severity-and-reach">2. Priority from severity and reach</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>common</th>
+<th>edge</th>
+<th>adversarial</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>critical</strong></td>
+<td>P0</td>
+<td>P1</td>
+<td>P1</td>
+</tr>
+<tr>
+<td><strong>major</strong></td>
+<td>P1</td>
+<td>P2</td>
+<td>P2</td>
+</tr>
+<tr>
+<td><strong>minor</strong></td>
+<td>P2</td>
+<td>P3</td>
+<td>P3</td>
+</tr>
+<tr>
+<td><strong>trivial</strong></td>
+<td>P3</td>
+<td>P3</td>
+<td>P3</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>P0:</strong> drop other work, fix now, block the release.</li>
+<li><strong>P1:</strong> goes on the current milestone.</li>
+<li><strong>P2:</strong> next milestone, or whenever it fits.</li>
+<li><strong>P3:</strong> backlog.</li>
+</ul>
+<p>The labels are <code>priority:P0</code> to <code>priority:P3</code>, the same names as in Stemma and Wyrd, so a priority means the same in the harness and in the projects it runs on. P1 and P2 line up roughly with Codex's review badges.</p>
+<h3 id="3-overrides">3. Overrides</h3>
+<ul>
+<li><strong>Security bugs get at least P1, even when <code>reach:adversarial</code>.</strong> A leaf steered by hostile tracker text, escaping its sandbox or tools, or exposing a credential runs on other people's projects.</li>
+<li><strong>Decision-integrity bugs get at least P1, even when <code>reach:edge</code>.</strong> Anything that lets a change be signed off or published without the human decision or the red-green evidence: a model writing §9, the C6 guard bypassed, a gate reporting a pass it did not earn, a leaf merging or marking a pull request ready. The harness exists to make those impossible, so a rare case still undermines every sign-off.</li>
+<li><strong>Deferred review findings</strong> keep the review's priority, unless the triager can show the pull request changed the impact.</li>
+<li><strong>When unsure, leave the priority off.</strong> If the triager cannot place severity or reach, they set <code>needs-triage</code> and say what is missing. Never guess a lower priority.</li>
+</ul>
+<p>There is no <code>release-gating</code> override: the repository has no such label. If one is introduced, it should mean at least P1, as in Wyrd and Stemma.</p>
+<h3 id="4-automated-triage">4. Automated triage</h3>
+<p>A bot that triages does this on each new issue:</p>
+<ol>
+<li>Set type (<code>bug</code>, <code>enhancement</code> or <code>documentation</code>) unless one is already set, plus severity, reach, area and priority. When the issue already has a type and reads as a different one, the bot keeps the label and says so in its comment.</li>
+<li>Post one comment with a line of reasoning per label, so the maintainer can check the call quickly and correct it by changing a label.</li>
+<li>Assign from a fixed owner table by area, unless someone is already assigned.</li>
+<li>Leave the milestone empty. The <code>new</code> label therefore stays until the maintainer sets one.</li>
+</ol>
+<p>Issue text is untrusted input. Each job of the bot MUST hold at most <code>contents: read</code>, <code>issues: write</code> and <code>id-token: write</code>; the bot gets no write access to code and no secret beyond its own short-lived tokens. The step that runs the model MUST NOT hold <code>issues: write</code>. GitHub sets a token's permissions per job, not per step, so the bot runs as two jobs (section 5): one runs the model with a read-only token, the other writes to issues and runs no model. GitHub has no narrower permission than <code>issues: write</code>, and that one allows more than the bot uses: it can also edit an issue's title and body, close, reopen or lock it, set its milestone, and edit or delete comments. The bot's code calls only the label, assignee and comment endpoints, with arguments it builds itself, so the model's answer cannot reach the rest. The wider capability is reachable only by compromising the write job's code or its dependencies, which are hash-pinned (section 5). Such a compromise could rewrite, close or re-milestone issues, which shows in each issue's history and can be undone; it cannot touch code, releases or secrets. A milestone set this way would start the PDCA instance on that issue, behind the cycle's own sign-off. What the model returns MUST be validated against the label sets before anything is written, and the priority MUST be computed by code from sections 2 and 3, not taken from the model.</p>
+<p>The bot MUST NOT quote the issue in its comment: no log lines, paths, commands, identifiers or tokens, only descriptions in general terms. When an issue appears to contain a credential or other secret, the comment SHOULD say so and ask the reporter to rotate it and edit it out. When an issue appears to report an undisclosed vulnerability, the bot still sets the labels, but its comment MUST NOT restate the details; it asks the reporter to add nothing further and to report it privately as <a href="http://SECURITY.md">SECURITY.md</a> describes, and says a maintainer may move the report to a private advisory.</p>
+<p>The bot skips pull requests, closed issues, issues opened by bots, and issues that already carry a priority.</p>
+<h3 id="5-how-the-bot-runs">5. How the bot runs</h3>
+<p>We will run triage as a GitHub Action, <code>.github/workflows/triage-priority.yml</code>, with a Python script, <code>.github/triage/triage_priority.py</code>. It runs when an issue is opened, reopened or edited and has no <code>priority:*</code> label, and on demand to back-fill open issues.</p>
+<p>The names say <em>priority</em> on purpose. The driver already has a <code>triage</code> command, <code>template/src/pdca_harness/triage.py</code>, which sorts pull-request review findings into the ledger. The two share nothing: this bot is repository CI tooling for this repository's issues and is not rendered into instances.</p>
+<ul>
+<li><strong>ADR-0008 does not apply to it.</strong> The stdlib-only rule binds the driver rendered into every instance (<code>template/src/pdca_harness/</code>). This script runs only in this repository's CI, so it may use the Anthropic SDK, pinned and hash-checked as below.</li>
+<li><strong>One request per issue.</strong> Claude Sonnet 5.5 at low effort, with no tools, structured JSON output, and the issue title and description capped at fixed lengths; the comment says when it cut the text. The static rules are sent as a cached system prompt. An issue is classified once; an edit triggers a new call only while it carries <code>needs-triage</code>.</li>
+<li><strong>Two jobs.</strong> The workflow has two jobs, because GitHub scopes the token's permissions per job.
+<ul>
+<li><code>classify</code> holds <code>contents: read</code>, <code>issues: read</code> and <code>id-token: write</code>. It reads the issue, runs the model, and writes the plan (labels, assignee and comment for each issue) as a workflow artifact. It cannot write to GitHub; <code>id-token: write</code> lets it fetch its identity token and nothing more.</li>
+<li><code>apply</code> holds <code>contents: read</code> and <code>issues: write</code>. It runs no model and does not install the SDK. It treats the plan as data and checks it before writing: every label must be in <code>labels.json</code> or a type, with at most one type, severity, reach and priority and at most two areas; it may remove only <code>needs-triage</code>; the assignee must be in the owner table; the comment must be the bot's own. It reads the issue again and skips it if someone set a priority meanwhile, then applies labels, assignee and comment with the workflow's own <code>GITHUB_TOKEN</code>.</li>
+</ul>
+</li>
+<li><strong>The model classifies; the script decides.</strong> The model returns type, severity, reach, area, the override flags, the priority of a deferred review finding if the issue names one, the secret and vulnerability flags, and one reason per label. Each reason field in the output schema says what it should explain. The script validates the answer and computes the priority: the table first, then a deferred review finding keeps the review's priority, then the overrides raise it to their floor. A reason that repeats from the issue a run of five words, a number of three or more digits, or any single token that looks like an identifier (eight characters or more, containing a digit, one of <code>. / _ : = @ +</code>, or two hyphens, such as a token, hostname, path or repository name; a word with one hyphen does not count) is withheld whole. One under three words is shown as &quot;(no reason given)&quot;, and mentions and markup are neutralised.</li>
+<li><strong>A decline or a malformed answer sets <code>needs-triage</code></strong> and a short comment; nothing is guessed. A safety-classifier decline is first retried server-side on Anthropic's recommended fallback model.</li>
+<li><strong>No stored API key.</strong> The <code>classify</code> job authenticates by Workload Identity Federation: it fetches GitHub's OIDC identity token (audience <code>https://api.anthropic.com</code>) and the Anthropic SDK exchanges it for a Claude API token that acts as a service account. The federation rule accepts only subject <code>repo:eduralph/pdca-harness:ref:refs/heads/main</code> and requires the claims <code>repository_owner_id: 15236434</code>, <code>repository_id: 1259114053</code> and <code>ref: refs/heads/main</code>. The numeric IDs matter because the default subject format names the repository, and a renamed or re-created repository could otherwise reuse the name. That covers issue events and manual runs from main, and no pull request, fork or other branch. The rule grants <code>workspace:developer</code> for 600 seconds; GitHub's token can be exchanged once, so a run must finish within about eight minutes. The service account and workspace may be shared with the other repositories that run this bot, but each repository has its own rule. The rule, organisation, service-account and workspace IDs are repository variables, not secrets, and the workflow does nothing until they are set. A manual run with <code>check</code> ticked makes one 16-token request to test the sign-in.</li>
+<li><strong>Cost is capped outside the bot as well as inside it.</strong> Anyone can open an issue on a public repository, so the service account acts in a workspace with its own spending limit; that limit, not the script, is the backstop against a flood of issues. Each comment states its token use.</li>
+<li><strong>Dependencies are pinned and hash-checked.</strong> The SDK and everything it pulls in are compiled with hashes and installed with <code>--require-hashes</code>, each version at least 7 days old when chosen.</li>
+<li><strong>The label set lives in <code>.github/triage/labels.json</code></strong>, with descriptions under GitHub's 100-character limit, and the workflow creates missing labels.</li>
+<li><strong>Back-fill is batched and checked first.</strong> The open issues are triaged by manual runs in batches with a limit, the first as a dry run that prints each plan without writing.</li>
+</ul>
+<p>We reject running a model on a subscription in the Action: its credential is a whole personal account, exposed to every issue author's prompt injection. We reject a stored <code>ANTHROPIC_API_KEY</code> secret: it lasts until someone revokes it, while a federated token expires within minutes and works only from this repository's main branch. We reject shipping the bot in the template: instances are PDCA working repositories, and the projects they serve run their own copy (as Stemma and Wyrd do); this repository is the canonical copy they take it from.</p>
+<h3 id="6-known-risks-run-through-it">6. Known risks run through it</h3>
+<p>As a check of the scheme rather than real triage, here are holes from architecture §8.10 and §11, and ordinary issues, classified as if each had been reported as a bug:</p>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Severity / reach</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The sign-off session can edit §9 (R1)</td>
+<td>critical / edge, plus the decision-integrity override</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>A leaf that never started is recorded as &quot;0 findings&quot; (R7)</td>
+<td>critical / common</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>The claude builder is not confined to its worktree (R1)</td>
+<td>critical / edge, plus the security override</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Hostile issue text steers the builder into running a command outside its tools</td>
+<td>critical / adversarial, plus the security override</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Nothing checks that the reviewer's vendor differs from the builder's (R1)</td>
+<td>major / edge, plus the decision-integrity override</td>
+<td>P1</td>
+</tr>
+<tr>
+<td><code>copier update</code> from the previous release fails for an instance with local patches</td>
+<td>major / edge</td>
+<td>P2</td>
+</tr>
+<tr>
+<td><code>Confidence: medium</code> is hard-coded in every SUMMARY (R2)</td>
+<td>minor / common</td>
+<td>P2</td>
+</tr>
+</tbody>
+</table>
+<h2 id="consequences">Consequences</h2>
+<p>Every issue carries a priority that says why it has it, and the backlog can be sorted by label instead of by rereading issues. Manual and automated triage use the same rules, so either can check the other, and a priority means the same in the harness and in the projects it runs on.</p>
+<p>The decision-integrity and security overrides move more issues up than any other rule. They are chosen deliberately: an accept-path hole that needs an odd bundle to show competes with common crashes for the current milestone. Leaving the milestone to the maintainer keeps the harness's own PDCA instance from starting work on the bot's judgement alone, at the cost of one manual step per issue.</p>
+<p>Every issue's title and description is sent to Anthropic's API. For a public repository that adds little exposure; what it does add is any secret a reporter pasted, which the bot asks them to rotate. A vulnerability reported in a public issue is labelled but not restated.</p>
+<p>The rules exist twice, in this ADR and in <code>.github/triage/prompt.md</code>, and the table and overrides a third time in the script. A change to this ADR has to update both files; the script's tests pin the table, so a drift shows up as a failing test. The same script runs in Stemma and Wyrd with their own rules and labels; a fix to the shared parts should reach all copies.</p>
+<p>On Stemma the bot used about 2,800 to 3,100 input and 140 to 290 output tokens per issue, much of the input read from the cache. This prompt is similar in size, so back-filling the open issues should cost a few dollars; that is an estimate until the first batch reports its use. A comment can lack a reason for a label or two; the labels are unaffected.</p>
+<p>The bot's trust boundary is recorded here (section 4) rather than in architecture §8.10, which describes the harness that instances run; the bot is tooling of this repository only.</p>
+<p>Follow-on work: create the federation rule and repository variables, run the connection check, back-fill the open issues in batches, and review the first comments before relying on the bot.</p>
+<p>Left open:</p>
+<ul>
+<li><strong>[OPEN]</strong> Whether P3 issues ever close automatically, or stay open until the maintainer closes them.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

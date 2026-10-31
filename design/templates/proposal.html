@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposal: &lt;title&gt; — PDCA Harness</title>
+<meta name="description" content="What problem does this solve? Why now? What does the user see?">
+<meta property="og:title" content="Proposal: &lt;title&gt; — PDCA Harness">
+<meta property="og:description" content="What problem does this solve? Why now? What does the user see?">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="proposal">Proposal: <title></h1>
+<blockquote>
+<p>Enhancement proposals (KEP/RFC-style) are how larger changes and milestone plans are
+proposed. Move this file from <code>draft/</code> to <code>accepted/</code> when accepted; an accepted proposal
+is never edited — a later proposal supersedes it, recorded in <code>../proposals/README.md</code>.
+If a decision is foundational rather than a change, it may instead warrant an ADR.</p>
+</blockquote>
+<h2 id="motivation">Motivation</h2>
+<p>What problem does this solve? Why now? What does the user see?</p>
+<h2 id="design">Design</h2>
+<p>The proposed change. Be concrete about the affected components and about any effect on the
+properties the threat model says must hold — those carry the highest bar.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<p>What else was weighed, and why this over those?</p>
+<h2 id="graduation-criteria">Graduation criteria</h2>
+<p>How do we know it is done and correct? Which tests, which quality scenarios (architecture
+§10), and what definition of done?</p>
+<h2 id="security-impact">Security impact</h2>
+<p>Which untrusted inputs from <code>.oss-scanner/threat_model.md</code> does this touch? Does it add a
+new one, or change what is trusted? Update the threat model in the same change if so.</p>
+<h2 id="backward-compatibility">Backward compatibility</h2>
+<p>Effect on existing data, configs, deployments and the public interface.</p>
+<h2 id="open-questions">Open questions</h2>
+<p>Mark unresolved points explicitly.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

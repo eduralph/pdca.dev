@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -44,10 +46,10 @@
 </ol>
 <p>A parallel example at the end of the doc contrasts the brief-shaped CI-hardening Plan with a design-shaped Plan (GEPS 049 — <em>Versioned Addon API surface and 2 axis lifecycle model</em>), showing what Plan looks like at the larger end of its scope range (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Solution-approach design).</p>
 </blockquote>
-<h2>What the cycle was for</h2>
+<h2 id="what-the-cycle-was-for">What the cycle was for</h2>
 <p>Fix the divergences and gaps identified in a CI review of the gramps-testbed <code>main</code> branch: hardcoded fork owner; branch-target default drift; copy-pasted <code>requires_mod</code> extractor; missing degraded-coverage guard on Windows; no <code>concurrency</code> control; an unrestricted <code>push:</code> trigger; copy-pasted step bodies (msgfmt loop, venv setup, repo resolution); missing timeout caps.</p>
 <p>One logical change → one PR; draft only; cite path:line; per-item <code>agent-work/results/ci-hardening/ci-&lt;slug&gt;/{SUMMARY.md,patch.diff}</code>; STOP after each. The spec-and-marching-orders shape that <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> names <code>brief.md</code>.</p>
-<h2>Turn 1 — Plan (v1 brief)</h2>
+<h2 id="turn-1--plan-v1-brief">Turn 1 — Plan (v1 brief)</h2>
 <p><code>CLAUDE_CODE_BRIEF-ci-hardening.md</code> (v1) opened seven items:</p>
 <ol>
 <li>Fix the hardcoded fork owner in <code>upstream-sync.yml</code>.</li>
@@ -60,7 +62,7 @@
 </ol>
 <p>Plus a &quot;Not in scope&quot; list documenting third-party action pinning and fork-PR reporting limitation as record-only.</p>
 <p>This is a textbook Plan artifact: spec per item, success criterion (&quot;<code>actionlint</code> clean&quot;, &quot;byte-level behavioral equivalence&quot;), branch target named explicitly (the testbed's <code>main</code>, not addon → gramps60), scope discipline (&quot;one logical fix per PR; bundling hides mistakes&quot;), honest oracle limits (&quot;<code>actionlint</code> does <strong>not</strong> validate runtime behavior — say so&quot;).</p>
-<h2>Turn 2 — iterate-to-Plan (v2 brief, in-cycle spec revision)</h2>
+<h2 id="turn-2--iterate-to-plan-v2-brief-in-cycle-spec-revision">Turn 2 — iterate-to-Plan (v2 brief, in-cycle spec revision)</h2>
 <p>The builder (Claude Code) reviewed v1 in-repo (<code>ci-hardening-brief-review.md</code>, 2026-06-01) and surfaced findings the v1 spec hadn't anticipated. Rather than build against v1 anyway, the cycle <strong>revised the brief in place</strong> before continuing — the <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> §9 <em>iterate-to-Plan</em> path: the contribution stays the same (still the CI hardening batch), the <strong>spec for that contribution</strong> is re-authored, then Do re-runs.</p>
 <p>The amendments (preserved verbatim from v2's &quot;Changes from v1&quot;
 preamble):</p>
@@ -90,7 +92,7 @@ preamble):</p>
 </ol>
 </blockquote>
 <p>The sequencing is a Plan-time spec choice: which items the body can fan out on in parallel, which must serialize, which carry a deferred sub-decision. The driver in <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> consumes this as the per-issue queue order inside the batch.</p>
-<h2>Turn 3 — v3 brief: Check sign-off + one Act-class delta</h2>
+<h2 id="turn-3--v3-brief-check-sign-off--one-act-class-delta">Turn 3 — v3 brief: Check sign-off + one Act-class delta</h2>
 <p><code>CLAUDE_CODE_BRIEF-ci-decisions.md</code> (v3) addressed three items that v2 implemented but reached a DECISION/deviation and <strong>stopped for human adjudication</strong>. In the new model, that adjudication splits cleanly between <strong>Check sign-off</strong> (per-item dispositions for the contribution-batch) and <strong>Act</strong> (process-baseline deltas observed along the way):</p>
 <table>
 <thead>
@@ -128,7 +130,7 @@ preamble):</p>
 </tr>
 </tbody>
 </table>
-<h3>Item A — reversing your own prior decline (iterate-to-Plan)</h3>
+<h3 id="item-a--reversing-your-own-prior-decline-iterate-to-plan">Item A — reversing your own prior decline (iterate-to-Plan)</h3>
 <p>V2 results recorded that you had declined the <code>addons_ref</code> flip on the grounds that &quot;61/60 pair is incoherent.&quot; Two facts surfaced after that which changed the basis:</p>
 <ol>
 <li><code>maintenance/gramps61</code> <em>does</em> exist on <code>addons-source</code> — both addon branches are real.</li>
@@ -137,10 +139,10 @@ preamble):</p>
 <p>From those facts, the <strong>stated job is the gap between</strong> addons-source's two CIs: as-authored gramps60 addon against fresh gramps61 core. Status-quo 61/61 duplicates addons-source's gramps61 CI and cannot be an early warning. The &quot;ships nowhere&quot; property of 61-core/60-addon is <em>the point of a forward-compat test</em>, not a defect.</p>
 <p>V3's instruction to the builder is therefore: <strong>verify the basis first, and if after verifying both facts you still judge the flip wrong — STOP and write why in <a href="http://SUMMARY.md">SUMMARY.md</a> instead of implementing.</strong></p>
 <p>This is <strong>iterate-to-Plan</strong> on the sub-item: the spec for Item 2b is being revised in light of evidence that surfaced after the v2 attempt, and the cycle re-enters Do with the new sub-brief. It is not Act, because the change is local to this contribution-batch — a different batch wouldn't inherit &quot;always reconsider declined items when new evidence appears&quot; as a written rule from this turn. (That generalization <em>could</em> become Act if the pattern recurs across batches.)</p>
-<h3>Item B — ratifying a recommendation (Check sign-off)</h3>
+<h3 id="item-b--ratifying-a-recommendation-check-sign-off">Item B — ratifying a recommendation (Check sign-off)</h3>
 <p>V2 left the <code>dev-tooling</code> analyzer branch as one open sub-question. V3 ratified gramps61: the analyzers are core-subject — they scan gramps core source and their findings become <em>core</em> PRs, which target gramps61. So the analyzer job should analyze the branch core fixes land on.</p>
 <p>This is straightforward <strong>Check sign-off</strong>: the v2 brief produced a recommendation, the human signs off accepting it as the disposition for this sub-item. (The Family-B framing of <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> is what makes the decision tractable — name the family first, the branch follows — but applying it here is sign-off, not Act.)</p>
-<h3>Item C — the spec was wrong, ratify the build and adjust the process (Check sign-off + Act delta)</h3>
+<h3 id="item-c--the-spec-was-wrong-ratify-the-build-and-adjust-the-process-check-sign-off--act-delta">Item C — the spec was wrong, ratify the build and adjust the process (Check sign-off + Act delta)</h3>
 <p>V2 specced an exec-shim-based <code>requires_mod</code> extractor. V2 results delivered a regex + <code>literal_eval</code> deviation — strictly speaking a deviation from spec. V3's adjudication has <strong>two parts in two different beats</strong>:</p>
 <p><strong>Check sign-off (this contribution).</strong> The deviation is accepted as the disposition for Item 3 in this batch. Concrete action: append one line to that item's <code>SUMMARY.md</code> recording the deviation as ratified. The evidence is in §9 (sign-off) and §7 (proven by 14/14 literal-form audit; unproven for any future addon that <em>does</em> declare a computed <code>requires_mod</code>).</p>
 <p><strong>Act delta (the process).</strong> The v2 brief's framing — &quot;exec-shim is correctness insurance&quot; — was wrong in the way that <em>briefs of this shape</em> tend to be wrong: it demanded a specific implementation mechanism when empirical reality (14/14 flat literals) made the mechanism unnecessary. This is a process observation:</p>
@@ -149,10 +151,10 @@ preamble):</p>
 </blockquote>
 <p>That observation belongs in the <strong>next Act review</strong>'s <code>act-log.md</code> entry, as a candidate spec-template clarification. The v2 brief itself modelled the discipline (&quot;don't claim a live regex bug without a real example&quot;) for the <em>claim</em> part; the <em>mechanism</em> part needed the same discipline and didn't get it. That's the Act delta.</p>
 <p>In the <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> §10 sense, this would have been flagged on Item 3's <code>SUMMARY.md</code> §10 (&quot;Act candidate: spec demanded a mechanism we have no evidence was needed&quot;) at v2 sign-off; the next Act review would have picked it up across however many bundles exhibited similar mechanism-overshoot, and either updated the brief template or written a new check (&quot;brief mechanism clauses must cite falsifying evidence for simpler alternatives&quot;).</p>
-<h3>Item D — manual-run queue (Check sign-off, instrumented)</h3>
+<h3 id="item-d--manual-run-queue-check-sign-off-instrumented">Item D — manual-run queue (Check sign-off, instrumented)</h3>
 <p>Five items needed Eduard's manual <code>workflow_dispatch</code> runs (token-scoped sync, all-skipped guard on real Windows, cancellation semantics, local-action path, the 60-addon/61-core build). Two Item-7 sub-extractions were deferred (composite-action shape decisions).</p>
 <p>These are all <strong>Check sign-off with §7 unproven</strong>: the deterministic gates have done what they can, the disposition is accepted, but the oracle limits mean specific manual runs are needed to fully prove the result. The sign-off is conditional — &quot;merged-wider after these dispatch runs come back green&quot; — and the bundle remains AWAITING_SIGNOFF in a queue sense, with the dispatch runs as the gating step.</p>
-<h2>What the case study illustrates, mapped back to the model</h2>
+<h2 id="what-the-case-study-illustrates-mapped-back-to-the-model">What the case study illustrates, mapped back to the model</h2>
 <ul>
 <li><strong>In-cycle iteration vs Act.</strong> Turn 2 looks like Act (the spec was reconsidered, learnings were applied) but is actually iterate-to-Plan <em>within the same contribution-batch cycle</em>. The contribution hasn't shipped; the spec is being revised so Do can produce a buildable patch. Act would be: this turn revealed something about the <em>process</em> that should be permanently changed. Most of v2 doesn't generalize that way.</li>
 <li><strong>Check sign-off does most of the closing work.</strong> Items 1, 4, 5, 6, 8 (the &quot;quick wins&quot;), Item B (analyzer branch ratification), the acceptance part of Item C, and the conditional-on-dispatch Item D cases are all Check sign-off — the human reading the result document and applying §9. None of them are Act; the cycle's process baseline doesn't move because of them.</li>
@@ -161,7 +163,7 @@ preamble):</p>
 <li><strong>The oracle principle</strong> — every brief item names what its mechanical check <em>proves</em> and what it <em>leaves unproven</em>. &quot;Proves the YAML; it does <strong>not</strong> prove the 60/61 pairing actually builds — that needs a <code>workflow_dispatch</code> (Eduard's step).&quot; Honest oracle accounting is the same discipline that fills §7 of <code>SUMMARY.md</code>.</li>
 <li><strong>The independence contract holds even when the builder reviews its own brief.</strong> v2 was Plan-side feedback (does the spec make sense?), not Check-side verification (does the built artifact match the spec?). The reviewer's independence is about Check, not Plan; the builder can legitimately critique a spec it will later implement, because that critique runs <em>before</em> the artifact exists.</li>
 </ul>
-<h2>What this would look like under full automation</h2>
+<h2 id="what-this-would-look-like-under-full-automation">What this would look like under full automation</h2>
 <p>Today this cycle ran with the human authoring each brief turn and adjudicating each item. Under L3 of <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>'s maturity ladder, the contribution-batch shape persists:</p>
 <ul>
 <li>Plan v1 is human (brief authoring is irreducible).</li>
@@ -171,7 +173,7 @@ preamble):</p>
 <li>Item C's <em>process delta</em> — the spec-template mechanism observation — is jotted into the Item 3 <a href="http://SUMMARY.md">SUMMARY.md</a> §10 as an Act candidate. It sits there frozen until the next L4 Act review collects it across whatever other bundles surfaced similar observations.</li>
 </ul>
 <p>The driver does not collapse three turns into one — the iterate-to-Plan edge is irreducible. What it does collapse is the <em>bookkeeping</em>: which items are awaiting what, which dispositions are conditional on which dispatch runs, which §10 observations are awaiting Act review. The cycle's shape is preserved; only the friction is removed.</p>
-<h2>Parallel example — a design-shaped Plan (GEPS 049)</h2>
+<h2 id="parallel-example--a-design-shaped-plan-geps-049">Parallel example — a design-shaped Plan (GEPS 049)</h2>
 <p>The CI-hardening cycle above is a <strong>brief-shaped Plan</strong>: one bullet list of seven items, each a one-fix scope. For the design-shaped end of Plan's range (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Solution-approach design), GEPS 049 — <em>Versioned Addon API surface and 2 axis lifecycle model</em> — is the contrast.</p>
 <p><strong>Caveat on framing.</strong> GEPS 049 was authored as an upstream Gramps wiki proposal in its project's normal proposal workflow; it was not generated <em>by</em> this cycle. It is retrofitted here as an <strong>illustration of the shape</strong> a design-shaped Plan takes — same beat (Plan), same role (a human author), same output type (a contribution spec) — at a scope that spans many implementation cycles. Use it for the section structure (Goals, Non-goals, Decomposition, Migration, Objections-and-responses, Impact assessment, De-risking, Open questions, Future Work) and the Plan-internal grounding investigation, <em>not</em> as evidence this cycle produces GEPS-shaped artifacts.</p>
 <p>What makes GEPS 049 a <em>design-shaped</em> Plan rather than a brief:</p>
@@ -195,7 +197,7 @@ preamble):</p>
 <li><strong>Downstream beats unchanged.</strong> Each phase of GEPS 049 will, at implementation time, spawn one or more <code>brief.md</code>-scale child cycles; each child cycle runs through Do, Check (gates + reviewer + sign-off), and contributes to the next Act review like any other cycle. The cycle's machinery is one machine, fed by either Plan shape.</li>
 </ul>
 <p><strong>The lesson the contrast carries:</strong> Plan's range is wider than the &quot;author a <a href="http://brief.md">brief.md</a>&quot; framing first suggests. The model is the same; the artifact stretches to fit the work. When a contribution is one fix, Plan is one brief. When a contribution is a design with phased implementation, Plan is a design proposal that spawns N briefs. Same beat, same role, different stationery.</p>
-<h2>See also</h2>
+<h2 id="see-also">See also</h2>
 <ul>
 <li>The three source briefs (CI hardening, brief-shaped Plan), preserved
 verbatim:
@@ -224,6 +226,8 @@ and its live source at
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

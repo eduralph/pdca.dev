@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -35,7 +37,7 @@
   <main>
     <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
     <article class="prose">
-<h1>Introduction — why the PDCA harness exists</h1>
+<h1 id="introduction--why-the-pdca-harness-exists">Introduction — why the PDCA harness exists</h1>
 <p><a href="/guide/">Index</a> · next: <a href="/guide/01-render-and-integrate.html">01 Render &amp; integrate →</a></p>
 <p>Before the step-by-step, this page answers the <em>why</em>: the problem the harness
 solves, the benefits it delivers, the features that deliver them, and the
@@ -43,7 +45,7 @@ vocabulary the rest of the walkthrough assumes. If you just want to run somethin
 skip to <a href="/guide/01-render-and-integrate.html">step 01</a> — but five minutes here makes the
 rest land faster.</p>
 <hr />
-<h2>The problem</h2>
+<h2 id="the-problem">The problem</h2>
 <p>An AI model can write a plausible fix for almost any issue in seconds. That is
 exactly the danger. A plausible diff is not a <em>verified</em> one, &quot;looks done&quot; is not
 &quot;is correct,&quot; and a fix that passes review can still solve the wrong problem or
@@ -55,7 +57,7 @@ under time pressure.</p>
 review is the slowest, most fatiguing step, and a raw diff gives the reviewer
 nothing to anchor on — no spec to check against, no proof the bug existed, no
 proof it's gone, no statement of what's <em>not</em> proven.</p>
-<h2>The idea</h2>
+<h2 id="the-idea">The idea</h2>
 <p>Treat each contribution as one turn of a <strong>PDCA quality cycle</strong> — the
 <strong>P</strong>lan-<strong>D</strong>o-<strong>C</strong>heck-<strong>A</strong>ct improvement loop from manufacturing quality
 control — and automate everything in it <em>except</em> the few judgments only a human
@@ -79,7 +81,7 @@ ships without the human sign-off.</p>
 <code>00</code>–<code>10</code>). This walkthrough is the applied counterpart.</p>
 </blockquote>
 <hr />
-<h2>Benefits</h2>
+<h2 id="benefits">Benefits</h2>
 <p><strong>Verifiable correctness, not vibes.</strong> Each cycle ships proof: a test that is
 <strong>red before the fix and green after it</strong>. That red→green check is the one thing
 allowed to <em>block</em> a sign-off — so &quot;verified&quot; has a concrete, deterministic
@@ -108,8 +110,9 @@ depends on a maintainer remembering to ask for it on any given contribution.</p>
 misses — something a maintainer caught at review that no gate owned — into
 permanent improvements: a new gate, a new brief field, a tightened rule. Each
 future cycle starts from a better baseline. (The walkthrough shows a real
-example: a maintainer's review comment about a translation-manifest rule became a
-proposed deterministic gate — see <a href="/guide/06-act.html">step 06</a>.)</p>
+example: three defects a post-merge review found on an already-merged PR became
+two always-on review leaves and a builder escalation ladder — see
+<a href="/guide/06-act.html">step 06</a>.)</p>
 <p><strong>Scale without losing rigor.</strong> Because state lives in files (not a database), the
 driver is <strong>idempotent and resumable</strong>, and one Plan session can brief <em>several</em>
 issues that then build unattended and queue up for a fast, cheap-first sign-off
@@ -123,7 +126,7 @@ artifact templates, the gate interface) — not your repo's specifics. You rende
 into any project and concretize it once; the model logic is reused, the
 project-specific parts are yours.</p>
 <hr />
-<h2>Features (and where you meet them)</h2>
+<h2 id="features-and-where-you-meet-them">Features (and where you meet them)</h2>
 <table>
 <thead>
 <tr>
@@ -141,7 +144,7 @@ project-specific parts are yours.</p>
 <tr>
 <td><strong><code>pdca.toml</code> wiring</strong></td>
 <td>One config file binds the driver to your repo's leaves (the per-beat commands) and gates</td>
-<td><a href="/guide/01-render-and-integrate.html">01</a></td>
+<td><a href="/guide/01-render-and-integrate.html">01</a>, <a href="/guide/09-configuration-reference.html">09</a></td>
 </tr>
 <tr>
 <td><strong><code>INTEGRATION.md</code> (11 items)</strong></td>
@@ -206,12 +209,12 @@ project-specific parts are yours.</p>
 <tr>
 <td><strong>Console-script front door</strong></td>
 <td><code>pdca flow &lt;id&gt;</code> orchestrates the whole cycle; <code>pdca flow &lt;ids…&gt;</code> batches, bare <code>pdca</code> is status; <code>make</code> is bootstrap-only</td>
-<td><a href="/guide/">README</a></td>
+<td><a href="/guide/">README</a>, <a href="/guide/08-command-reference.html">08</a></td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2>Vocabulary</h2>
+<h2 id="vocabulary">Vocabulary</h2>
 <p>Five terms recur throughout. Learn them once:</p>
 <ul>
 <li><strong>Bundle</strong> — the folder for one contribution, <code>results/issue_&lt;id&gt;/</code>. All its
@@ -253,13 +256,14 @@ fixed elsewhere) <em>before</em> anyone authored a brief — so it exits the pen
 without ever entering a cycle, distinct from <code>DISCONTINUED</code> (a human explicitly
 abandoned a bundle that <em>did</em> run one).</p>
 <hr />
-<h2>Is this for you?</h2>
+<h2 id="is-this-for-you">Is this for you?</h2>
 <p>The harness fits when you are <strong>funnelling AI-generated contributions into a real
 codebase</strong> and need each one verified, scoped, and signed off — especially at
 volume, across multiple branches, or into a project with real conformance rules
 (tests, linters, contribution conventions). The worked example throughout this
-guide — <a href="/guide/">Gramps Testbed v2</a>, which contributes fixes upstream to the
-Gramps genealogy project and its addons — is exactly that shape.</p>
+guide — <a href="/guide/">Wyrd PDCA</a>, which drives contributions into Wyrd, a
+distributed file storage system written in Rust, through Wyrd's own <code>cargo xtask</code>
+gates — is exactly that shape.</p>
 <p>It's heavier than you need for a one-off script or a solo throwaway. The payoff is
 in <em>repeated</em> contribution where correctness, traceability, and a maintainer's
 limited attention all matter.</p>
@@ -277,6 +281,8 @@ limited attention all matter.</p>
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

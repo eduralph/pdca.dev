@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2. Constraints — PDCA Harness</title>
+<meta name="description" content="blocks its own fix. Changes therefore land as small strangler steps">
+<meta property="og:title" content="2. Constraints — PDCA Harness">
+<meta property="og:description" content="blocks its own fix. Changes therefore land as small strangler steps">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="2-constraints">2. Constraints</h1>
+<blockquote>
+<p>Living document. What the design must work within; the decisions that follow from these are
+the ADRs. Open questions are marked <strong>[OPEN]</strong> inline.</p>
+</blockquote>
+<h2 id="21-technical-constraints">2.1 Technical constraints</h2>
+<table>
+<thead>
+<tr>
+<th>Constraint</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python ≥ 3.11, standard library only for the driver</td>
+<td>ADR-0008</td>
+</tr>
+<tr>
+<td>Distributed as a Copier template; instances update with <code>copier update</code></td>
+<td>ADR-0007</td>
+</tr>
+<tr>
+<td>Models are reached only through their CLIs (<code>claude</code>, <code>codex</code>, optionally <code>gemini</code>) as subprocesses</td>
+<td><code>families.py</code></td>
+</tr>
+<tr>
+<td>Tracker and PR operations go through <code>gh</code>; git operations through <code>git</code></td>
+<td><code>doctor.py</code> checks both</td>
+</tr>
+<tr>
+<td>Sandboxed leaves need an OS sandbox (bubblewrap) and memory caps via <code>systemd-run</code> on Linux</td>
+<td><code>doctor.py</code>, #551</td>
+</tr>
+<tr>
+<td>A rendered instance's <code>main</code> may be protected; the driver must not need to push to it</td>
+<td><code>pdca record</code> pr mode</td>
+</tr>
+</tbody>
+</table>
+<h2 id="22-organizational-constraints">2.2 Organizational constraints</h2>
+<ul>
+<li>One maintainer signs off every bundle; their attention is the scarce resource.</li>
+<li>Apache-2.0 with DCO sign-off on every commit (ADR-0002).</li>
+<li>The harness is developed with itself through the pdca-pdca instance, so a broken driver
+blocks its own fix. Changes therefore land as small strangler steps (ADR-0016).</li>
+</ul>
+<h2 id="23-conventions">2.3 Conventions</h2>
+<ul>
+<li>Bundle state lives in files under <code>results/issue_&lt;id&gt;/</code> (ADR-0003).</li>
+<li>Every claim in a brief, review or design doc cites <code>path:line</code> on a stated commit.</li>
+<li>One logical change per PR; every change ships with a test or a stated reason why none is
+possible (<code>CONTRIBUTING.md</code>).</li>
+<li>Diagrams are Mermaid source; no Obsidian <code>[[wikilinks]]</code> in <code>docs/</code> (checked by
+<code>docs/publishing/tools/lint_docs.py</code>).</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

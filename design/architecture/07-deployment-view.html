@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7. Deployment view — PDCA Harness</title>
+<meta name="description" content="copier copy gh:eduralph/pdca-harness &lt;dir&gt; renders an instance: the driver under src/,">
+<meta property="og:title" content="7. Deployment view — PDCA Harness">
+<meta property="og:description" content="copier copy gh:eduralph/pdca-harness &lt;dir&gt; renders an instance: the driver under src/,">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="7-deployment-view">7. Deployment view</h1>
+<blockquote>
+<p>Living document. Where the harness runs. Open questions are marked <strong>[OPEN]</strong> inline.</p>
+</blockquote>
+<h2 id="71-what-the-user-gets">7.1 What the user gets</h2>
+<p><code>copier copy gh:eduralph/pdca-harness &lt;dir&gt;</code> renders an instance: the driver under <code>src/</code>,
+<code>pdca.toml</code>, <code>docs/INTEGRATION.md</code>, agent prompts and hooks under <code>.claude/</code> and <code>agents/</code>,
+the vendored model spec under <code>PCDA/</code>, gate script scaffolds under <code>engine/</code>, and the offline
+tests. <code>make install</code> installs the <code>&lt;instance&gt;</code> CLI; <code>copier update</code> brings later releases.</p>
+<p>Known instances: getwyrd/wyrd-pdca, eduralph/pdca-pdca (develops the harness itself),
+Ralphovi/autobook-pdca and eduralph/nl-shell-pdca. Instances are not pinned to a template
+version (ADR-0016).</p>
+<p><strong>[OPEN]</strong> Instance behaviour that the template does not parameterize has no supported home;
+wyrd carries local patches to <code>src/</code> that <code>copier update</code> overwrites. Step 5 adds <code>pdca_ext/</code>
+(#714).</p>
+<h2 id="72-test-matrix">7.2 Test matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Suite</th>
+<th>Command</th>
+<th>Where it runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Offline driver suite</td>
+<td><code>cd template &amp;&amp; PYTHONPATH=src python3 -m unittest discover -s tests</code></td>
+<td>Locally and in every instance's CI</td>
+</tr>
+<tr>
+<td>Root template suite (render + <code>copier update</code>)</td>
+<td><code>python3 -m tests.run_root_suite</code></td>
+<td><code>.github/workflows/render-check.yml</code></td>
+</tr>
+<tr>
+<td>Docs lint and site link check</td>
+<td><code>lint_docs.py</code>, <code>render_site.py --check</code></td>
+<td><code>.github/workflows/docs-check.yml</code></td>
+</tr>
+<tr>
+<td>PR has a linked issue</td>
+<td>—</td>
+<td><code>.github/workflows/require-linked-issue.yml</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="73-development-environment">7.3 Development environment</h2>
+<p>Harness changes are made through the pdca-pdca instance: <code>pdca-pdca flow &lt;ids&gt;</code> plans, builds,
+checks and publishes draft PRs against eduralph/pdca-harness. Python 3.11+, <code>git</code>, <code>gh</code>, and
+the model CLIs configured in its <code>pdca.toml</code>.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

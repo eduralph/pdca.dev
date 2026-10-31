@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pdca-harness — approach review (Oct 2026) — PDCA Harness</title>
+<meta name="description" content="edits: the diagrams lost in export are redrawn below as Mermaid">
+<meta property="og:title" content="pdca-harness — approach review (Oct 2026) — PDCA Harness">
+<meta property="og:description" content="edits: the diagrams lost in export are redrawn below as Mermaid">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<!-- Proposal 0001, added verbatim from the maintainer's document of 2026-10-15. The only
+     edits: the diagrams lost in export ("[embedded content: …]") are redrawn below as Mermaid
+     from the surrounding text, and cross-references point at the other proposal's file. -->
+<h1 id="pdca-harness--approach-review-oct-2026">pdca-harness — approach review (Oct 2026)</h1>
+<p>Oct 15, 2026 · @Eduard Ralph</p>
+<h2 id="verdict">Verdict</h2>
+<p>The approach is right; the implementation has outgrown it. The core bet — a deterministic, file-derived state machine that drives Plan→Do→Check→Act, keeps every LLM out of the accept decision, demands red-before/green-after evidence, and decorrelates the reviewer from the builder — is still ahead of what Anthropic, OpenAI, GitHub or any third-party tool ships as of October 2026. Anthropic's own engineering posts keep rediscovering the problems it solves (lenient self-grading, agents marking work done without end-to-end tests, green CI not meaning the task succeeded).</p>
+<p>Two things are wrong, and neither is the model. First, the Check beat generates human work that is ritual: §2 Confidence is <code>medium</code> in 251 of 251 bundles, and two §6 classes (fitness-to-purpose, T5 prior-art) fire in every cycle and can never be cleared by a leaf — roughly 30% of all NEEDS-HUMAN items. Second, the harness is now a platform in its own right (28k lines of driver, 49k lines of tests, 690 PRs, 107 open issues) without the two numbers a platform needs to rank its own work: cost per attempt and ritual rate per bundle. The empirical base is one Rust project plus self-hosting; autobook and nl-shell are new and not yet a verdict either way.</p>
+<p>The recommendation is to instrument cost and time per attempt (nothing is recorded today), rebuild the Check beat around a per-row <em>evidence contract</em> rather than a prose verdict, give the platform a stable core and a release cadence instances can pin against, and move the parts the vendors now do well (worktrees, budgets, structured output, stop-hook gates) onto their primitives. Details in sections 6 and 7.</p>
+<h2 id="what-the-harness-is-as-built">What the harness is, as built</h2>
+<p>One contribution is one bundle in <code>results/issue_&lt;id&gt;/</code>, and the bundle's state is <em>computed from which files exist</em> — no database, fully resumable. <code>pdca flow</code> (<code>flow_ids</code> → <code>_drive_and_act</code> → <code>_drive_wave</code>) advances every bundle through beats and stops only at five halted states (UNPLANNED, AWAITING_SIGNOFF, COMPLETE, DISCONTINUED, RESOLVED).</p>
+<blockquote>
+<p><em>Diagram redrawn as Mermaid from the text; the original was lost in export.</em></p>
+</blockquote>
+<div class="mermaid">
+stateDiagram-v2
+    direction LR
+    classDef human fill:#f3e3b5,stroke:#8a6d1d
+    [*] --&gt; UNPLANNED
+    UNPLANNED --&gt; PLANNED: Plan — planner + human write brief.md
+    PLANNED --&gt; BUILT: Do — builder writes patch.diff + test
+    BUILT --&gt; CHECKED: Check — gates + reviewer
+    CHECKED --&gt; AWAITING_SIGNOFF: assemble SUMMARY.md
+    AWAITING_SIGNOFF --&gt; COMPLETE: accept (C6 guard)
+    AWAITING_SIGNOFF --&gt; ITERATE_DO: iterate-do
+    AWAITING_SIGNOFF --&gt; ITERATE_PLAN: iterate-plan
+    AWAITING_SIGNOFF --&gt; DISCONTINUED: discontinue
+    ITERATE_DO --&gt; BUILT: rebuild on the same brief
+    ITERATE_PLAN --&gt; PLANNED: revise the brief
+    COMPLETE --&gt; [*]
+    DISCONTINUED --&gt; [*]
+    class UNPLANNED,AWAITING_SIGNOFF human
+</div>
+<p>The shaded states are where the driver halts for a person; everything between them runs unattended, and no model writes the §9 outcome.</p>
+<p>The builder, reviewer, adversary and sizer are headless <code>claude -p --agent &lt;role&gt;</code> or <code>codex</code> subprocesses with the prompt on stdin and <code>stream-json</code> parsed for a heartbeat. Planner, sign-off, publisher and Act are interactive sessions that inherit the TTY. One place (<code>leaves._invoke</code>) builds the argv; vendor differences are data in <code>families.py</code>.</p>
+<p>What each leaf sees is deliberately asymmetric. The builder gets a pointer to the brief plus <code>$PDCA_WORKTREE</code> and reads the archive of earlier iterations itself; the brief grows by one carry-forward block per iteration. The reviewer runs in a temp dir holding only <code>patch.diff</code>, <code>brief.md</code>, <code>check-gates.json</code> and the gate logs, with a disposable git copy of base+patch so it can <code>git stash</code> and re-run red→green itself — <code>build-notes.md</code> is physically absent. Advisory leaves are picked by <em>vendor complement</em> against the builder that actually ran.</p>
+<p>Gates are <code>[[gates.checks]]</code> rows run with <code>shell=True</code> in a fail-closed reconstructed worktree; rc 0 passes, rc 77 or a <code>PDCA-UNVERIFIABLE:</code> line is unverifiable, anything else fails. Only a gating <code>fail</code> blocks; unverifiable rows become §6 items. The 11-row 5/5/1 matrix (C1–C5, T1–T5, V) is overlaid on whatever gates exist. There is no baseline diffing in the Check path.</p>
+<p>Acceptance is mechanical on the headless path: <code>signoff.record</code> is the only writer of §9, <code>_apply_decision</code> is its only caller, and any open <code>- [ ]</code> under the last <code>## 6. NEEDS-HUMAN</code> heading refuses <code>accept</code>. Auto-iterate can write only <code>iterate-do</code>, only while an IMPL-tagged item exists, never past <code>max_auto_iters</code>, and defers HUMAN items into <code>deferred-findings.json</code> rather than ticking them.</p>
+<p>Around that core sit sizing (an a-priori estimate calibrated on 86 bundles, escalated by a haiku sizer), splitting (a splitter leaf proposes children; <code>split.accept</code> materialises them transactionally), waves (dependency and conflict edges levelled by longest path), lanes (N workers, <code>$PDCA_LANE</code>), per-cycle worktrees, memory caps via <code>systemd-run</code>, a draft-PR publisher, stack/merge integration lines, and <code>pdca act index|log</code> that mines frozen §6/§7/§10 for recurring signals. The whole thing is a Copier template; instances pull updates with <code>copier update</code>.</p>
+<h2 id="what-the-instances-show-in-practice">What the instances show in practice</h2>
+<p>Only wyrd-pdca and pdca-pdca have run cycles; autobook-pdca and nl-shell-pdca have no <code>results/</code> and an untouched act-log. All four pin template v0.59.0 and answer <code>leaves_mode: stub</code> in copier while every <code>pdca.toml</code> runs <code>mode = &quot;command&quot;</code> — the copier answer is stale everywhere.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>wyrd-pdca</th>
+<th>pdca-pdca</th>
+<th>autobook-pdca</th>
+<th>nl-shell-pdca</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bundles</td>
+<td>155</td>
+<td>111</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Published (draft PR)</td>
+<td>119</td>
+<td>95</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Discontinued</td>
+<td>6</td>
+<td>2</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Archived iterations (mean/bundle)</td>
+<td>372 (2.4)</td>
+<td>124 (1.1)</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Max rounds on one bundle</td>
+<td>16 (<code>issue_635</code>)</td>
+<td>6 (<code>issue_593</code>)</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Live patch size, median / max</td>
+<td>53 KB / 1,048 KB</td>
+<td>26 KB / 183 KB</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td>§6 NEEDS-HUMAN items (ticked)</td>
+<td>708 (654)</td>
+<td>555 (547)</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Instance glue, lines</td>
+<td>~4,000 + ~2,300 local patches to <code>src/</code></td>
+<td>~1,600</td>
+<td>~1,000</td>
+<td>~750</td>
+</tr>
+<tr>
+<td>Act reviews</td>
+<td>31</td>
+<td>16</td>
+<td>0</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What the human actually clears.</strong> Of 1,263 §6 items, roughly 30% are structurally un-clearable by any leaf: the V-row fitness-to-purpose cell (227) and the T5 prior-art cell (158, because the reviewer's disposable target has one synthetic commit and no remote — harness #575). Another 102 are gating reviews the clearing reviewer could not reproduce (it cannot see <code>scripts/review-branch</code>), and 167 are C4 rows marked UNVERIFIABLE — net-new code, docs-only or test-only changes with no isolable red. The content that needs a person — scope calls, causal adequacy, mutant survivors, size — is a minority of what the person is asked to tick.</p>
+<p><strong>Where rounds go.</strong> The oversized-slices report in wyrd measures the knee: patches under 50 KB take a median of 2 rounds, patches over 250 KB a median of 8.5 and never fewer than 6. The same report records that no round ever produced a smaller patch than the previous one and that the batched codex review sampled a 31-row diff with zero cross-pass agreement. Other round-eaters are environmental — a base branch that did not exist in the sandbox (5 lost rounds on 635), a stale <code>cargo-deny</code> turning CI red, <code>cargo: not found</code> four times, 7,200 s gate timeouts — and auto-iterate rebuilding a 3 KB comment fix four times on opus/max because a reviewer C4 row was tagged IMPL (harness #691).</p>
+<p><strong>What Act learned.</strong> The 47 Act reviews produced real deltas: a <code>Verification posture</code> brief field, 15 reviewer finding classes mined from 158 external codex comments on 79 PRs, a red-leg compile-failure fix in <code>run-verify.sh</code> (a compile error had scored PASS), a 16 GiB reviewer memory cap after an OOM took a whole session, a Plan intake cap of 6 after August opened 78 issues and closed 20, sonnet→opus as builder baseline after 4 of 4 sonnet-first bundles escalated, merge→stack wave mode. The ledger also records what Act cannot fix from inside an instance: &quot;no instance delta warranted — the gap is harness machinery&quot; is the modal conclusion of the last five pdca-pdca reviews. Issue inflow in wyrd was 204/187/78/0 opened against 132/108/20/1 closed, June through September; 63 of the 64 open August issues were the cycle's own output (split children, findings filed as issues, Act follow-ups).</p>
+<p><strong>Silent failures that the design was meant to exclude.</strong> Nine consecutive pdca-pdca bundles recorded &quot;plan review: 0 findings&quot; because the plan-reviewer leaf's fail-closed sandbox never started on an AppArmor-restricted host and rc 0 with no output was classified as substantive. The codex reviewer sits at exactly its 16 GiB cap in 17 of 17 sampled runs (page cache is counted). wyrd's gating pre-PR review was red in 72% of Check runs (197 of 272).</p>
+<p><strong>What is not recorded.</strong> No token or dollar figure exists anywhere in either instance. <code>loop-telemetry.json</code> holds model and effort per attempt; <code>check-gates.json</code> holds gate durations (C4-ci median 131 s, C5-mutants median 90 s, max 7,201 s); memory logs give leaf wall-clock (builder median 885 s, codex reviewer 570 s). Bundle wall-clock from first to last gate is a median 6.1 h in wyrd, with outliers at 52 h and 73 h. The cost of 372 archived iterations cannot be computed from the records.</p>
+<h2 id="comparison-with-anthropic-openai-and-the-field">Comparison with Anthropic, OpenAI and the field</h2>
+<p>The building blocks have become commodity; the cycle has not. Every vendor now ships deterministic stop-gates, headless JSON with cost, worktree isolation and scheduled cloud runs. Nobody ships a cross-cycle state machine, an evidence-gated acceptance that excludes the LLM, a cross-vendor reviewer, or an Act log.</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>pdca-harness</th>
+<th>Claude Code (Oct 2026)</th>
+<th>OpenAI Codex (Oct 2026)</th>
+<th>Nearest third party</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Deterministic gate on completion</td>
+<td><code>[[gates.checks]]</code>, rc/marker protocol</td>
+<td><code>Stop</code> hook, <code>command</code> type; <code>/goal</code> is model-judged</td>
+<td><code>Stop</code> hook with <code>decision: block</code></td>
+<td>GitHub gh-aw safe-outputs</td>
+</tr>
+<tr>
+<td>Evidence requirement</td>
+<td>red-before/green-after, gating</td>
+<td>guidance only (&quot;show evidence, not assertion&quot;)</td>
+<td>none</td>
+<td>Spec Kit bug ext. (<code>verified / partial / failed</code>)</td>
+</tr>
+<tr>
+<td>LLM excluded from accept</td>
+<td>yes, <code>signoff.record</code> + C6 guard</td>
+<td>no; <code>/goal</code> and <code>agent</code> hooks are model verdicts</td>
+<td>no; <code>--approve-for-me</code></td>
+<td>gh-aw read-only agent + scoped write job</td>
+</tr>
+<tr>
+<td>Decorrelated reviewer</td>
+<td>cross-vendor by default, no builder notes</td>
+<td>same vendor; subagent <code>model</code> is Anthropic-only</td>
+<td><code>@codex review</code> is static, same vendor</td>
+<td>Jules critic, Cursor Bugbot (same vendor)</td>
+</tr>
+<tr>
+<td>Spec / brief</td>
+<td>parsed brief with field contract</td>
+<td>plan mode, <a href="http://CLAUDE.md">CLAUDE.md</a></td>
+<td><a href="http://AGENTS.md">AGENTS.md</a>, 32 KiB cap</td>
+<td>Kiro requirements/design/tasks, Spec Kit</td>
+</tr>
+<tr>
+<td>Parallelism</td>
+<td>lanes + waves + per-cycle worktree</td>
+<td><code>--worktree</code>, <code>/batch</code> 5–30 subagents, agent teams (experimental)</td>
+<td>subagents, no worktree isolation</td>
+<td>Cursor Projects coordinator, Amp orbs</td>
+</tr>
+<tr>
+<td>Size control</td>
+<td>a-priori sizer + empirical backstop + splitter</td>
+<td>none</td>
+<td>none</td>
+<td>Kiro waves; AIDev data: 17% larger PRs fail</td>
+</tr>
+<tr>
+<td>Cost control</td>
+<td>none recorded</td>
+<td><code>--max-budget-usd</code>, <code>--max-turns</code>, <code>total_cost_usd</code></td>
+<td><code>--output-schema</code>, no budget flag</td>
+<td>gh-aw <code>max-ai-credits</code></td>
+</tr>
+<tr>
+<td>Process learning</td>
+<td><code>pdca act index/log</code>, ledger</td>
+<td><code>claude plugin eval</code> (prompt A/B with baseline)</td>
+<td>none</td>
+<td>agent-levers Act → <a href="http://AGENTS.md">AGENTS.md</a> rules</td>
+</tr>
+<tr>
+<td>Unattended run</td>
+<td><code>pdca flow</code> + lanes</td>
+<td>cloud sessions, routines (green ≠ success)</td>
+<td>Codex cloud tasks</td>
+<td>Devin, Copilot coding agent</td>
+</tr>
+</tbody>
+</table>
+<p>Three points matter for the decision.</p>
+<p>Anthropic's own practice confirms the premise. The March 2026 harness-design post found that models grade their own work leniently and that a solo agent produced broken output for $9 where a planner/generator/evaluator harness produced working output for $200. The November 2025 long-running-agents post found Claude marking features done without end-to-end tests. The routines documentation says a green status means only &quot;no infra error&quot; and to read the transcript. Auto mode reports a 17% false-negative rate. Each of these is the problem the C6 guard, the red/green gate and the human sign-off exist to solve.</p>
+<p>The vendors' new primitives overlap with harness code you now maintain. <code>claude -p --worktree</code>, <code>--max-budget-usd</code>, <code>--max-turns</code>, <code>--json-schema</code> structured output, <code>--bare</code> for CI, <code>SubagentStop</code>/<code>TaskCompleted</code> hooks, <code>/batch</code>, and <code>claude plugin eval</code> each replace something <code>leaves.py</code>, <code>worktree.py</code> or <code>progress.py</code> does by hand — and the vendor's version is tested against every release. Codex offers <code>codex exec --json --output-schema</code> and a <code>Stop</code> hook, so it remains a sound reviewer leaf.</p>
+<p>The closest independent analogue, agent-levers (Aug 2026), reaches the same shape — brief on disk, typed verifiers, budgets, a Check that re-runs verifiers in a fresh shell, an Act that writes rules into <a href="http://AGENTS.md">AGENTS.md</a> reviewed in the same PR — with one order of magnitude less machinery and no decorrelated reviewer. The AIDev corpus (932,791 agent PRs) gives the empirical argument for sizing: 28.5% of agent PRs fail to merge, each failed CI check cuts merge odds about 15%, and rejected PRs are about 17% larger. Nobody has published evidence for red-before/green-after as a standard; it is practitioner guidance only, which makes your 266 bundles one of the larger datasets on it.</p>
+<h2 id="strengths">Strengths</h2>
+<p>The strengths are in the invariants, and they are better than the vendors' equivalents.</p>
+<ul>
+<li><strong>File-derived state, no database.</strong> Any crash is resumable by re-running <code>pdca flow</code>; every bundle file is treated as possibly absent; HALTED and TERMINAL sets are explicit. This is the right primitive for a long-running, interruptible, multi-day process and nobody else has it.</li>
+<li><strong>Accept is code, not prose.</strong> <code>signoff.record</code> is the single writer of §9; <code>accept</code> is refused while any <code>- [ ]</code> is open under the last §6 heading; the last-heading rule and the opposite fail-safe directions for open vs. ticked rows are careful engineering. Auto-iterate can only ever write <code>iterate-do</code>.</li>
+<li><strong>Settled-marker discipline.</strong> A failed leaf is distinguishable from an interrupted one (<code>ATTEMPTS_SPENT_MARKER</code>, <code>neutralize_leaf_text</code> so a leaf cannot forge it), and <code>_LeafHarvest</code> prevents a dead attempt's residue being filed as the live verdict. Most harnesses conflate &quot;no output&quot; with &quot;nothing found&quot;; this one mostly does not (the plan-reviewer incident is the exception and is filed).</li>
+<li><strong>Executable red→green in the reviewer's hands.</strong> The reviewer gets a disposable git copy of base+patch and re-runs the red leg itself by stashing production hunks. That turns &quot;the reviewer agrees&quot; into &quot;the reviewer reproduced&quot;.</li>
+<li><strong>Decorrelation by construction.</strong> Different vendor by default, <code>build-notes.md</code> physically absent, advisory leaves chosen by vendor complement against the builder that actually ran, a same-vendor fallback that leaves a §6 note. The adversary prompt (&quot;default to refuted when uncertain; a missing toolchain is not a refutation&quot;) produced most of the useful rebuild orders in the long pdca-pdca bundles.</li>
+<li><strong>Self-reports never drive control flow alone.</strong> <code>dependency_halt</code> honours a builder's &quot;external dependency&quot; claim only when a <code>[[doctor.checks]]</code> probe exits non-zero. Fail-closed worktree reconstruction before every gate read. Transactional split acceptance with lineage.</li>
+<li><strong>Vendor differences are data.</strong> <code>families.py</code> profiles make a codex reviewer or a gemini advisory a config change, which is how wyrd ran a GPT-6 reviewer against an Opus builder without touching the driver.</li>
+<li><strong>The Act loop works when it is fed.</strong> Real process deltas came out of it (Verification posture, review rubric classes, the red-leg compile bug, the intake cap, the builder baseline change), and the act-ledger is a genuinely new artefact in this space.</li>
+<li><strong>Test culture.</strong> 2,459 offline tests pass clean in 232 s; stub mode lets the entire state machine run without a token; stream fixtures replay real CLI output.</li>
+<li><strong>The problem statement is correct</strong> and now independently confirmed by Anthropic's own harness and eval posts: the maintainer must not be the only safety net, the agent must not grade itself, and green CI is not success.</li>
+</ul>
+<h2 id="weaknesses-and-risks">Weaknesses and risks</h2>
+<p>The weaknesses cluster into four: the harness is too big for its load-bearing core, the Check beat manufactures ritual, the guarantees have holes on the interactive path, and the process has no cost signal.</p>
+<p><strong>1. Scope and weight.</strong> <code>leaves.py</code> is 4,706 lines and holds invocation, retry, harvesting, memory caps, sandbox seeding, six leaves' prompts and stubs, the sizer, the splitter, two advisories, Act and publish. <code>flow.py</code> is 2,834 lines with a 360-line <code>_drive_and_act</code>. Twenty lazy <code>from . import …  # avoid an import cycle</code> sites show the module graph is cyclic. Two drivers exist for one state machine (<code>flow.flow</code> and <code>flow_ids</code>), held together by a parity test. Docstrings carry issue archaeology at more than 1:1 prose-to-code and encode invariants no test checks. wyrd-pdca carries ~2,300 lines of local patches to <code>src/</code> that <code>copier update</code> will revert — the Act log warns about this repeatedly. Each of the four instances needed 750–4,000 lines of glue; the template's 94-line <code>run-verify.sh</code> became 208–551 lines everywhere. The backlog is 107 open issues across nine milestones. The August push was a deliberate investment in the harness to support the downstream projects, and it shows in the record as more commits landing in wyrd-pdca than in wyrd that month; the point here is not that the investment was wrong but that nothing yet measures what it bought.</p>
+<p><strong>2. Check produces ritual.</strong> <code>assemble.py:622</code> hardcodes <code>- Confidence: medium</code> — the field has never carried information in 251 bundles. The V-row fitness-to-purpose item and the T5 prior-art item fire in every cycle and no leaf can clear them; with the &quot;reviewer could not run X&quot; class they are ~30% of all human ticks. Deferred HUMAN items are re-merged into every later §6 without re-checking (#642). A human who ticks 700 boxes, most of them the same box, stops reading the boxes — which defeats the one thing the design exists to protect.</p>
+<p><strong>3. Holes in the guarantee.</strong> The interactive sign-off agent has <code>tools: Read, Edit, Write, Bash, Grep, Glob</code> and there is no deny rule on <code>SUMMARY.md</code> in <code>settings.json</code>, <code>guard.py</code> or any hook; <code>state.state</code> trusts §9 text, so a model that writes <code>- Outcome: accepted</code> bypasses C6 and releases publish. The guard there is prompt plus a watching human. The claude builder runs with cwd = harness root and <code>--add-dir &lt;worktree&gt;</code> (<code>leaves.py:2498</code>) with project-wide <code>Edit</code>/<code>Write</code>/<code>Bash</code> allowed; confinement to the worktree is prose, and it can edit <code>pdca.toml</code>, hooks or other bundles. Codex gets real cwd confinement; claude does not. Nothing in <code>doctor</code> verifies <code>reviewer.family != builder.family</code>; the &quot;MUST differ&quot; lives in copier help text. <code>_same_finding</code> decides whether a human tick retires a deferred finding by a 60%-prefix fuzzy match on normalised prose (<code>autoiterate.py:167</code>) — in the accept path. The gate marker protocol reads <code>PDCA-UNVERIFIABLE:</code> off merged stdout+stderr, so a child that prints the token at line start flips a green to unverifiable.</p>
+<p><strong>4. No wall-clock or cost bound on leaves.</strong> <code>leaves._invoke</code> never passes <code>timeout</code> to <code>run_with_heartbeat</code>; only gates have <code>timeout_secs</code>. No <code>--max-turns</code>, no <code>--max-budget-usd</code>. A hung <code>claude -p</code> stalls a wave; a 3 KB comment fix got four opus/max rebuilds; no record exists of what any of it cost. The Act review on 2026-09-28 says it plainly: attempt count is the only cost the harness records. Without a cost signal, Act cannot judge whether a delta paid for itself, and the escalation ladder makes spinning the most expensive steady state (the oversized-slices report's own conclusion).</p>
+<p><strong>5. State lives in LLM-authored Markdown.</strong> The accept decision depends on <code>_section_span</code> over <code>## </code> headings, <code>_OUTCOME_RE</code>, <code>_needs_human_rows</code> splitting <code>|</code> cells, <code>_FIELD_RE</code> over brief fields. The code is defensive (fail-closed on two V rows, last-heading rule), but every reader is a parser over model prose, and #527/#606/#634 are the same bug class recurring. #607 names it as a design issue and is unassigned.</p>
+<p><strong>6. &quot;Contain and degrade&quot; hides bugs.</strong> <code>flow._isolate</code> swallows every <code>Exception</code> to stderr (<code>flow.py:52</code>); carry-forward, ledger retirement, sandbox seeding and worktree creation <code>except Exception: pass</code>. A deterministic assembly bug leaves a bundle silently at CHECKED, and the CLI exit code reflects state, not errors (#693). The nine-bundle plan-reviewer outage is this class: rc 0 and no output was &quot;0 findings&quot;.</p>
+<p><strong>7. Size is the dominant cost driver and the controls are soft.</strong> The sizer is advisory (<code>size_guard=&quot;hold&quot;</code> is treated as warn at 62% precision); the empirical backstop fires at Check, after the build was paid for; no round ever shrank a patch; the splitter produced a child larger than its parent (635: 19,228 added lines). Issue inflow exceeded outflow for four months because split, filed findings and Act follow-ups are three producers against one consumer.</p>
+<p><strong>8. Narrow calibration base.</strong> The sizing weights are calibrated on 86 bundles from one Rust project, and every §6 and round statistic above comes from wyrd plus self-hosting. autobook and nl-shell will add Python data once they run; until then the thresholds (<code>patch_kb=125</code>, <code>files=25</code>, the 50 KB round knee) are wyrd's numbers, not the harness's.</p>
+<p><strong>9. Smaller but real.</strong> <code>_next_iteration_no</code> counts stray files that <code>state.iteration_archives</code> filters (numbering desync). <code>progress._terminate_group</code> calls <code>os.killpg</code> unconditionally, so a timed-out gate on Windows raises and leaks the child. The brief grows unboundedly with carry-forward blocks and feeds <code>brief_bytes</code> into sizing. The codex reviewer pins the 16 GiB cap on every wyrd run and nobody has asked why. Three near-identical <code>_run_*_sandboxed</code> choreographies.</p>
+<h2 id="is-it-the-right-approach">Is it the right approach?</h2>
+<p>Yes for the model, no for the current shape of the implementation, and the two must be separated to answer honestly.</p>
+<p><strong>The model is right and the alternatives are worse.</strong> The three alternatives on the table are (a) vendor-native loops — <code>/goal</code>, Stop hooks, Codex goal mode, routines — which keep the LLM as the judge of done and have no cross-cycle memory; (b) PR-review products — Codex review, Copilot agent, Bugbot — which review a diff with no spec, no red/green proof and the same vendor; (c) spec-driven kits — Spec Kit, Kiro — which structure the Plan beat and stop. None gives you an acceptance that a model cannot forge, a reviewer that did not write the code, or a place where process deltas accumulate. For the workload you describe — funnelling AI contributions into real codebases at volume, with a maintainer's attention as the scarce resource — PDCA with a deterministic driver is the correct frame, and the data from wyrd (119 draft PRs with evidence bundles from one maintainer) supports it.</p>
+<p><strong>The implementation is now a platform, which is a legitimate choice — but it changes what Act must measure.</strong> Three signals say the platform is steering by feel: the harness backlog (107 open, nine milestones, 690 PRs) is larger than any instance's; the Act loop's modal conclusion is &quot;the gap is harness machinery&quot;; and wyrd holds 2,300 lines of local patches rather than wait for upstream. A platform needs what a harness could do without: a stable core API that instances pin against, a release cadence they can plan around, and a cost signal so platform work is ranked by what it saves across instances rather than by which issue was filed last.</p>
+<p><strong>Where it fits.</strong> Repeated contribution to a codebase with real conformance rules and a maintainer who will sign off; multi-branch, multi-issue batches; projects where the cost of a wrong merge exceeds the cost of a day of review. Wyrd is that. The harness developing itself is that only in part — it is also where the ritual, the inflow and the self-referential backlog come from.</p>
+<p><strong>Not yet exercised.</strong> autobook and nl-shell are new; zero bundles is a starting condition, not a verdict, and letting them take time for the framework to pay off is reasonable. The one thing to watch when they start: whether the 11-row verdict and the §6 list on a 20 KB Python patch read as leverage or as ceremony — that is the earliest signal the ritual rate (improvement 4) is meant to catch, and the first Python data for the sizing weights.</p>
+<p><strong>What to stop doing.</strong></p>
+<ul>
+<li>Record per-attempt cost and time and the §6 ritual rate (items no leaf can clear ÷ all items) before the next platform milestone, so 0.61+ work is ranked by what it saves. Without those two numbers no further Act delta can be evaluated.</li>
+<li>Stop treating every reviewer finding as a §6 row. A finding is a §6 row only if it names an evidence check the human can run; everything else is advisory text in §7.</li>
+<li>Stop splitting into children that are not themselves size-bounded (635). A split whose child exceeds the parent's budget is refused, not published.</li>
+<li>Stop carrying local harness patches in instances. Either the change is upstream within one release or the instance pins the template commit and stops running <code>copier update</code>.</li>
+<li>Stop presenting <code>Confidence: medium</code>. Delete the field or compute it from gate coverage.</li>
+</ul>
+<h2 id="improvements-not-already-in-the-backlog">Improvements not already in the backlog</h2>
+<p>I checked the 107 open issues (milestones 0.60–0.70) so that none of these duplicates filed work; where one is adjacent it is named. Order is priority: the first three unblock judging everything after them.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Improvement</th>
+<th>Why now</th>
+<th>Effort</th>
+<th>Adjacent issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Cost and time ledger per attempt.</strong> Parse <code>total_cost_usd</code>, <code>duration_ms</code>, <code>num_turns</code> from the claude result event and codex <code>turn.completed</code> usage into <code>loop-telemetry.json</code>; <code>pdca act index</code> reports cost per bundle, per round and per Act delta.</td>
+<td>Attempt count is the only cost recorded; 372 archived iterations are unpriceable; Act cannot say whether any delta paid for itself.</td>
+<td>S</td>
+<td>#514 (transcripts, not cost)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Leaf budgets.</strong> <code>[leaves.*]</code> gains <code>timeout_secs</code>, <code>max_turns</code>, <code>max_budget_usd</code>, passed through as <code>--max-turns</code>/<code>--max-budget-usd</code>; exhaustion is its own §6 class and never retried by auto-iterate.</td>
+<td><code>_invoke</code> passes no timeout; a hung <code>claude -p</code> stalls a wave; a 3 KB fix cost four opus/max builds.</td>
+<td>S</td>
+<td>#610 (usage window), #691</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Close the sign-off hole.</strong> PreToolUse hook denying <code>Edit</code>/<code>Write</code> on <code>SUMMARY.md</code> and <code>signoff-decision</code> for the signoff agent; a <code>doctor</code> row asserting <code>reviewer.family != builder.family</code>; the claude builder run from the worktree (via <code>--worktree</code> or inline agent definition) instead of harness root with prose confinement.</td>
+<td>§9 can be written by the interactive model today and <code>state.state</code> would read it as COMPLETE; decorrelation is unenforced; builder can edit <code>pdca.toml</code>.</td>
+<td>S–M</td>
+<td>#551 (OS sandbox, broader), #471</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>§6 evidence contract.</strong> Every NEEDS-HUMAN row gets a stable id (<code>&lt;!-- pdca:finding &lt;sha&gt; --&gt;</code>), a kind (<code>gate</code> / <code>judgment</code> / <code>standing</code> / <code>infra</code>) and an evidence pointer. <code>standing</code> cells (V fitness, T5 prior-art) render once as a sign-off header, not as rows; <code>infra</code> (leaf did not run) is a run failure that blocks accept rather than an empty verdict; ticks retire by id, not 60%-prefix fuzzy match. Report a <strong>ritual rate</strong> (standing+infra ÷ all) per bundle.</td>
+<td>~30% of 1,263 human ticks are ritual; the plan-reviewer ran zero times in nine bundles and recorded &quot;0 findings&quot;; #527/#606/#634/#642 are one bug class.</td>
+<td>M</td>
+<td>#607, #642, #575</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Convergence gate + pre-Do size budget.</strong> Check compares the patch to the previous round: if it grew and the blocking-finding count did not fall for two rounds, the only permitted disposition is <code>iterate-plan</code> and auto-iterate must not fire. The sizer becomes a hard hold before Do unless the brief carries an explicit <code>Size override:</code>; <code>split.accept</code> refuses a child estimated above the parent's budget.</td>
+<td>No round ever shrank a patch; 635 ran 16 rounds and its split child outgrew the monolith; the backstop fires after the build is paid for.</td>
+<td>M</td>
+<td>#556 (tolerance band), #645</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Structured reviewer output.</strong> Run the reviewer with <code>--bare --json-schema</code> (claude) or <code>--output-schema</code> (codex) so the 11-row verdict table arrives as JSON, with <code>check-review.md</code> rendered from it.</td>
+<td>Every accept-path reader is a Markdown parser over model prose; #607 is the design issue and this is the first concrete cut.</td>
+<td>M</td>
+<td>#607, #601</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Eval-gated prompt changes.</strong> Keep 20–30 frozen bundles as a fixture set; a change to any <code>agents/*.md</code> runs <code>claude plugin eval</code>-style A/B (with and without) and ships only with the delta report in the PR.</td>
+<td>Prompt deltas are the commonest Act output and nothing measures them; Anthropic now ships the tooling.</td>
+<td>M</td>
+<td>—</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Act judged by flow.</strong> Each Act review records opened vs closed, rounds/bundle, cost/bundle, time-to-sign-off and ritual rate for the window; a delta is kept only if the next N bundles move the metric it targeted.</td>
+<td>June–September inflow 469 opened vs 261 closed; the intake cap came from an out-of-band analysis, not from <code>act index</code>.</td>
+<td>S</td>
+<td>#544, #594 (caps, not the metric)</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Lite profile.</strong> A copier answer <code>profile = lite</code> renders brief + gates + red/green + one cross-vendor review + draft PR, with no sizer, splitter, waves, lanes or act index.</td>
+<td>Not needed yet — autobook and nl-shell are new and should get the full cycle first. Worth having for the next small project so the full harness is an opt-in rather than the only entry.</td>
+<td>M</td>
+<td>—</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Platform discipline: core/extensions split with a stability promise and a release cadence.</strong> <code>core</code> = state, gates, signoff, assemble, driver, publish; everything else opt-in. Instances pin a core version; <code>copier update</code> never changes core semantics within a minor; a fixed cadence so an instance can wait for upstream instead of patching <code>src/</code>.</td>
+<td>The harness is a platform now; wyrd carries 2,300 local lines because there is no cadence it can plan around; 20 lazy imports; 107 open issues across nine milestones.</td>
+<td>L</td>
+<td>#505 (overlaps; this is a scope cut, not a restructure)</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>Count RSS, not page cache, in the memory scope.</strong> Read <code>memory.stat anon</code> rather than <code>memory.current</code> for telemetry and the OOM post-mortem.</td>
+<td>The codex reviewer sits at exactly 16 GiB in 17 of 17 samples.</td>
+<td>S</td>
+<td>#510</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>Infra failures are run failures.</strong> A leaf that exits 0 without its artifact, or a gate that cannot start, fails the run (non-zero exit, bundle held) instead of degrading to an empty verdict.</td>
+<td><code>_isolate</code> swallows every exception; #693 exits 0 on held bundles; the nine-bundle outage.</td>
+<td>S</td>
+<td>#693, #509</td>
+</tr>
+</tbody>
+</table>
+<p>Two things I would not do. I would not move the Check beat onto <code>/goal</code> or <code>agent</code>-type hooks: both put a model's verdict back in the accept path, which is the one thing the design gets right. And I would not pursue agent teams or <code>/batch</code> for lanes yet: they are experimental and interactive-only, and your lanes already work.</p>
+<p>The architecture that items 4, 6, 10 and 12 add up to, with a migration order: <a href="/design/proposals/accepted/0002-target-architecture.html">Target architecture</a></p>
+<h2 id="sources-and-evidence">Sources and evidence</h2>
+<p><strong>Repositories read (shallow clones at HEAD, 2026-10-15).</strong> eduralph/pdca-harness (template, 28,046 lines in <code>template/src/pdca_harness</code>, 2,459 offline tests passing), eduralph/pdca-pdca, getwyrd/wyrd-pdca, Ralphovi/autobook-pdca, eduralph/nl-shell-pdca (the repo the message calls nl-speech-pdca), eduralph/pdca-project-template, eduralph/pdca.dev. Instance numbers come from <code>results/*/SUMMARY.md</code>, <code>check-gates.json</code>, <code>loop-telemetry.json</code>, <code>*.memory.jsonl</code>, <code>process/act-log.md</code>, <code>process/act-ledger.json</code>, and wyrd's <code>docs/2026-07-31-oversized-slices-report.md</code> and <code>docs/2026-09-11-backlog-reversal-proposal.md</code>. Open-issue list from the GitHub REST API (107 open).</p>
+<p><strong>Code locations cited.</strong> <code>leaves.py:583</code> (<code>_invoke</code>), <code>:680</code> (no leaf timeout), <code>:2498</code> (claude builder cwd), <code>:2723</code> (reviewer prompt), <code>:2819</code> (reviewer repo), <code>:3645</code> (vendor complement); <code>assemble.py:299</code> (finding classification), <code>:389</code> (<code>collect_needs_human</code>), <code>:622</code> (<code>Confidence: medium</code>); <code>signoff.py:255</code> (<code>record</code>); <code>flow.py:52</code> (<code>_isolate</code>), <code>:134</code> (<code>_apply_decision</code>), <code>:2216</code> (<code>_drive_and_act</code>); <code>autoiterate.py:167</code> (<code>_same_finding</code>), <code>:200</code> (<code>eligible</code>), <code>:457</code>; <code>gates.py:342</code>, <code>:847</code> (<code>_classify</code>), <code>:926</code>; <code>state.py:187</code>, <code>:339</code>; <code>driver.py:361</code>, <code>:369</code>; <code>progress.py:349</code>; <code>.claude/agents/signoff.md.jinja</code>; <code>.claude/settings.json</code>; <code>pdca.toml.jinja:503</code>, <code>:622</code>.</p>
+<p><strong>Vendor and field sources (opened, Oct 2026).</strong></p>
+<ul>
+<li>Claude Code: <a href="https://code.claude.com/docs/en/hooks">hooks</a>, <a href="https://code.claude.com/docs/en/goal">/goal</a>, <a href="https://code.claude.com/docs/en/best-practices">best practices</a>, <a href="https://code.claude.com/docs/en/headless">headless / Agent SDK via CLI</a>, <a href="https://code.claude.com/docs/en/sub-agents">subagents</a>, <a href="https://code.claude.com/docs/en/worktrees">worktrees</a>, <a href="https://code.claude.com/docs/en/agent-teams">agent teams</a>, <a href="https://code.claude.com/docs/en/web-scheduled-tasks">routines</a>, <a href="https://code.claude.com/docs/en/plugin-evals">plugin evals</a>, <a href="https://raw.githubusercontent.com/anthropics/claude-code/main/plugins/ralph-wiggum/README.md">Ralph Wiggum plugin</a></li>
+<li>Anthropic engineering: <a href="https://anthropic.com/engineering/effective-harnesses-for-long-running-agents">effective harnesses for long-running agents</a> (Nov 2025), <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">demystifying evals</a> (Jan 2026), <a href="https://www.anthropic.com/engineering/building-c-compiler">building a C compiler with parallel Claudes</a> (Feb 2026), <a href="https://www.anthropic.com/engineering/claude-code-auto-mode">auto mode</a> (Mar 2026), <a href="https://understandingdata.com/posts/generator-evaluator-harness-design/">harness design write-up</a> (secondary; original fetch failed), <a href="https://anthropic.com/engineering/managed-agents">managed agents</a> (Apr 2026), <a href="https://www.anthropic.com/engineering/redesigning-source-control">redesigning source control</a> (Oct 2026)</li>
+<li>OpenAI Codex: <a href="https://learn.chatgpt.com/docs/non-interactive-mode.md">non-interactive mode</a>, <a href="https://learn.chatgpt.com/docs/hooks.md">hooks</a>, <a href="https://learn.chatgpt.com/docs/agent-configuration/subagents.md">subagents</a>, <a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md.md">AGENTS.md</a>, <a href="https://learn.chatgpt.com/docs/code-review.md">code review</a>, <a href="https://openai.github.io/openai-agents-python/">Agents SDK</a>; DevDay 2026 and goal-mode dates are from third-party recaps and unverified</li>
+<li>Field: <a href="https://github.github.com/gh-aw/">GitHub Agentic Workflows</a>, <a href="https://github.blog/news-insights/company-news/welcome-home-agents/">Agent HQ</a>, <a href="https://github.com/github/spec-kit">Spec Kit</a>, <a href="https://kiro.dev/docs/specs/">Kiro specs</a>, <a href="https://mlops.community/blog/agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start">agent-levers</a> (Aug 2026), <a href="https://cursor.com/changelog">Cursor changelog</a>, <a href="https://developers.googleblog.com/jules-gemini-3/">Jules</a>, <a href="https://www.ampcode.com/news">Amp</a>, <a href="https://geminicli.com/docs/hooks/">Gemini CLI hooks</a></li>
+<li>Research: <a href="https://arxiv.org/abs/2602.09185">AIDev, 932,791 agent PRs</a> (Feb 2026), <a href="https://codex.danielvaughan.com/2026/04/18/empirical-research-agentic-pull-requests-codex-cli/">MSR 2026 summary</a>, <a href="https://arxiv.org/html/2601.05111v1">Agent-as-a-Judge survey</a>, <a href="https://www.arxiv.org/abs/2602.06625">FairJudge</a></li>
+</ul>
+<p><strong>Limits of this review.</strong> Two instances have cycle data, so the practice section is wyrd plus self-hosting. Code reading was done on the template at HEAD, not on wyrd's patched copy. Token and dollar costs are absent from every record and were not estimated. Third-party recaps of OpenAI's DevDay are marked unverified above.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+<script src="/assets/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral"});</script>
+</body>
+</html>

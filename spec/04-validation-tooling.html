@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -39,7 +41,7 @@
 <blockquote>
 <p>The Check beat (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Check) has internal structure — the <strong>5 / 5 / 1</strong> (correctness chain, conformance stack, validation act) — and runs through three <strong>components</strong> (gates, reviewer, sign-off — see <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Check). This doc documents the code and process that <em>implements</em> those components: which tool covers which 5/5/1 element, where that tool lives, and how single-sourcing keeps the driver and CI invoking the same implementation. Worked example uses the Gramps testbed at the end; the structure is project-agnostic. Living document.</p>
 </blockquote>
-<h2>What &quot;validation tooling&quot; means here</h2>
+<h2 id="what-validation-tooling-means-here">What &quot;validation tooling&quot; means here</h2>
 <p>&quot;Validation tooling&quot; is shorthand for <strong>the implementation of Check's deterministic gates and advisory reviewer.</strong> Check has three components:</p>
 <ul>
 <li><strong>Gates</strong> (deterministic, full automation) — the validators, rule scanners, suite runners, and hooks that produce <code>check-gates.json</code>.</li>
@@ -47,7 +49,7 @@
 <li><strong>Sign-off</strong> (instrumented, human) — the human completes Check by reading the assembled <code>SUMMARY.md</code> and recording §9.</li>
 </ul>
 <p>This doc is about the <strong>gates</strong> and <strong>reviewer</strong>. Sign-off is human work whose tooling is the result-document presentation in <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a> / <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Check sign-off, not the subject here.</p>
-<h2>Two axes — what and where</h2>
+<h2 id="two-axes--what-and-where">Two axes — what and where</h2>
 <p>Validation tooling decomposes along two orthogonal axes:</p>
 <ol>
 <li><strong>What it evaluates</strong> — which element of Check's 5/5/1 it covers. The 5/5/1 is the <em>what</em>:
@@ -68,7 +70,7 @@
 </li>
 </ol>
 <p><strong>What and where are independent.</strong> A given conformance tier may be implemented as code (covering &quot;what&quot;) and live in upstream CI (covering &quot;where&quot;) — but the same tier's implementation can <em>also</em> mirror locally, so &quot;where&quot; can be multiple homes for one &quot;what&quot;. The two-axis framing makes the locations explicit instead of letting tooling drift to &quot;wherever it was first written.&quot;</p>
-<h2>The 5/5/1 × tooling-shape matrix</h2>
+<h2 id="the-551--tooling-shape-matrix">The 5/5/1 × tooling-shape matrix</h2>
 <p>Each element of the 5/5/1 maps to a tooling shape, and each tool
 lands in one of Check's three components.</p>
 <table>
@@ -177,7 +179,7 @@ declared with a prefix (<code>echo &quot;C4: PDCA-UNVERIFIABLE: …&quot;</code>
 line — that is the declaration form.</p>
 </blockquote>
 <p><strong>Gate evidence line — declare your summary.</strong> Every row also carries one line of <strong>evidence</strong> (<code>path_line</code>, truncated to 120 characters), and it must be output the gate emitted <strong>as its verdict</strong> — never a line it merely <em>relayed</em> from something it ran. A gate declares that summary the same way it declares <code>unverifiable</code>: print a line whose first text is <strong><code>PDCA-EVIDENCE: &lt;summary&gt;</code></strong> (leading whitespace ignored). The <strong>last</strong> such line wins — a wrapper with several legs declares per leg and its final word summarises the run — and it is what the row records <strong>whatever the command prints afterwards</strong>. Unlike <code>PDCA-UNVERIFIABLE:</code> this marker never changes a <code>result</code>: the exit code alone still decides <code>pass</code>/<code>fail</code>, so a declaring gate that exits non-zero fails, with its own declaration as the evidence. A gate that declares nothing keeps the older rule — the command's <strong>last output line</strong> — which is the gate's verdict only by luck: the runner captures <strong>one merged stdout+stderr stream</strong>, so a wrapper that shells out to a test suite files whatever that suite's <em>children</em> flushed last. That is not hypothetical: a green C4 wrapper whose last <code>echo</code> was <code>C4 PASS: red without the fix, green with it</code> was frozen with <code>/tmp/…/results/issue_500/split-proposal.md</code> — a scratch path in a sandbox that no longer exists — as the whole recorded basis of a <strong>passing</strong> gate, and readers escalated the green row to §6 NEEDS-HUMAN in cycle after cycle. Such an evidence line satisfies neither half of the evidence-sufficiency invariant (&quot;the verdict's whole basis must be <strong>reconstructable</strong> from bundle files alone&quot;). Declaring is the only way a gate author can be certain what gets filed; the full capture remains in <code>gate-logs/&lt;rule_id&gt;.log</code> (<code>row[&quot;log&quot;]</code>) either way, so nothing is lost by declaring — only the <em>summary</em> is chosen deliberately instead of by buffering order. Adding the marker to an existing gate is safe and purely additive: nothing else about its verdict changes, and a gate that never prints it behaves exactly as before.</p>
-<h2>Single-sourcing — one implementation, multiple invocations</h2>
+<h2 id="single-sourcing--one-implementation-multiple-invocations">Single-sourcing — one implementation, multiple invocations</h2>
 <p>The connection to <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a> §Where it runs is load-bearing: the gates that run locally during the cycle MUST be the same gates that re-run in CI as the merge-gate. This is enforced not by policy but by <strong>single-sourcing the implementation</strong>:</p>
 <ul>
 <li>One repository / module owns each tool (the structural validator, the shape scanner's rule file, the runtime checker, the contribution hooks, the correctness re-runners).</li>
@@ -186,7 +188,7 @@ line — that is the declaration form.</p>
 <li>No regex copy-pasted across YAML files, no parallel implementation in dev-tooling and CI both, no hand-maintained dependency lists in more than one place.</li>
 </ul>
 <p>The anti-pattern this prevents: tooling drift between local and CI, where a contribution passes locally and fails in CI (or vice versa) because the two invocations are different code. Both invocations must read the same single source, so &quot;passes locally&quot; and &quot;passes CI&quot; collapse into the same fact.</p>
-<h2>Homes — where each gate lives</h2>
+<h2 id="homes--where-each-gate-lives">Homes — where each gate lives</h2>
 <p>Conformance Tier-by-tier home assignments differ by project, but the
 generic rationale follows a small set of rules:</p>
 <table>
@@ -236,14 +238,14 @@ generic rationale follows a small set of rules:</p>
 </tbody>
 </table>
 <p>The home that does NOT exist: there is no &quot;Act home&quot; for gates. Act improves the <em>rules</em> that gates enforce (<a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a> §Act); the gates themselves run in Check. A new rule lands as an addition to one of the homes above, recorded in <code>process/act-log.md</code>.</p>
-<h2>Two rule families (project-agnostic)</h2>
+<h2 id="two-rule-families-project-agnostic">Two rule families (project-agnostic)</h2>
 <p>Validation tooling typically splits into two families that share tools but must not be merged in the layout:</p>
 <ul>
 <li><strong>Family A — project-guideline conformance.</strong> The project's own written ruleset for contributions to itself. Subject: contribution artifacts (patches, packages, addons, plugins) against the project's written rules. The 5/5/1 above (especially the conformance stack) is Family A.</li>
 <li><strong>Family B — upstream-defect analysis.</strong> Bug-hunting analyzers against the source the <em>project depends on</em>. Subject: upstream code; findings become <em>upstream</em> PRs, not contributions to this project. Family B uses the same tool families (semgrep, type-checkers, flow analysis) but its rules and rule-targets differ.</li>
 </ul>
 <p>The split matters because Family B's analyzers ARE NOT conformance checks. A semgrep rule that hunts for missing <code>disconnect()</code> in upstream Gtk code is a bug-hunting rule, not a &quot;Tier 2 shape&quot; rule under the project's own conformance stack. Sharing a layout collapses the distinction; keeping them in separate directories preserves it.</p>
-<h2>Worked example — Gramps testbed <code>dev-tooling/</code></h2>
+<h2 id="worked-example--gramps-testbed-dev-tooling">Worked example — Gramps testbed <code>dev-tooling/</code></h2>
 <blockquote>
 <p><strong>Illustrative, not normative.</strong> This is <em>one</em> project's filled matrix at an earlier
 snapshot; the paths (<code>agent-work/dev-tooling/...</code>) are the Gramps testbed's of that
@@ -261,7 +263,7 @@ References:</p>
 <li>Family B = <code>gramps</code> core defect analysis (None-flow, init-order,
 missing-disconnect).</li>
 </ul>
-<h3>Tier × home assignment (testbed slice of Family A)</h3>
+<h3 id="tier--home-assignment-testbed-slice-of-family-a">Tier × home assignment (testbed slice of Family A)</h3>
 <table>
 <thead>
 <tr>
@@ -310,7 +312,7 @@ missing-disconnect).</li>
 </tr>
 </tbody>
 </table>
-<h3>Correctness chain (testbed slice)</h3>
+<h3 id="correctness-chain-testbed-slice">Correctness chain (testbed slice)</h3>
 <table>
 <thead>
 <tr>
@@ -337,7 +339,7 @@ missing-disconnect).</li>
 </tr>
 </tbody>
 </table>
-<h3>Two families in the layout</h3>
+<h3 id="two-families-in-the-layout">Two families in the layout</h3>
 <p><code>agent-work/dev-tooling/</code> reorganized by <em>family</em> (instead of by tool) keeps the
 two distinct:</p>
 <pre><code>agent-work/dev-tooling/
@@ -356,7 +358,7 @@ two distinct:</p>
   README.md                  # this matrix; what is NOT here (T1/3 upstream, T4 forks, T5 process)
 </code></pre>
 <p>Names are a proposal, not the point. The point: Family B stays whole and clearly upstream-source-subject; Family A is tiered and explicitly labeled a <em>mirror</em> of its upstream home; the shared exec-shim library has one location so single-sourcing has a place to point.</p>
-<h2>Build order (concrete deliverables, per <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>)</h2>
+<h2 id="build-order-concrete-deliverables-per-03---cycle-automation">Build order (concrete deliverables, per <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>)</h2>
 <ol>
 <li><strong>The gates, single-sourced</strong> — structural validator (T1 exec-shim
 <ul>
@@ -376,7 +378,7 @@ shape for C5, T5, validation.</li>
 <p>The gates are the long pole because both the local driver and the CI
 re-gate depend on them existing as single-sourced code. Until they
 exist, Check cannot run unattended and the body cannot fan out.</p>
-<h2>What this doc is not</h2>
+<h2 id="what-this-doc-is-not">What this doc is not</h2>
 <p>This doc does not specify the project's <em>conformance rules</em> (those are
 the per-repo specification — <a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a>
 §Precondition; in the Gramps worked example, the &quot;doc 16&quot; addon-dev
@@ -404,6 +406,8 @@ component.</p>
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

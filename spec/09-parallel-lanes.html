@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -42,10 +44,10 @@
 <blockquote>
 <p><strong>Maturity legend</strong> (as in <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>): <strong>[built]</strong> ships in this template; <strong>[project-provided]</strong> is supplied per project because it is repo- or runner-specific. The integration primitives this doc relies on — per-issue bundles, the single-sourced gates (<code>pdca gates</code> over a bundle <em>and</em> over the working tree), and the publisher's draft PR — are <strong>[built]</strong>. The <strong>in-driver worker pool</strong> (<code>[driver].lanes</code>, running the unattended Do+Check band concurrently and exposing each worker's lane slot to gates as <code>$PDCA_LANE</code>) is now <strong>[built]</strong> too. What remains <strong>[project-provided]</strong> is the lane <em>isolation itself</em> — deriving each lane's working tree / checkout, container names, ports, and scratch dirs <em>from</em> <code>$PDCA_LANE</code> inside the project's gate commands — because <em>what</em> must be isolated depends on what the project's gates and builder touch.</p>
 </blockquote>
-<h2>A lane</h2>
+<h2 id="a-lane">A lane</h2>
 <p>A <strong>lane</strong> is an isolated execution context that runs cycles independently of the other lanes — in practice an independent copy (or <code>git worktree</code>) of the workspace, with its own bundle root (<code>results/</code>) and its own copy of every checkout the gates and builder mutate. A lane drives bundles exactly as a single-machine run does; running N lanes is running N drivers over <strong>disjoint</strong> sets of issues.</p>
 <p>The bundle (<code>results/issue_&lt;id&gt;/</code>, <a href="/spec/02-cycle-artifacts.html">02 - Cycle Artifacts</a>) is already self-contained, and its state is <em>derived from the files present</em>, so two different bundles never share artifact state. What is <strong>not</strong> automatically private is everything a cycle reaches <em>outside</em> its bundle — and that is where tangling lives.</p>
-<h2>Two tanglings, two mechanisms</h2>
+<h2 id="two-tanglings-two-mechanisms">Two tanglings, two mechanisms</h2>
 <p>Parallel cycles can tangle in two unrelated ways. Conflating them is the common mistake: isolation fixes the first and does nothing for the second.</p>
 <p><strong>1. Runtime tangling</strong> — concurrent cycles corrupting <em>shared mutable state</em>: the target checkout while a gate applies and reverts a patch in place, a runner's container / artifact names, a scratch directory. Two cycles against one checkout stomp each other's apply/revert; two runners sharing a container name collide. → solved by <strong>mechanical isolation</strong>: give each lane its own working tree (copy or worktree) and uniquely-named runner artifacts. This is what makes concurrent <em>execution</em> safe. It is operational and <strong>[project-provided]</strong> — the harness does not own the project's checkout or runner.</p>
 <p><strong>2. Integration tangling</strong> — two patches that are each <em>green in isolation</em> but conflict or invalidate each other when <strong>combined</strong>. Two lanes that both edit the same function produce patches that merge with a conflict; or one lane's fix changes behavior the other lane's test asserts. Isolation does not touch this — it is a property of the <em>results</em>, not the <em>runs</em>. → solved by <strong>lane planning</strong> (up front) and <strong>integration validation</strong> (at the end), below.</p>
@@ -53,7 +55,7 @@
 <blockquote>
 <p><strong>A bundle accepted in a lane is &quot;correct on its own&quot;, not &quot;mergeable with the others.&quot;</strong> Lane sign-off establishes per-fix correctness; it says nothing about the combination.</p>
 </blockquote>
-<h2>Lane mechanics — cheap, safe isolation</h2>
+<h2 id="lane-mechanics--cheap-safe-isolation">Lane mechanics — cheap, safe isolation</h2>
 <p>The mechanical isolation that fixes runtime tangling is <strong>[project-provided]</strong> (the harness doesn't own the project's checkout or runner), but the <em>techniques</em> for making it cheap and safe are generic — every project building lanes hits the same handful of git/runner traps:</p>
 <ul>
 <li><strong>Reference-clone the target checkouts so a lane costs a working tree, not a full clone.</strong> <code>git clone --reference &lt;primary&gt;/&lt;repo&gt; &lt;source&gt; &lt;lane&gt;/&lt;repo&gt;</code> borrows the primary's object store via <code>alternates</code>; the lane materializes only a working tree. Keep the primary around and don't aggressively <code>gc</code> / delete it — the alternates point into it.</li>
@@ -64,14 +66,14 @@
 <li><strong>Disjoint issue ids per lane.</strong> Beyond preventing run-tangling, it is the single rule that stops two lanes producing duplicate contribution branches / PRs on the shared fork remote.</li>
 </ul>
 <p>These are the concrete content of &quot;give each lane its own working tree and uniquely-named runner artifacts&quot; from the runtime-tangling row above; <em>what exactly</em> must be isolated still depends on what the project's gates and builder touch.</p>
-<h2>Lane planning — partition by what changes, not by id</h2>
+<h2 id="lane-planning--partition-by-what-changes-not-by-id">Lane planning — partition by what changes, not by id</h2>
 <p>The first defense against integration tangling is to not create it. Assign work to lanes by <strong>code locality</strong>:</p>
 <ul>
 <li>Issues whose fixes touch the <strong>same area</strong> go to the <strong>same lane</strong> — they run <em>serially</em> within it, so a later fix sees the earlier one already on its base. No conflict can arise between them.</li>
 <li>Lanes run in parallel only across <strong>disjoint</strong> areas of the codebase.</li>
 </ul>
 <p>Partitioning by issue id alone is not enough — it isolates the <em>runs</em> but not the <em>changes</em>. The information needed is already produced at Plan: root-cause analysis names the files / area a fix will touch. Lane assignment is therefore a <strong>Plan-beat judgment</strong> — the same place the human decides scope and which issues to brief (<a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>) — not a mechanical sharding step. When the touched areas genuinely cannot be predicted, prefer fewer, broader lanes and lean on the integration check below.</p>
-<h3>Declared ordering — <code>Depends on:</code> / <code>Conflicts with:</code> → dependency waves [built]</h3>
+<h3 id="declared-ordering--depends-on--conflicts-with--dependency-waves-built">Declared ordering — <code>Depends on:</code> / <code>Conflicts with:</code> → dependency waves [built]</h3>
 <p>Manual wave-splitting (run a prerequisite batch to COMPLETE, <em>then</em> the next) enforces ordering by hand; it does not scale to a batch with a real dependency graph. A brief instead <strong>declares</strong> its ordering constraints and the scheduler computes the order: a batch handed to <code>pdca flow</code> runs as an ordered sequence of <strong>dependency waves</strong> (<code>waves.compute_waves</code>). Each wave holds only mutually-independent work; its bundles build in parallel, are signed off and published, and then the wave's published PR branches are <strong>folded onto a run-scoped integration branch the next wave builds on</strong> (one branch per <code>(repo, base)</code> target, so a batch spanning several targets keeps a separate integration line per target, and a later bundle stacks on the branch for <em>its own</em> target) — so a dependent builds on its prerequisite's accepted result <em>within one run</em>, with nothing merged into the target by the harness.</p>
 <ul>
 <li><strong><code>- **Depends on:** &lt;id&gt;[, &lt;id&gt;…]</code></strong> — the topological edge. The dependent lands in a <strong>later wave</strong> than every prerequisite and builds on the integration branch that carries the prereqs' accepted work. Because the fold carries that work forward without merging anything into the target, this single field now <strong>subsumes</strong> the former <code>Depends on (merged)</code> and <code>Stacks on</code>.</li>
@@ -79,17 +81,17 @@
 <li><strong><code>- **Depends on (merged):** / **Stacks on:**</code></strong> — <em>deprecated, still parsed.</em> Both fold into a plain <code>Depends on</code> edge: the wave model gives the dependent the prerequisite's accepted diff (via the integration branch) without the old cross-run merge wait (<code>Depends on (merged)</code>) or the single-chain branch-stacking (<code>Stacks on</code>, whose multi-parent gap the integration branch fixes). Author <code>Depends on</code>.</li>
 </ul>
 <p>With no fields declared the batch is a <strong>single wave</strong>, dispatched byte-for-byte the prior <strong>sort-by-name pool</strong>. An unschedulable graph — a cycle, or a dependency neither in the batch nor an already-COMPLETE bundle — is a <strong>hard error rejected before any build</strong> (<code>waves.compute_waves</code> raises; <code>pdca flow</code> aborts up front). <code>pdca status</code> shows a <code>[blocked-by: &lt;ids&gt;]</code> flag, and <code>pdca waves</code> prints the computed wave plan up front. A post-Do <strong>overlap audit</strong> flags two same-wave bundles whose patches touch a shared file but declared no <code>Conflicts with</code> — a likely planner omission.</p>
-<h3>Carrying a wave forward — stack (default) vs merge [built]</h3>
+<h3 id="carrying-a-wave-forward--stack-default-vs-merge-built">Carrying a wave forward — stack (default) vs merge [built]</h3>
 <p>How a wave's accepted work reaches the next wave's base is <code>[driver].wave_mode</code>:</p>
 <ul>
 <li><strong><code>stack</code></strong> (default) — merge each accepted bundle's <strong>published PR branch</strong> onto a run-scoped integration branch on <code>origin</code> (push-only, so a <strong>fork</strong> contributor can do it), and cut each later wave's branches off it so they carry the earlier waves' work: those bundles' own PR commits, joined by signed-off merge commits, never re-applied copies. <strong>Every PR targets the real base</strong>, own-repo and fork alike — the integration branch is a staging line nothing merges into the target, so no PR is opened against it. The fold puts every published branch of a target on its line, so a later wave's PR carries <strong>every earlier-wave branch on the line</strong>, not only its prerequisites', and shows their changes until they merge (merging it first would land their commits with it). Once they have all merged with merge commits, its diff against the base is its own change when the line is a plain chain: each earlier wave put one branch on it, and it never took in a base newer than a branch on it (the base did not move between the wave-0 publishes and the run's first fold, and no fold merged the base in — a fold does that only for a merged prerequisite whose branch was deleted and whose PR merged with a commit the line does not have, such as a fixup pushed after the fold). Otherwise a fold merge commit joined histories the base got separately; that commit never reaches the base, so the PR has several merge bases with it and can keep showing an already-merged change. Updating its branch from the base (GitHub's &quot;Update branch&quot;) then leaves only its own change. Each run has its own line, <code>pdca-integration/&lt;base&gt;-r&lt;key&gt;</code>, keyed on the ids it was asked to drive: two runs on one base that drive different batches never share a line, and the same ids asked for again get the same line back. Within one run the line only grows: the run's first fold of a target starts it fresh from the base (a force-push that replaces only an earlier run of the same batch's line — on an origin that refuses force-pushes, delete the old <code>pdca-integration/&lt;base&gt;-r&lt;key&gt;</code> or allow force-pushes on <code>pdca-integration/*</code>), and every later fold continues the tip that run pushed, without force, so no fold rewrites a commit an open PR depends on. Each fold merges a published branch's <strong>current</strong> tip, so commits pushed onto a stack PR's branch after a fold reach the line at the next one; a branch deleted after its PR merged is judged by the commit the PR merged with (the host's record of it, never a commit message) — already on the line, it is skipped; not on it, the fold checks that the base has that commit and then merges the base in, and if the base does not have it (the PR merged into another branch, or was squashed or rebased), the fold STOPs the run rather than build the next wave without that work. The harness never merges; you merge the PR stack bottom-up with a <strong>merge commit</strong> — not squash or rebase, which put a prerequisite's change on the base as new commits rather than the ones its dependents carry. A branch that does not merge cleanly onto the line (an undeclared overlap), or a line something else moved meanwhile, STOPs the run — except a branch that merges cleanly onto the line as its wave found it but not on top of the ones of its wave merged before it (in name order): that bundle is held out of the line for the rest of the run, with the bundles that depend on it or share a <code>Conflicts with</code> edge with it, and named with the bundles it conflicts with and the files; an accepted bundle whose publish pushed no branch holds only the bundles that depend on it or share a <code>Conflicts with</code> edge with it (the run ordered those after it to build on its work), and the rest of the run goes on — published later, its PR branch is cut from the line commit it was built on, so it carries no later wave's work, and if a later run has replaced the line by then, publish refuses and pushes nothing (re-drive it in a new run); re-run a held <code>Conflicts with</code> partner only once that PR has merged into the base, since a re-issued run's carry starts only from a plain <code>Depends on</code>. STOP discipline holds throughout.</li>
 <li><strong><code>merge</code></strong> (own-repo / continuous-delivery only) — <code>gh pr merge</code> each non-final wave's PRs so the next wave builds on the genuinely-merged base. Needs <strong>merge rights</strong> on the base remote (a fork lacks them upstream — keep <code>stack</code> there) and relaxes STOP discipline; fail-closed (a non-mergeable PR STOPs the run).</li>
 </ul>
 <p>Optionally (<code>[driver].regate_between_waves</code>), the repo-scoped gates re-run over the folded integration tip before the next wave builds on it, so a combination that is red though each fix was green <em>alone</em> STOPs the run.</p>
-<h2>Integration validation — at the merge boundary</h2>
+<h2 id="integration-validation--at-the-merge-boundary">Integration validation — at the merge boundary</h2>
 <p>Whatever planning misses, correctness-<em>under-combination</em> is established where the patches actually meet: the <strong>merge boundary</strong>, not the lane. The harness already has the primitive — the gates are <strong>single-sourced</strong> (<a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> §Single-sourcing): the same <code>pdca gates</code> runs over a bundle (per-fix, in a lane) <strong>and</strong> over the working tree (repo-scoped — <code>gates.run_working_tree</code>, &quot;the CI merge re-gate&quot;). Run the repo-scoped re-gate over the <strong>merged</strong> tree and it sees the combination the per-lane gates could not.</p>
 <p>The contribution path already routes through that point: the publisher (Check's publish step, <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>) opens a <strong>draft PR</strong> per accepted bundle. The draft PR <em>is</em> where the combination is checked — the host surfaces merge <strong>conflicts</strong>, and CI runs the repo-scoped re-gate on the <strong>merge result</strong>. No new gate is needed; parallel lanes simply make the existing merge-time re-gate load-bearing rather than incidental. A conflict or a re-gate failure at the boundary is resolved exactly as any multi-contributor project resolves it — at the PR, before merge — not by re-opening a lane.</p>
-<h2>What stays serial: the human</h2>
+<h2 id="what-stays-serial-the-human">What stays serial: the human</h2>
 <p>The lanes parallelize the <strong>unattended</strong> band only. The three human touch points (<a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>: Plan-authoring, Check sign-off, Act) are one-human / one-terminal and do not parallelize:</p>
 <ul>
 <li><strong>Plan</strong> is where lane assignment happens — one session, serial.</li>
@@ -98,7 +100,7 @@
 <li><strong>Act</strong> runs once, across the completed cycles of all lanes — serial by nature.</li>
 </ul>
 <p>So the shape is, <strong>per wave</strong>: Plan (serial) → Do + Check fan out across lanes → sign-off (serial join) → publish → <strong>fold onto the integration branch</strong> the next wave builds on (or, opt-in <code>merge</code> mode, <code>gh pr merge</code>) → optional re-gate — repeated wave by wave, then <strong>Act once</strong> across the batch. Parallelism lives in the unattended middle of each wave; the wave ordering and the integration fold (then the human's bottom-up merge of the PR stack) carry correctness across the results.</p>
-<h2>Two realizations — separate workspaces vs an in-driver pool</h2>
+<h2 id="two-realizations--separate-workspaces-vs-an-in-driver-pool">Two realizations — separate workspaces vs an in-driver pool</h2>
 <p>The fan-out can be realized two ways, and they trade off cleanly:</p>
 <ul>
 <li>
@@ -114,7 +116,7 @@
 </li>
 </ul>
 <p>Start with separate workspaces (it works today with the generic mechanics above); reach for the in-driver pool only when per-lane disk or sign-off ergonomics actually bite.</p>
-<h2>The one rule</h2>
+<h2 id="the-one-rule">The one rule</h2>
 <blockquote>
 <p>A bundle is touched by exactly one lane; every mutable thing a lane reaches outside its bundle is private to that lane; and the <em>combination</em> of accepted lanes is validated at the merge boundary — never assumed from per-lane green.</p>
 </blockquote>
@@ -130,6 +132,8 @@
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

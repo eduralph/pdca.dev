@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4. Solution strategy — PDCA Harness</title>
+<meta name="description" content="A deterministic driver advances file-based bundles through four beats. Models fill artifacts">
+<meta property="og:title" content="4. Solution strategy — PDCA Harness">
+<meta property="og:description" content="A deterministic driver advances file-based bundles through four beats. Models fill artifacts">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="4-solution-strategy">4. Solution strategy</h1>
+<blockquote>
+<p>Living document. The shape of the solution and why. Open questions are marked <strong>[OPEN]</strong> inline.</p>
+</blockquote>
+<h2 id="41-the-shape-in-one-paragraph">4.1 The shape in one paragraph</h2>
+<p>A deterministic driver advances file-based bundles through four beats. Models fill artifacts
+at six leaves inside those beats — planner, builder, reviewer, sign-off assistant, publisher,
+Act — plus optional advisory, sizer and splitter leaves. The driver owns every transition,
+every gate and the accept guard; leaves only produce files. Batches of bundles run in waves
+(ordered by declared <code>Depends on</code> / <code>Conflicts with</code> edges) across parallel lanes, each in its
+own git worktree, and accepted bundles are published as draft PRs, optionally stacked on a
+shared integration line.</p>
+<h2 id="42-key-strategies">4.2 Key strategies</h2>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>How</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>State is files</td>
+<td>No database; state computed from which artifacts exist</td>
+<td>ADR-0003</td>
+</tr>
+<tr>
+<td>Accept is code</td>
+<td>One writer of §9; C6 refuses accept with open §6 rows</td>
+<td>ADR-0004</td>
+</tr>
+<tr>
+<td>Decorrelated review</td>
+<td>Different vendor; no builder notes; reviewer re-runs red→green</td>
+<td>ADR-0005</td>
+</tr>
+<tr>
+<td>Evidence, not opinion</td>
+<td>Only the per-fix red→green gate blocks by default</td>
+<td>ADR-0006</td>
+</tr>
+<tr>
+<td>Template, not library</td>
+<td>Copier render + <code>copier update</code></td>
+<td>ADR-0007</td>
+</tr>
+<tr>
+<td>Vendor differences are data</td>
+<td><code>families.py</code> profiles; one place builds the argv (<code>leaves._invoke</code>)</td>
+<td>ADR-0005</td>
+</tr>
+<tr>
+<td>Fail closed</td>
+<td>A reconstructed worktree before every gate read; a self-reported external dependency counts only if a <code>doctor</code> probe confirms it</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2 id="43-build-strategy">4.3 Build strategy</h2>
+<p>The target is the six-layer architecture of
+<a href="/design/proposals/accepted/0002-target-architecture.html">proposal 0002</a>: records, a pure machine,
+effects, roles, policies and orchestration, with typed outcomes. It is reached by a strangler
+migration (ADR-0016); <a href="/design/architecture/09-build-order-and-roadmap.html">§9</a> holds the order.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

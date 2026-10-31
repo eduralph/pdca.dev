@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>8. Cross-cutting concepts — PDCA Harness</title>
+<meta name="description" content="One contribution is one directory, results/issue&lt;id&gt;/. Its artifacts — brief.md,">
+<meta property="og:title" content="8. Cross-cutting concepts — PDCA Harness">
+<meta property="og:description" content="One contribution is one directory, results/issue&lt;id&gt;/. Its artifacts — brief.md,">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="8-cross-cutting-concepts">8. Cross-cutting concepts</h1>
+<blockquote>
+<p>Living document. The ideas the rest of the design is built on. Terms are also in the
+glossary (<a href="/design/architecture/10-quality-risks-glossary.html#12-glossary">§12</a>). The walkthrough's
+<a href="/guide/07-crosscutting.html"><code>docs/07-crosscutting.md</code></a> covers size, iteration and parallel
+execution in operating detail. Open questions are marked <strong>[OPEN]</strong> inline.</p>
+</blockquote>
+<h2 id="81-the-bundle">8.1 The bundle</h2>
+<p>One contribution is one directory, <code>results/issue_&lt;id&gt;/</code>. Its artifacts — <code>brief.md</code>,
+<code>patch.diff</code>, <code>build-notes.md</code>, <code>check-gates.json</code>, <code>check-review.md</code>, <code>SUMMARY.md</code>,
+<code>publish.json</code> and the iteration archives — are the whole state (ADR-0003).</p>
+<h2 id="82-beats-and-leaves">8.2 Beats and leaves</h2>
+<p>Four beats: Plan, Do, Check, Act. Models run only at leaves within them, each configured in
+<code>[leaves.*]</code> with <code>mode = stub | command</code> and <code>interactive</code>. Review, sign-off and publish are
+steps of Check, not beats. Stub mode runs the whole machine without a model, which is how the
+offline suite and <code>flow --rehearse</code> work.</p>
+<h2 id="83-evidence-and-gates">8.3 Evidence and gates</h2>
+<p><code>[[gates.checks]]</code> rows run in a reconstructed worktree. Exit 0 passes, 77 or a
+<code>PDCA-UNVERIFIABLE:</code> line is unverifiable, anything else fails. Only gating rows block; the
+per-fix red→green C4 row gates by default (ADR-0006). The Check rubric is an 11-row matrix
+(C1–C5 correctness, T1–T5 tests and conformance, V fitness to purpose) laid over the gates.</p>
+<h2 id="84-the-sign-off-and-c6">8.4 The sign-off and C6</h2>
+<p>§6 NEEDS-HUMAN lists what only a person can clear; §9 records the decision. <code>accept</code> is refused
+while any §6 row is open (ADR-0004). <strong>[OPEN]</strong> roughly 30% of §6 rows are items no leaf can
+ever clear (risk R2); the evidence contract in step 1 addresses it (#712).</p>
+<h2 id="85-decorrelation">8.5 Decorrelation</h2>
+<p>The reviewer and advisory leaves run on a different vendor than the builder that actually ran,
+without <code>build-notes.md</code>, against a disposable copy of base + patch (ADR-0005).</p>
+<h2 id="86-stop-discipline">8.6 STOP discipline</h2>
+<p>Leaves may push to a feature branch and open a draft PR. Marking ready, merging and approving
+are the human's, enforced by a <code>gh</code> shim and the <code>builder_guard</code> PreToolUse hook.</p>
+<h2 id="87-size-iteration-and-splitting">8.7 Size, iteration and splitting</h2>
+<p>An a-priori size estimate (and an optional sizer leaf) warns before Do; an empirical size
+signal flags oversized patches at Check; the splitter proposes child bundles and <code>split.accept</code>
+creates them transactionally with lineage. Each iteration archives the previous attempt and
+adds a carry-forward block to the brief. <strong>[OPEN]</strong> size controls are advisory; no round has
+ever produced a smaller patch than the previous one (risk R6).</p>
+<h2 id="88-waves-lanes-and-integration-lines">8.8 Waves, lanes and integration lines</h2>
+<p>Batches are levelled into waves by declared edges; lanes run bundles in parallel worktrees.
+Stack mode folds each accepted wave onto an integration line that later waves are cut from;
+merge mode merges in wave order. The 0.60 milestone fixed most of the known gaps here; their
+invariants are the input to step 6 (#715).</p>
+<h2 id="89-contain-and-degrade">8.9 Contain and degrade</h2>
+<p>A failing step of one bundle is contained so the batch continues (<code>flow._isolate</code>,
+<code>flow.py:52</code>). <strong>[OPEN]</strong> the same pattern hides real failures: an exception leaves a bundle
+silently behind, and a leaf that exits 0 with no output was once read as &quot;0 findings&quot; for nine
+bundles. Step 5 replaces it with typed outcomes (<code>Ok / Held / FailedInfra</code>, #714).</p>
+<h2 id="810-security">8.10 Security</h2>
+<p>The trust boundary is the accept path: no leaf output, tracker text or gate output may
+release a publish on its own (ADR-0004). Leaves run with <code>Edit</code>/<code>Write</code>/<code>Bash</code> and are
+treated as able to leave any file in any state. Sandboxed leaves (reviewer, advisory) run in an
+OS sandbox with a memory cap. <strong>[OPEN]</strong> three known gaps: the sign-off session can edit §9,
+nothing checks reviewer ≠ builder vendor, and the claude builder is not confined to its
+worktree (#710).</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

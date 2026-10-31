@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0003. Bundle state is derived from which files exist; no database — PDCA Harness</title>
+<meta name="description" content="One contribution runs for hours to days, across interactive sessions, headless model runs,">
+<meta property="og:title" content="0003. Bundle state is derived from which files exist; no database — PDCA Harness">
+<meta property="og:description" content="One contribution runs for hours to days, across interactive sessions, headless model runs,">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0003-bundle-state-is-derived-from-which-files-exist-no-database">0003. Bundle state is derived from which files exist; no database</h1>
+<h2 id="context">Context</h2>
+<p>One contribution runs for hours to days, across interactive sessions, headless model runs,
+crashes, <code>^C</code> and reboots. Any state held in memory or in a separate store can disagree with
+the artifacts it describes, and a run that dies between &quot;write the artifact&quot; and &quot;update the
+state&quot; leaves the two out of step.</p>
+<h2 id="decision">Decision</h2>
+<p>A bundle is a directory, <code>results/issue_&lt;id&gt;/</code>, and its state is a pure function of which
+files exist in it and what §9 of <code>SUMMARY.md</code> says (<code>state.state</code>,
+<code>template/src/pdca_harness/state.py:339</code>). There is no database and no state file.</p>
+<table>
+<thead>
+<tr>
+<th>Files present</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>no <code>brief.md</code> (or a placeholder brief)</td>
+<td>UNPLANNED (or RESOLVED if the tracker settled it)</td>
+</tr>
+<tr>
+<td><code>brief.md</code>, no <code>patch.diff</code> / <code>close-disposition</code></td>
+<td>PLANNED</td>
+</tr>
+<tr>
+<td><code>patch.diff</code> or <code>close-disposition</code>, no <code>check-gates.json</code></td>
+<td>BUILT</td>
+</tr>
+<tr>
+<td><code>check-gates.json</code>, no <code>SUMMARY.md</code></td>
+<td>CHECKED</td>
+</tr>
+<tr>
+<td><code>SUMMARY.md</code> with §9 empty</td>
+<td>AWAITING_SIGNOFF</td>
+</tr>
+<tr>
+<td><code>SUMMARY.md</code> with a §9 outcome</td>
+<td>COMPLETE, ITERATE_DO, ITERATE_PLAN or DISCONTINUED</td>
+</tr>
+</tbody>
+</table>
+<p>The halted states (<code>HALTED</code>) and the finished states (<code>TERMINAL</code>) are explicit sets defined in
+<code>state.py</code> only. Present from the first commit (<code>3ca179a</code>, 2026-06-04).</p>
+<h2 id="consequences">Consequences</h2>
+<p>Any crash is resumable by running <code>pdca flow</code> again. A bundle can be inspected, archived or
+committed with ordinary tools, and instances record finished bundles in git (<code>pdca record</code>).</p>
+<p>Every reader must treat every bundle file as possibly absent or truncated, because a leaf with
+<code>Write</code>/<code>Bash</code> can leave the directory in any shape. The state is also read back from
+model-authored Markdown (§9 and §6), so every reader is a parser over prose; #527, #606, #634
+and #642 are one recurring bug class from that. Migration step 1 (ADR-0009, #712) keeps this
+decision but moves the parsing onto typed records rendered to Markdown.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

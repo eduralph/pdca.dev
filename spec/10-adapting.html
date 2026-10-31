@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -42,7 +44,7 @@
 <blockquote>
 <p><strong>Maturity legend</strong> (as in <a href="/spec/03-cycle-automation.html">03 - Cycle Automation</a>): <strong>[built]</strong> ships in this template and runs as-is; <strong>[render-time]</strong> is chosen once when you <code>copier copy</code>; <strong>[project-provided]</strong> you write per project because it is repo-, tracker-, or runner-specific. The harness machinery is <strong>[built]</strong>; the integration is <strong>[render-time]</strong> + <strong>[project-provided]</strong>.</p>
 </blockquote>
-<h2>The one idea: a hard boundary between machinery and instance</h2>
+<h2 id="the-one-idea-a-hard-boundary-between-machinery-and-instance">The one idea: a hard boundary between machinery and instance</h2>
 <p>An adapted project is the template's <strong>machinery</strong> (a Python package + deterministic driver, copied unchanged) wrapped around <strong>your project's integration</strong> (config values, gates, prompts, an engine). Keeping that boundary sharp is the whole discipline — it is what lets the template improve without forking, and an instance customize without drifting. Every file falls into exactly one of three classes:</p>
 <table>
 <thead>
@@ -81,10 +83,10 @@
 <p><strong>The rule that makes it work, both directions:</strong></p>
 <ul>
 <li><em>Adapting (template → instance):</em> you only ever touch the <strong>render-time</strong> answers, the <strong><code>[[gates.checks]]</code></strong> rows, and the <strong><code>engine/</code></strong>. You do <strong>not</strong> edit <code>src/pdca_harness/*</code> — if you feel the urge to, that is a signal the <em>template</em> needs a change (see the feedback discipline below), not the instance.</li>
-<li><em>Improving (instance → template):</em> a fix you make to the machinery while running a real cycle is a <strong>template</strong> change wearing an instance's clothes. It must flow back, or the next <code>copier update</code> overwrites it. File it as an <code>enhancement</code> issue on the template repo for exactly this — see <a href="#feeding-improvements-back-the-non-optional-part">§ Feeding improvements back</a>.</li>
+<li><em>Improving (instance → template):</em> a fix you make to the machinery while running a real cycle is a <strong>template</strong> change wearing an instance's clothes. It must flow back, or the next <code>copier update</code> overwrites it. File it as an <code>enhancement</code> issue on the template repo for exactly this — see <a href="#feeding-improvements-back--the-non-optional-part">§ Feeding improvements back</a>.</li>
 </ul>
 <p>Everything below is organised by that boundary.</p>
-<h2>Step 1 — Render the project (<code>copier copy</code>) — <em>[render-time]</em></h2>
+<h2 id="step-1--render-the-project-copier-copy--render-time">Step 1 — Render the project (<code>copier copy</code>) — <em>[render-time]</em></h2>
 <pre><code>copier copy gh:&lt;you&gt;/pdca-harness path/to/your-project
 cd path/to/your-project &amp;&amp; copier update      # later, to pull template fixes
 </code></pre>
@@ -174,7 +176,7 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
 </tbody>
 </table>
 <p>After render, the vertical slice runs immediately on stubs (<code>pdca flow TOY --rehearse</code>, or the <code>init-issue</code>/<code>run</code>/<code>status</code> sequence the post-copy message prints). That offline-green slice is your proof the machinery landed before you write a single project-specific line.</p>
-<h2>Step 2 — Fill <code>pdca.toml</code> — <em>[render-time] + [project-provided]</em></h2>
+<h2 id="step-2--fill-pdcatoml--render-time--project-provided">Step 2 — Fill <code>pdca.toml</code> — <em>[render-time] + [project-provided]</em></h2>
 <p>Render seeds <code>pdca.toml</code> from your answers; you then complete the project-specific runtime config. The sections:</p>
 <p><strong><code>[project]</code> / <code>[paths]</code> / <code>[tracker]</code></strong> — mostly your render answers. Two fields you set by hand:</p>
 <ul>
@@ -192,7 +194,7 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
 <li><strong>Reviewer decorrelation is the ideal; same-vendor is the documented fallback.</strong> The template defaults the reviewer to a <em>different</em> family (codex) because independence is a Check property (<a href="/spec/06-quality-cycle-guidelines.html">06</a> C-tier). gramps-testbed-v2 deliberately flips its <strong>running</strong> config to <code>family = &quot;claude&quot;</code> (<code>--agent reviewer</code>) so the live demo runs on Claude alone — the documented fallback, with the independence then enforced <em>physically</em> by the reviewer sandbox (<a href="/spec/02-cycle-artifacts.html">02</a> independence contract), not by vendor. Choose decorrelated if you can; if you take the fallback, know you are leaning on the sandbox.</li>
 </ul>
 <p><strong><code>[gates]</code></strong> — the deterministic Check gates. This is the long pole; it gets its own step.</p>
-<h2>Step 3 — Build the verification engine and gate rows — <em>[project-provided]</em></h2>
+<h2 id="step-3--build-the-verification-engine-and-gate-rows--project-provided">Step 3 — Build the verification engine and gate rows — <em>[project-provided]</em></h2>
 <p>The gates are the only blocking path in Check, and they are entirely yours: the template ships <strong>zero</strong> gate rows (<code>checks = []</code>, all-PASS stubs) so the slice runs, and an <code>engine/README.md</code> pointing at where your checkers go. Each <code>[[gates.checks]]</code> row runs a shell command that PASSES iff it exits 0. Two scopes:</p>
 <ul>
 <li><code>scope = &quot;bundle&quot;</code> — needs the patch context; <code>$PDCA_BUNDLE</code> is exported (the gate derives its target from <code>$PDCA_BUNDLE/patch.diff</code>). Runs locally only. When the brief declares an <code>Onto branch:</code> (stack mode, issue #54), <code>$PDCA_BASE</code> is also exported as <code>&lt;remote&gt;/&lt;branch&gt;</code> — the existing PR's head the fix stacks onto; a verify/repro gate should establish red→green against <code>$PDCA_BASE</code> (the same branch publish commits onto and pushes to), not a clean upstream base. Absent ⇒ no <code>$PDCA_BASE</code>, unchanged.</li>
@@ -244,7 +246,7 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
 <li><strong>Every containerized/long test run needs a timeout.</strong> Wrap <code>docker run</code> (or any runner) in a hard <code>timeout</code> + a named container you kill on expiry, so a hung test <em>fails</em> the run instead of blocking the cycle forever. The builder must use <em>this</em> runner, never improvise its own — which is exactly what the builder agent now says.</li>
 </ol>
 <p>The gate <em>implementations</em> live under <code>engine/</code> and are 100% instance-only. The harness needs <strong>no change</strong> to host them — <code>scope=&quot;bundle&quot;</code> + the 5/5/1 overlay-by-<code>tier</code> (<a href="/spec/04-validation-tooling.html">04</a>) already carry any project's tiers.</p>
-<h3>Mapping the gramps gates onto Check's 5/5/1 (this is the heart of it)</h3>
+<h3 id="mapping-the-gramps-gates-onto-checks-551-this-is-the-heart-of-it">Mapping the gramps gates onto Check's 5/5/1 (this is the heart of it)</h3>
 <p><a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> gives the <strong>5/5/1 × tooling</strong> matrix abstractly, with a worked example at an <em>earlier</em> snapshot (the proposed <code>agent-work/dev-tooling/</code> layout). Here is what gramps-testbed-v2 actually <strong>ships</strong>, every gate row mapped to the 5/5/1 element it covers, the engine file that implements it, and its home — so you can see the abstract matrix as concrete code:</p>
 <table>
 <thead>
@@ -332,7 +334,7 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
 </code></pre>
 <p>Doc 04's worked example shows the <em>earlier</em> by-family proposal (<code>addon-conformance/tierN-*</code>, <code>core-analysis/</code>); the shipped shape collapses the conformance tiers into <code>engine/conformance/*.py</code> behind the <code>gate.py</code> dispatcher and the runtime runners into <code>engine/scripts/ubuntu/</code>. <strong>Same 5/5/1 matrix, shipped form</strong> — and a useful illustration that doc 04 names the <em>roles</em>, not a mandatory directory tree.</p>
 <p>One timing subtlety worth carrying: <strong>T4's inputs (<code>commit-msg.txt</code> / <code>pr-description.md</code>) don't exist until you publish</strong>, so T4 is correctly <strong>N/A</strong> on a bundle that hasn't reached the publish step — publishing is what makes T4 a <em>real</em> check (<a href="/spec/03-cycle-automation.html">03</a> §Check closing step). The 5/5/1 overlay renders it as N/A, not a failure, until then.</p>
-<h2>Step 4 — Wire the tracker intake (the Plan leaf) — <em>[project-provided]</em></h2>
+<h2 id="step-4--wire-the-tracker-intake-the-plan-leaf--project-provided">Step 4 — Wire the tracker intake (the Plan leaf) — <em>[project-provided]</em></h2>
 <p>Plan turns a tracker item into a <code>brief.md</code>. Hand the planner <em>where work comes from</em> rather than letting it guess:</p>
 <ul>
 <li>Point <code>[tracker].export_csv</code> at an export, or pass <code>flow --from-csv</code>. The planner prompt already names the issue id, the tracker coordinates, the CSV row to read first, and a notes-file convention — and tells the planner to cite via <code>git -C &lt;repo&gt;</code> (never <code>cd &lt;repo&gt; &amp;&amp; git</code>) and <strong>not</strong> to scan the harness repo.</li>
@@ -340,20 +342,20 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
 <li><strong>Permissions &amp; trust are a one-time setup, and they are two different things.</strong> <code>make setup</code> writes <code>.claude/settings.local.json</code> (read access to the workspace + the sibling repos you patch). Folder <strong>trust</strong> is <em>not</em> settable from project settings — it lives in the global <code>~/.claude.json</code> (<code>projects[&lt;path&gt;].hasTrustDialogAccepted</code>) and must be accepted once, interactively. <code>make setup</code> does not suppress the trust prompt; say so to whoever runs it.</li>
 <li>Prefer <code>git -C &lt;repo&gt;</code> over <code>cd &lt;repo&gt; &amp;&amp; git</code> everywhere — a bare <code>Bash(git …)</code> allow-rule doesn't match <code>cd &amp;&amp; git</code>, and the latter trips Claude Code's &quot;cd-before-git can run hooks&quot; prompt.</li>
 </ul>
-<h2>Step 5 — Adapt the agent prompts only where the <em>engine contract</em> differs — <em>[render-time]</em></h2>
+<h2 id="step-5--adapt-the-agent-prompts-only-where-the-engine-contract-differs--render-time">Step 5 — Adapt the agent prompts only where the <em>engine contract</em> differs — <em>[render-time]</em></h2>
 <p>The eight agents' role prompts ship generic and render with your <code>{{ project_name }}</code>. The <strong>canonical, vendor-neutral body</strong> is <code>agents/&lt;name&gt;.md.jinja</code> (the single source of truth, read directly by non-Claude leaves); <code>.claude/agents/&lt;name&gt;.md.jinja</code> is a thin Claude wrapper — frontmatter + <code>{% include %}</code> of that body — materialized only for leaves whose family is <code>claude</code>. Edit the body in <code>agents/</code>; the Claude packaging follows. You should <strong>not</strong> rewrite the prompts per project — but two classes of edit are legitimately yours, and both are about keeping the prompt <strong>true to your engine</strong>:</p>
 <ul>
 <li><strong>Capability facts the runner actually provides.</strong> A leaf's prompt is part of the harness contract: if it claims the test runner gives a display/GUI/bus and yours is headless, a GUI-importing test crashes — and recurs every iterate-do because nothing corrects the belief. The builder prompt now states the runner <em>may</em> be headless and to keep the unit-under-test import-light; make such claims match <em>your</em> engine.</li>
 <li><strong>The <code>builder_guard.py</code> hook path must be rooted.</strong> It runs from the bundle dir, so a relative <code>python3 .claude/hooks/builder_guard.py</code> resolves there, fails to exist, and (exit 2) blocks <strong>all</strong> Bash for the whole Do session. The template ships it rooted (<code>$CLAUDE_PROJECT_DIR/...</code>); keep it that way.</li>
 </ul>
 <p>Everything else in the agents — the STOP discipline, the write allow-lists, the &quot;interactive leaf ends its own session&quot;, the commit-ready expectation — is generic and stays.</p>
-<h2>Step 6 — Publish wiring — <em>[project-provided] values, [built] mechanics</em></h2>
+<h2 id="step-6--publish-wiring--project-provided-values-built-mechanics">Step 6 — Publish wiring — <em>[project-provided] values, [built] mechanics</em></h2>
 <p><code>pdca publish</code> (Check's closing step) is deterministic git/<code>gh</code> code you don't touch; you supply only the layout it reads:</p>
 <ul>
 <li>The <strong>fork must be a sibling</strong> (or mapped in <code>[publisher.checkouts]</code>) with <code>upstream</code> + <code>origin</code> remotes, clean. The publisher branches from <code>upstream/&lt;base&gt;</code>, <code>git apply</code>s the bundle patch, <strong><code>git add --all</code></strong> (so the patch's <em>new</em> test is staged, not dropped), commits, pushes to <code>origin</code>, and opens a <strong>draft</strong> PR with <code>--head OWNER:BRANCH</code> (owner derived from <code>origin</code>). It never marks ready/merges — that is the human's sign-off disposition.</li>
 <li><strong>The patch must be commit-ready for the <em>target</em> repo.</strong> The publish commit runs the <em>target's own</em> pre-commit hooks (its formatter/linters), which no PDCA gate models — so &quot;all gates green&quot; ≠ committable. The builder is told to run the project's formatter/commit hooks before declaring done; for a stronger guard, add a pre-publish Check that runs the target's hooks in <code>--check</code> mode so a formatting miss is an iterate-do, not a mid-publish failure.</li>
 </ul>
-<h2>Feeding improvements back — the non-optional part</h2>
+<h2 id="feeding-improvements-back--the-non-optional-part">Feeding improvements back — the non-optional part</h2>
 <p>Running a real cycle <em>will</em> surface defects in the machinery, not just your integration. When it does, the fix is a <strong>template</strong> change — apply it in the template, not just the instance, or the next <code>copier update</code> clobbers it. <strong>File it as an <code>enhancement</code> issue on the template repo</strong>, one per generic machinery change. Put in the issue body what makes the hand-off mechanical: the <strong>upstream target</strong> (the <code>template/…</code> path), the <strong>rendering class</strong> (verbatim / jinja / instance-only), and an <strong>apply note</strong>. The issue is the shared queue the template maintainer works from; the change lands via a normal PR that closes it.</p>
 <p>The apply rule (state it in the issue, follow it in the PR):</p>
 <ul>
@@ -362,7 +364,7 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
 <li><strong>Instance-only</strong> (<code>engine/**</code>, gate rows, scraper, ruleset, branch convention): <strong>do not</strong> feed back. The <em>generic lesson</em> often is worth a template note (e.g. &quot;a patch-and-revert gate must clean added files&quot;); the gramps script is not.</li>
 </ul>
 <p>Why this matters as an instruction and not a nicety: the harness only stays improvable-without-forking if instance discoveries return to the source. An instance that hoards its fixes diverges until <code>copier update</code> is unusable — at which point you have a fork, not an adaptation. A shared <strong>issue tracker on the template repo</strong> is the seam that prevents that: one linkable, status-tracked queue both the maintainer and every instance can see. (An earlier version of this harness used an instance-local propagation-log <em>file</em>; issues replaced it because the file duplicated the template's own git history and had to be hand-synced. Feeding a fix upstream is still a deliberate step across repos — the issue makes the work explicit and reviewable, and the PR that closes it lands the change.)</p>
-<h2>Gramps Testbed v2 at a glance</h2>
+<h2 id="gramps-testbed-v2-at-a-glance">Gramps Testbed v2 at a glance</h2>
 <p>The full adaptation, every knob → its instance value, as a fill-in-the-blanks crib:</p>
 <table>
 <thead>
@@ -430,7 +432,7 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
 </tr>
 </tbody>
 </table>
-<h2>What never changes</h2>
+<h2 id="what-never-changes">What never changes</h2>
 <p>The cycle's shape and the harness's spine are <strong>not</strong> adaptation surface. You do not get to move the C6 accept-guard into a model, skip the deterministic gates, coin a fifth beat, or let a leaf decide control flow. Adaptation fills the <em>leaves and the gates</em>; the <em>driver, the state machine, the 5/5/1 anatomy, and the human touch points</em> are fixed (<a href="/spec/01-the-quality-cycle.html">01</a>, <a href="/spec/03-cycle-automation.html">03</a>). When you find yourself wanting to change those, you are no longer adapting — you are proposing a template change, which is the feedback path above, deliberated in the open, not a quiet edit in one instance.</p>
 
     </article>
@@ -444,6 +446,8 @@ cd path/to/your-project &amp;&amp; copier update      # later, to pull template 
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -48,7 +50,7 @@
 <blockquote>
 <p><strong>Maturity legend</strong> — every major mechanism in this doc is tagged: <strong>[built]</strong> = ships in this template and runs today; <strong>[partial]</strong> = ships but needs per-project wiring (cells in <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> §Status today have the breakdown); <strong>[project-provided]</strong> = not shipped by the template — each project supplies it because it is tracker- or repo-specific. The driver (<code>pdca run</code> / <code>flow</code> / <code>queue</code> / <code>gates</code> / <code>act index</code> / <code>act log</code>, in <code>src/pdca_harness/</code>), the deterministic gate runner, the headless reviewer, the sign-off queue, and the Act-log tooling are all <strong>[built]</strong>. What each project still supplies: the <strong>Plan-draft scaffolding</strong> — a tracker scraper + handoff generator (the per-repo specification's item-9 tooling, <strong>[project-provided]</strong>); the <strong>real gate check rows</strong> (<code>pdca.toml</code>; an all-PASS stub fallback ships, <strong>[partial]</strong>); and the <strong>real leaf commands</strong> (the leaves run as offline stubs until a model is wired, <strong>[partial]</strong>).</p>
 </blockquote>
-<h2>What can and cannot be automated</h2>
+<h2 id="what-can-and-cannot-be-automated">What can and cannot be automated</h2>
 <p>PDCA has four beats; automation is described per beat. Where a beat has internal components that automate at different levels, the Automation column names each.</p>
 <table>
 <thead>
@@ -93,7 +95,7 @@
 </table>
 <p><strong>Human touch points vs beats.</strong> Four rows, four beats — but the human appears at three different places, not four. The three <strong>human touch points</strong> in the cycle are <em>Plan-authoring</em>, <em>Check sign-off</em>, and <em>Act</em> — but these are <em>not</em> three beats. Plan and Act are two fully-human beats; Check sign-off is the human-instrumented <em>step inside</em> the Check beat (Check's gates and reviewer run unattended; sign-off is the human completion). Do is the fourth beat and has no human touch point. The 4-beat structure is preserved; the three human touches are how humans participate across the three beats that contain human work. The pipeline's job is to make each human touch <strong>rare</strong> (only genuine NEEDS-HUMAN items reach sign-off; Act fires once per batch, not once per cycle) and <strong>fast</strong> (everything pre-assembled, the common confirm-and-close is one keystroke).</p>
 <p>The crucial cadence split: <strong>Plan and Check (including sign-off) are per-cycle</strong> (one of each per contribution); <strong>Act is per-batch</strong> (one Act review covers many cycles). The driver's state machine only carries the per-cycle work; Act runs as a separate process.</p>
-<h2>The orchestrator is a state machine over the per-cycle bundle</h2>
+<h2 id="the-orchestrator-is-a-state-machine-over-the-per-cycle-bundle">The orchestrator is a state machine over the per-cycle bundle</h2>
 <blockquote>
 <p><strong>Maturity: [built].</strong> The driver described in this section ships in <code>src/pdca_harness/</code> and runs today (<code>pdca run</code> / <code>flow</code>). The <code>state()</code> / <code>advance()</code> loop below is implemented; each issue's bundle advances unattended to AWAITING_SIGNOFF. What a project supplies <em>upstream</em> of the driver is the Plan-draft scaffolding — a tracker scraper + handoff generator (<strong>[project-provided]</strong>) — plus the real gate and leaf wiring.</p>
 </blockquote>
@@ -124,7 +126,7 @@ entered one.</p>
 <li><strong>Inspectable.</strong> &quot;What state is issue N in&quot; is a directory listing, not a database.</li>
 </ul>
 <p>The driver is a thin loop: for each issue, look at which files exist, run the next beat's command, write its artifact, advance. Stop the issue when it reaches AWAITING_SIGNOFF.</p>
-<h2>Pre-dispatch guards — [built] (issues #321, #333)</h2>
+<h2 id="pre-dispatch-guards--built-issues-321-333">Pre-dispatch guards — [built] (issues #321, #333)</h2>
 <p>Gates verify the <em>built artifact</em> at Check; the pre-dispatch guards verify the
 <em>brief</em> before Do is even allowed to spend a builder on it. They are plain
 code inside <code>advance()</code> itself — not a hook at the literal end of Plan, since
@@ -164,8 +166,8 @@ a real spend too. The size guard's remedy differs by firing: at PLANNED,
 <code>pdca split</code> runs directly; at BUILT, the remedy is <code>iterate-plan</code> at
 sign-off, because splitting means authoring new briefs, and that's Plan's
 beat, not something done to a bundle mid-build.</p>
-<h2>Per-beat automation</h2>
-<h3>Plan — instrumented (project scaffolding + human)</h3>
+<h2 id="per-beat-automation">Per-beat automation</h2>
+<h3 id="plan--instrumented-project-scaffolding--human">Plan — instrumented (project scaffolding + human)</h3>
 <p>Reuse an existing scrape / handoff pipeline as the Plan scaffolder (scrape → emit a <code>brief.md</code> with a TRIAGE VERDICT scaffold and auto-flags), drawn from the <strong>current process-baseline spec template</strong> that Act maintains. That <em>is</em> the draft <code>brief.md</code>. The human fills the spec + success criterion + resolved branch target and confirms/overrides the disposition hint. Automated: everything except the judgment. Not automated: the judgment.</p>
 <p><strong>Splitting is owned by Plan, not a maintenance task run after it (issue
 #358).</strong> The design-proposal pattern in <a href="/spec/01-the-quality-cycle.html">01 - The Quality Cycle</a>
@@ -184,11 +186,11 @@ it routes to sign-off instead of pretending it still needs a builder, and each
 child schedules into <a href="/spec/09-parallel-lanes.html">dependency waves</a> via the
 <code>Depends on</code> / <code>Conflicts with</code> fields the proposal already declared between
 siblings.</p>
-<h3>Do — full (headless builder, subagent scope)</h3>
+<h3 id="do--full-headless-builder-subagent-scope">Do — full (headless builder, subagent scope)</h3>
 <p>Driver invokes the builder agent non-interactively with <code>brief.md</code> as input, builder subagent scope (read repos, write patch+test, MAY push to feature/draft branches, MAY open draft PRs, <strong>MUST NOT mark a PR ready</strong>). Output: <code>patch.diff</code>, the test, <code>build-notes.md</code>. Pushing and draft-PR-open are allowed because they let CI exercise the artifact during the cycle without bypassing the sign-off gate.</p>
 <p><strong>The ready-mark mechanism — built, mechanically enforced.</strong> The builder subagent (<code>.claude/agents/builder.md</code>) registers a PreToolUse hook (<code>.claude/hooks/builder_guard.py</code>) that blocks <code>gh pr ready</code>, <code>gh pr merge</code>, and <code>gh pr review --approve</code> for the builder while allowing <code>gh pr create --draft</code> and <code>git push</code>. The guard splits compound commands on shell operators and strips wrappers (<code>timeout</code>, <code>nice</code>, …) before matching, so the block can't be smuggled past. It is scoped to the builder subagent — <strong>not</strong> a global <code>settings.json</code> deny — so the human and the driver's accept step can still mark PRs ready (a global deny can't be overridden and would block the human's legitimate ready-mark). The constraint is therefore <em>enforced</em>, not merely asked of the builder via the brief.</p>
 <p><strong>Per-bundle model routing — [built].</strong> The builder backend is not fixed: <code>select_builder</code> picks one <strong>per bundle</strong> from the brief. A <code>[[leaves.builder_variant]]</code> whose <code>when = {field, substring}</code> matches a brief field is routed (e.g. <code>Difficulty: high</code> → a frontier model, issue #134); a brief may instead pin a backend by name with <code>- **Do model:** &lt;name&gt;</code> against a variant's <code>model</code> (issue #167 — overrides the <code>when</code> routing). On iterate, a <code>[[leaves.builder_escalation]]</code> ladder overrides on the attempt number, so a repeatedly-failing bundle climbs to a stronger backend (issue #135). Each layer is default-open — an absent field keeps <code>[leaves.builder]</code> — and a variant's <code>argv</code> carries the model plus any effort/reasoning flags. Because routing is per bundle, a parallel wave can run different bundles on different backends.</p>
-<h3>Check — mixed (gates full, reviewer full, sign-off instrumented)</h3>
+<h3 id="check--mixed-gates-full-reviewer-full-sign-off-instrumented">Check — mixed (gates full, reviewer full, sign-off instrumented)</h3>
 <p>Check is one beat with three components, each automating at a different level. Components run in order; the blocking logic across all three is <strong>100% deterministic</strong> — no LLM in the gating path.</p>
 <p><strong>1. Deterministic gates → <code>check-gates.json</code> (full).</strong> The same checks that run in CI, run locally: the correctness re-runs (repro red / verify green / regression suite) + conformance Tiers 1–4 (structural validator, semgrep, find_spec/runtime, commit-msg + branch-target + version-bump). Each emits pass/fail + rule ID + oracle + path:line. A FAIL with auto-fixable cause (lint/format/genuinely-red) is auto-fixed and re-run; a FAIL needing a decision goes to NEEDS-HUMAN.</p>
 <p><strong>2. Advisory reviewer → <code>check-review.md</code> (full).</strong> Different-vendor model (e.g. <code>codex</code>) headless, fed <code>{patch, test, brief, check-gates}</code> — <strong>not</strong> <code>build-notes.md</code>. Re-runs the asserted evidence (stash→red, unstash→green), re-checks cited path:lines ground, emits per-item <code>PASS/FAIL/NEEDS-HUMAN</code>. Advisory: annotates, never blocks.</p>
@@ -201,7 +203,7 @@ siblings.</p>
 </ul>
 <p>Optionally, the human jots §10 Act candidates while at the bundle — these are hints for the next Act review, not gates for this sign-off.</p>
 <p><strong>Publish — contribution shape.</strong> On accept, the closing work contributes the fix. The default shape branches off <code>upstream/&lt;base&gt;</code>, applies the patch, and opens a new draft PR. When the brief declares an <strong><code>Onto branch:</code> <code>&lt;remote&gt;/&lt;branch&gt;</code></strong> (issue #54), publish instead runs in <strong>stack mode</strong>: the fix is a commit on that existing PR's branch — Check tested against it (<code>$PDCA_BASE</code>), and publish checks out <code>&lt;remote&gt;/&lt;branch&gt;</code>, verifies the patch still applies to it (else fails loudly — the branch advanced since the fix was built), confirms an open PR has it as head (else refuses to push), then commits and pushes to that branch. No new PR is created; the existing PR's URL is recorded. The same branch is the test base, the commit base, and the push target — so a fix tested against a PR can only land on that PR.</p>
-<h3>Act — instrumented, cross-cycle, batched</h3>
+<h3 id="act--instrumented-cross-cycle-batched">Act — instrumented, cross-cycle, batched</h3>
 <p>Act does not run inside the per-issue state machine. It is a <strong>separate pass</strong>, on a separate cadence (every N completed cycles, weekly, when a pattern surfaces). Its instrumentation:</p>
 <ul>
 <li><strong>Bundle index.</strong> A read-only generator that lists frozen bundles since the last Act review, surfaces §6/§7/§9/§10 contents, and highlights recurring patterns (same NEEDS-HUMAN class across cycles, same brief-template field flagged in §10).</li>
@@ -210,7 +212,7 @@ siblings.</p>
 <li><strong>Process-delta ledger — [built].</strong> <code>process/act-ledger.json</code> tracks each recurring signal Act surfaces: <code>open</code> when first seen, marked <strong>applied</strong> by <code>pdca act resolve &quot;&lt;signal&gt;&quot; --location &lt;path:line&gt;</code> once the fix lands, and re-flagged <strong>ineffective</strong> if the same miss recurs in a cycle frozen <em>after</em> the applied date — surfaced as a &quot;⚠ Ineffective deltas&quot; section in <code>act index</code> / the <code>act log</code> scaffold (issue #150). So Act audits whether its own prescriptions actually worked, instead of writing them and forgetting.</li>
 </ul>
 <p>What is <em>not</em> instrumented: the judgment of which rule to add, which template field to clarify, which skill to refine. That is Act's irreducible work.</p>
-<h2>Independence is enforced by the orchestrator, mechanically</h2>
+<h2 id="independence-is-enforced-by-the-orchestrator-mechanically">Independence is enforced by the orchestrator, mechanically</h2>
 <p>The decorrelation that makes the reviewer worth running is enforced by the driver, not by prompt text:</p>
 <ul>
 <li><strong>File withholding</strong> — the driver constructs the reviewer's input set and omits <code>build-notes.md</code>. The builder's framing cannot anchor the reviewer because the reviewer never receives it.</li>
@@ -219,7 +221,7 @@ siblings.</p>
 </ul>
 <p>These three are orchestrator responsibilities. An LLM told &quot;don't look at the rationale&quot; that still has the file is not independent; the driver simply does not pass the file.</p>
 <p><strong>What this enforcement does and does not buy.</strong> The three mechanisms above decorrelate <strong>evidence-integrity</strong> — the reviewer can't be anchored by the builder's narrative, can't edit the artifact it judges, and brings a different model family's blind spots. They do <em>not</em> decorrelate <strong>fix-correctness</strong>: the reviewer's input set still includes <code>brief.md</code> and the shipped test, so a framing blind spot the brief carries reaches the reviewer too, and stash → red / unstash → green confirms the test's own narrow oracle, not that the test exercises the real defect. The reviewer attempts causal adequacy advisory (correctness step 5) and may flag NEEDS-HUMAN; the actual check on causal adequacy is the <strong>human at sign-off</strong> (<a href="/spec/06-quality-cycle-guidelines.html">06 - Quality Cycle Guidelines</a> C6). The orchestrator's job is to make the reviewer's evidence trustworthy, not to make sign-off optional.</p>
-<h2>Where it runs: local driver + CI re-confirmation</h2>
+<h2 id="where-it-runs-local-driver--ci-re-confirmation">Where it runs: local driver + CI re-confirmation</h2>
 <p>Two substrates, used for what each is good at:</p>
 <ul>
 <li><strong>Local/container driver</strong> <strong>[built]</strong> runs the <strong>contribution body</strong> — Do + Check + assemble — co-located, full control. This is the fast inner loop: <code>pdca run &lt;id&gt;</code> advances one issue to AWAITING_SIGNOFF; <code>pdca flow &lt;ids…&gt;</code> fans it over many.</li>
@@ -227,7 +229,7 @@ siblings.</p>
 </ul>
 <p>The two agree because the gates are <strong>single-sourced</strong> — the validator(s), semgrep rules, and the runtime/suite checks are one implementation, invoked by both the local driver and CI. CI is not a second opinion; it is the same check re-run at the merge boundary so nothing merges that the body did not clear.</p>
 <p>Act has no CI counterpart — process improvement is human work that edits the rules CI enforces, not work CI enforces back.</p>
-<h2>Batch selection (upstream of fan-out)</h2>
+<h2 id="batch-selection-upstream-of-fan-out">Batch selection (upstream of fan-out)</h2>
 <p>Fan-out (below) starts from a chosen set of issues. Choosing that set is a deliberate Plan-front step, not &quot;take the next N rows&quot; — the distribution of the candidate pool decides the batch's character, so profile before selecting.</p>
 <ol>
 <li><strong>Start from a real candidate pool — no fabrication.</strong> A batch begins from an actual tracker export (a CSV, a saved query), never from invented or recalled issue IDs. Re-export when starting a batch so the pool reflects the current tracker; items get fixed and closed between batches.</li>
@@ -251,7 +253,7 @@ A blended batch is fine <em>if chosen</em>, not as a side effect of sorting.</li
 <li><strong>Items falling through buckets</strong> — reconcile bucket membership against the full candidate list; silently omitted items never get a verdict.</li>
 <li><strong>Count records, not lines</strong> — multi-line descriptions inflate a naive line count; count parsed records.</li>
 </ul>
-<h2>Batch fan-out</h2>
+<h2 id="batch-fan-out">Batch fan-out</h2>
 <p>The contribution-batch case is the per-issue driver under an existing fan-out:</p>
 <ol>
 <li>A project-provided scraper + handoff generator turns the selected IDs into N draft <code>brief.md</code> (Plan scaffolding, <strong>[project-provided]</strong>). <strong>Human fills verdicts</strong> (Plan judgment, the one human step before the body runs).</li>
@@ -260,16 +262,16 @@ A blended batch is fine <em>if chosen</em>, not as a side effect of sorting.</li
 </ol>
 <p>So a contribution-batch is: one human pass at the <strong>Plan</strong> beat to author specs, an unattended run of the <strong>Do</strong> beat and the mechanical portion of the <strong>Check</strong> beat (gates + reviewer) over N issues, then one human pass to complete the <strong>Check</strong> beat (sign-off). Four beats, two human touches inside them.</p>
 <p><strong>An Act batch is separate and slower.</strong> Every K contribution-batches (or on a calendar), the Act tooling presents a cross-cycle bundle index and the human runs one Act review pass covering all bundles since the last review. Cadence is yours; the model only requires that Act fire <em>eventually</em> over the records, not that it fire per-cycle.</p>
-<h2>Maturity ladder</h2>
+<h2 id="maturity-ladder">Maturity ladder</h2>
 <p>Build the automation in order. <strong>The three human touch points — Plan authoring, Check sign-off, and Act — stay human at every level.</strong> (Those are three touch points across three beats: Plan and Act are fully human beats; Check is a mixed beat whose sign-off step is its human portion. Do is the fourth beat and has no human touch.)</p>
 <ul>
 <li><strong>L1 — scripted handoff.</strong> <strong>[project-provided]</strong> A tracker scraper + handoff generator emits draft briefs and bundle directories from a candidate pool (see <a href="#batch-selection-upstream-of-fan-out">Batch selection</a>). This is tracker-specific, so the template does not ship it; each project supplies it as the per-repo specification's item-9 tooling.</li>
-<li><strong>L2 — unattended per-issue body.</strong> <strong>[built]</strong> <code>pdca run &lt;id&gt;</code> runs Do→Check→assemble→STOP for a single issue: the state machine + the two headless leaf calls + the single-sourced gate runner. (The leaves run as offline stubs until a model command is wired, and the gates use the all-PASS stub fallback until real check rows are filled — fill the gates first, per <a href="#build-order">Build order</a>.)</li>
+<li><strong>L2 — unattended per-issue body.</strong> <strong>[built]</strong> <code>pdca run &lt;id&gt;</code> runs Do→Check→assemble→STOP for a single issue: the state machine + the two headless leaf calls + the single-sourced gate runner. (The leaves run as offline stubs until a model command is wired, and the gates use the all-PASS stub fallback until real check rows are filled — fill the gates first, per <a href="#build-order-restated-as-concrete-deliverables">Build order</a>.)</li>
 <li><strong>L3 — unattended contribution-batch + sign-off queue.</strong> <strong>[built]</strong> <code>pdca flow &lt;ids…&gt;</code> produces N bundles; <code>pdca queue</code> is the cheap-first sign-off burn-down.</li>
 <li><strong>L4 — Act review tooling.</strong> <strong>[built]</strong> <code>pdca act index</code> is the bundle index across frozen cycles; <code>pdca act log</code> scaffolds the dated entry (the deltas are left to the human). L4 is independent of L1–L3 — you can run Act manually against L3 bundles regardless.</li>
 </ul>
 <p>The driver, queue, and Act tooling all ship; the gate <em>runner</em> ships too but only gates meaningfully once real check rows exist — until a project fills Tiers 1–4 into <code>pdca.toml</code>, the body runs on the all-PASS stub fallback. So the per-project build order is: <strong>gates first</strong>, then wire the real leaf commands, then lean on the Act tooling as manual Act becomes the bottleneck.</p>
-<h2>What stays human (the honest boundary)</h2>
+<h2 id="what-stays-human-the-honest-boundary">What stays human (the honest boundary)</h2>
 <p>Judgment is irreducible at parts of three beats — Plan, Check, and Act. The fourth beat, <strong>Do</strong>, is fully delegable to the builder: it is production work without an embedded human judgment step.</p>
 <ul>
 <li><strong>Plan</strong> — the entire beat is human, including any re-entry into Plan triggered by iterate-to-Plan from Check sign-off (the brief revision is Plan work). The project's Plan scaffolding drafts; the human decides what to fix and what &quot;fixed&quot; means.</li>
@@ -277,7 +279,7 @@ A blended batch is fine <em>if chosen</em>, not as a side effect of sorting.</li
 <li><strong>Act</strong> — the entire beat is human. What rule to add, which template field to revise, whether to retire a check. The bundle index surfaces patterns; the human decides.</li>
 </ul>
 <p>Automating any of these would be automating judgment, which the model says is irreducible at those three points. The pipeline does not remove the human; it removes everything around the human so the human only does the parts no oracle can.</p>
-<h2>Implementation substrate (what is built from what)</h2>
+<h2 id="implementation-substrate-what-is-built-from-what">Implementation substrate (what is built from what)</h2>
 <p>&quot;Maximally scripted&quot; has a precise meaning: <strong>minimise model-in-the-loop at run time.</strong> Every beat that <em>can</em> be code <em>is</em> code; a model is invoked only at the <strong>leaves</strong> — the two <em>headless</em> ones where the sole available oracle is a model (Do builder, Check reviewer), plus the <em>interactive</em> ones that instrument the human touch points (Plan, Check sign-off, Check publish, Act). A leaf's instruction file does not reduce the number of model decisions — it makes each one repeatable. So the leaf configs are rows in the table below, not the backbone.</p>
 <table>
 <thead>
@@ -347,14 +349,14 @@ A blended batch is fine <em>if chosen</em>, not as a side effect of sorting.</li
 </table>
 <p><strong>The anti-pattern to avoid:</strong> a single agentic skill/loop that &quot;runs the PDCA cycle.&quot; It feels like more automation and is less — it re-inserts a model into the control path the design works to keep deterministic (no LLM in the gating path). The cycle is <em>run by</em> a script; the model is <em>invoked by</em> the script at its leaves. Hold that inversion and the rest follows.</p>
 <p>Each model leaf's instructions live in a canonical, vendor-neutral body <code>agents/&lt;name&gt;.md</code> (planner, builder, sign-off, publisher, act); Claude leaves are packaged as <code>.claude/agents/*.md</code> subagents (frontmatter wrapper + that body) so <code>--agent</code> resolves, while non-Claude leaves read the <code>agents/</code> body inline. Each leaf's file pins its own consistency, so don't share one across leaves. The <strong>reviewer</strong> is the one deliberately decorrelated leaf — a <em>different vendor</em> from the builder (Codex via <code>AGENTS.md</code>), since independence is a Check property.</p>
-<h2>Driver skeleton</h2>
+<h2 id="driver-skeleton">Driver skeleton</h2>
 <blockquote>
 <p><strong>Maturity: [built].</strong> This is the reference shape of the L2 driver;
 the shipped implementation in <code>src/pdca_harness/</code> (<code>state.py</code>,
 <code>driver.py</code>, <code>gates.py</code>, <code>leaves.py</code>, <code>assemble.py</code>) follows it. The
 sketch below is kept as the readable model — read the modules for the
 exact code. Each function corresponds to a piece in the
-<a href="#build-order">Build order</a> below.</p>
+<a href="#build-order-restated-as-concrete-deliverables">Build order</a> below.</p>
 </blockquote>
 <p>The driver is a thin loop: read each issue's file-state, run the next
 beat's command, write its artifact, advance, STOP at AWAITING_SIGNOFF.
@@ -484,7 +486,7 @@ project fills those rows in, which is why <strong>gates come first</strong> in t
 per-project build order. See
 <a href="/spec/04-validation-tooling.html">04 - Validation Tooling</a> for the tier × home decomposition that
 drives where each gate is built.</p>
-<h2>Build order (restated as concrete deliverables)</h2>
+<h2 id="build-order-restated-as-concrete-deliverables">Build order (restated as concrete deliverables)</h2>
 <p>Status against each step is shown in brackets. The driver, queue, and
 Act tooling all <strong>ship</strong>; what each project supplies is the L1 scraper,
 the real gate rows, and the real leaf commands.</p>
@@ -506,7 +508,7 @@ burn-down index.</li>
 <li><strong>The two leaf instruction files</strong> <strong>[built]</strong> — the builder subagent
 (<code>.claude/agents/builder.md</code>) and the reviewer (<code>AGENTS.md</code> +
 <code>.claude/agents/reviewer.md</code>), with the ready-mark enforced by
-<code>.claude/hooks/builder_guard.py</code> (see <a href="#do--full">Do — full</a>). The
+<code>.claude/hooks/builder_guard.py</code> (see <a href="#do--full-headless-builder-subagent-scope">Do — full</a>). The
 configs ship; the leaves run as offline stubs until
 <code>leaves_mode = &quot;command&quot;</code> in <code>pdca.toml</code> wires a real model.</li>
 <li><strong>Act tooling (L4)</strong> <strong>[built]</strong> — <code>pdca act index</code> (bundle index
@@ -526,6 +528,8 @@ indefinitely.</li>
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

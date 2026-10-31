@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0008. The driver is pure stdlib, Python ≥ 3.11 — PDCA Harness</title>
+<meta name="description" content="The driver is rendered into every instance and runs on maintainers&#x27; machines, in CI and in">
+<meta property="og:title" content="0008. The driver is pure stdlib, Python ≥ 3.11 — PDCA Harness">
+<meta property="og:description" content="The driver is rendered into every instance and runs on maintainers&#x27; machines, in CI and in">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0008-the-driver-is-pure-stdlib-python--311">0008. The driver is pure stdlib, Python ≥ 3.11</h1>
+<h2 id="context">Context</h2>
+<p>The driver is rendered into every instance and runs on maintainers' machines, in CI and in
+sandboxes next to whatever toolchain the target project uses. Third-party dependencies would
+have to be installed and kept compatible in every one of those environments.</p>
+<h2 id="decision">Decision</h2>
+<p>The driver uses the Python standard library only: <code>dependencies = []</code> and
+<code>requires-python = &quot;&gt;=3.11&quot;</code> in <code>template/pyproject.toml.jinja</code>, from the first commit
+(<code>3ca179a</code>, 2026-06-04). External tools (<code>git</code>, <code>gh</code>, the model CLIs, Copier) are invoked as
+subprocesses and checked by <code>pdca doctor</code>.</p>
+<h2 id="consequences">Consequences</h2>
+<p>An instance needs only Python and the CLIs it already uses. Parsing TOML uses <code>tomllib</code>
+(hence 3.11). Anything a library would give — schema validation, structured config, typed
+records — is written by hand; migration steps 1 and 3 keep to this when they add records and
+output schemas. The docs site renderer under <code>docs/publishing/</code> is outside the driver and may
+use its own pinned packages.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

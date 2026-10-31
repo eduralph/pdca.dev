@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5. Building block view — PDCA Harness</title>
+<meta name="description" content="Grouped by the layer of the target architecture">
+<meta property="og:title" content="5. Building block view — PDCA Harness">
+<meta property="og:description" content="Grouped by the layer of the target architecture">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="5-building-block-view">5. Building block view</h1>
+<blockquote>
+<p>Living document. The modules of <code>template/src/pdca_harness/</code> (28,046 lines at <code>d6057eb</code>) and
+what each is responsible for. Open questions are marked <strong>[OPEN]</strong> inline.</p>
+</blockquote>
+<h2 id="51-components">5.1 Components</h2>
+<p>Grouped by the layer of the <a href="/design/proposals/accepted/0002-target-architecture.html">target architecture</a>
+each will move to. Today the three concerns — what the harness <em>knows</em>, <em>decides</em> and <em>does</em> —
+are interleaved, mainly in <code>flow.py</code>, <code>leaves.py</code> and <code>assemble.py</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Target layer</th>
+<th>Modules today (lines)</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Records</td>
+<td><code>state.py</code> (377), <code>brief.py</code> (371), <code>signoff.py</code> (387), <code>assemble.py</code> (1,081), <code>rubric.py</code> (282), <code>record.py</code> (225)</td>
+<td>Read state from files; parse briefs and §6/§9; assemble <code>SUMMARY.md</code>; commit finished bundles.</td>
+</tr>
+<tr>
+<td>Machine</td>
+<td><code>driver.py</code> (494), <code>flow.py</code> (2,834)</td>
+<td>Advance a bundle one beat (<code>driver</code>); run whole batches (<code>flow</code>). Two drivers exist for one state machine (<code>flow.flow</code> and <code>flow_ids</code>).</td>
+</tr>
+<tr>
+<td>Effects</td>
+<td><code>leaves.py</code> (4,706), <code>gates.py</code> (1,029), <code>progress.py</code> (1,103), <code>worktree.py</code> (640), <code>publish.py</code> (1,193), <code>sources.py</code> (324), <code>families.py</code> (172), <code>drive_claim.py</code> (297), <code>sweep.py</code> (307)</td>
+<td>Invoke model CLIs with heartbeat and memory caps; run gates; manage worktrees; open draft PRs; fetch tracker sources; per-bundle claims.</td>
+</tr>
+<tr>
+<td>Roles</td>
+<td>prompts and stubs inside <code>leaves.py</code>; <code>agents/*.md</code> in the template</td>
+<td>What each leaf is told and what it may see.</td>
+</tr>
+<tr>
+<td>Policies</td>
+<td><code>sizing.py</code> (565), <code>size_signal.py</code> (522), <code>autoiterate.py</code> (472), <code>plan_policy.py</code> (297), <code>dependency_halt.py</code> (270), <code>split.py</code> (1,340)</td>
+<td>Size estimate and signal, auto-iterate eligibility, Plan-exit checks, external-dependency adjudication, splitting.</td>
+</tr>
+<tr>
+<td>Orchestration</td>
+<td><code>waves.py</code> (350), <code>integrate.py</code> (990), <code>merge.py</code> (638), <code>merged.py</code> (211), <code>revert.py</code> (176), <code>lane.py</code>, <code>queue.py</code>, <code>preflight.py</code></td>
+<td>Wave levelling, the stack-mode integration line and carry, merge mode, revert detection, lanes.</td>
+</tr>
+<tr>
+<td>Act and housekeeping</td>
+<td><code>act.py</code> (873), <code>triage.py</code> (613), <code>cleanup.py</code> (542), <code>handoff.py</code> (695), <code>revalidate.py</code>, <code>drift.py</code></td>
+<td>Act index and log; PR-review triage into the ledger; tracker cleanup; interactive-session hand-off and exit contracts.</td>
+</tr>
+<tr>
+<td>Entry and config</td>
+<td><code>cli.py</code> (1,508), <code>config.py</code> (956), <code>doctor.py</code> (563), <code>guard.py</code>, <code>registry.py</code></td>
+<td>The <code>pdca</code> command; <code>pdca.toml</code>; environment checks; the STOP-discipline guard.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>[OPEN]</strong> The module graph is cyclic (about twenty <code>from . import …  # avoid an import cycle</code>
+sites). Steps 2–4 of the migration remove the cycles by giving each layer one direction of
+call.</p>
+<h2 id="52-build-time-components">5.2 Build-time components</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>copier.yml</code>, <code>template/**/*.jinja</code></td>
+<td>The template and its questions.</td>
+</tr>
+<tr>
+<td><code>template/PCDA/quality-cycle/</code></td>
+<td>The model specification, vendored into every instance.</td>
+</tr>
+<tr>
+<td><code>template/tests/</code> (about 2,460 tests)</td>
+<td>Offline driver suite; runs every leaf as a stub.</td>
+</tr>
+<tr>
+<td><code>tests/</code> (root)</td>
+<td>Renders the template with Copier and runs <code>copier update</code> from the previous release.</td>
+</tr>
+<tr>
+<td><code>docs/publishing/</code></td>
+<td>Builds the pdca.dev site from <code>docs/*.md</code> and the spec.</td>
+</tr>
+</tbody>
+</table>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

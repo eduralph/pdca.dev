@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0018. Proposal and specification process, lifecycle, and immutability — PDCA Harness</title>
+<meta name="description" content="ADR-0001 defines the process for ADRs only. Proposals and specifications need their own,">
+<meta property="og:title" content="0018. Proposal and specification process, lifecycle, and immutability — PDCA Harness">
+<meta property="og:description" content="ADR-0001 defines the process for ADRs only. Proposals and specifications need their own,">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0018-proposal-and-specification-process-lifecycle-and-immutability">0018. Proposal and specification process, lifecycle, and immutability</h1>
+<h2 id="context">Context</h2>
+<p>ADR-0001 defines the process for ADRs only. Proposals and specifications need their own,
+because they carry review history, implementation scope, compatibility contracts or
+conformance requirements, and an accepted plan or a stable contract that can still be
+edited in place is not a reliable record.</p>
+<p>The classes still differ: the architecture overview is living and changes with the system;
+ADRs are historical decisions; proposals are accepted implementation plans; specifications
+are normative compatibility contracts.</p>
+<h2 id="decision">Decision</h2>
+<p>Proposals and specifications use YAML frontmatter as their lifecycle source of truth, as
+ADRs do. Their accepted or stable states are frozen and change by supersession, replacement
+or a new version, never by rewriting the file.</p>
+<h3 id="proposals">Proposals</h3>
+<p>Proposals live in <code>docs/design/proposals/</code>, named <code>NNNN-kebab-title.md</code> with a number that is
+never reused. Drafts live in <code>draft/</code>; accepted, implemented, superseded or withdrawn
+proposals live in <code>accepted/</code>. Valid <code>status:</code> values:</p>
+<ul>
+<li><strong>draft</strong>: a working proposal; edit freely.</li>
+<li><strong>accepted</strong>: ratified as the plan of record. The file moves from <code>draft/</code> to <code>accepted/</code>
+and <code>status:</code> becomes <code>accepted</code> in the same change.</li>
+<li><strong>implemented</strong>: the scoped work has landed. Terminal.</li>
+<li><strong>superseded</strong>: a later proposal replaces it (ADR-0019).</li>
+<li><strong>withdrawn</strong>: explicitly abandoned. Terminal.</li>
+</ul>
+<p>After a proposal leaves <code>draft</code>, its body is not rewritten. If the plan changes materially,
+write a new proposal that supersedes or rescopes it. Small implementation facts go in the
+living architecture or in code comments.</p>
+<h3 id="specifications">Specifications</h3>
+<p>Specifications live in <code>docs/design/specs/&lt;domain&gt;/v&lt;N&gt;.md</code> and use
+<code>../templates/spec.md</code>. Valid <code>status:</code> values:</p>
+<ul>
+<li><strong>draft</strong>: under development; edit freely; must carry an instability marker.</li>
+<li><strong>stable</strong>: a ratified contract for its <code>version:</code>. <code>status:</code> and <code>stability:</code> both
+become <code>stable</code> in the same change.</li>
+<li><strong>superseded</strong>: a later version or spec replaces it (ADR-0019).</li>
+<li><strong>withdrawn</strong>: abandoned before it became stable.</li>
+</ul>
+<p>Any normative change to a stable spec (fields, wire behavior, bytes on disk, compatibility
+guarantees, required errors, reader or writer behavior) needs a new version or a
+superseding spec. Conformance vectors under a version directory are part of that spec:
+changing, deleting or adding one for a stable version is a spec change.</p>
+<h3 id="ci-enforcement">CI enforcement</h3>
+<p><code>docs-immutability</code> covers ADRs, proposals and specs with one rule: it reads <code>status:</code> from
+the pull request's base, lets draft/Proposed documents be edited or ratified, allows new
+documents and index/README edits, and rejects modifying, deleting or renaming anything
+already accepted, implemented, stable, superseded or withdrawn. The one exception is the
+supersession stamp in ADR-0019.</p>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Accepted proposals and stable specs are records people can rely on.</li>
+<li>Changes after acceptance need a new document, a small and intended cost.</li>
+<li>One CI check covers all three ratified classes.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

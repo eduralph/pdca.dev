@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0001. Record architecture decisions — PDCA Harness</title>
+<meta name="description" content="pdca-harness has made decisions since its first commit that everything else">
+<meta property="og:title" content="0001. Record architecture decisions — PDCA Harness">
+<meta property="og:description" content="pdca-harness has made decisions since its first commit that everything else">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0001-record-architecture-decisions">0001. Record architecture decisions</h1>
+<h2 id="context">Context</h2>
+<p>pdca-harness has made decisions since its first commit (2026-06-04) that everything else
+depends on: file-derived state, a human-only accept, a decorrelated reviewer. None of them is
+written down outside commit messages and docstrings. The result is visible in the tracker:
+#505 (restructure outline) and #607 (state read back from Markdown) both re-derive decisions
+the code already embodies, and docstrings carry issue history at more than one line of prose
+per line of code. The approach review of 2026-10-15 named this as a gap.</p>
+<h2 id="decision">Decision</h2>
+<p>We will record significant decisions as Architecture Decision Records in
+<code>docs/design/adr/</code>, using the Nygard-style template in <code>docs/design/templates/adr.md</code>.</p>
+<ul>
+<li>Files are numbered <code>NNNN-short-title.md</code> and indexed in <code>adr/README.md</code>.</li>
+<li>An ADR starts as Proposed. Once Accepted it MUST NOT be edited; a later ADR supersedes it,
+and the index records the supersession.</li>
+<li>A decision is &quot;significant&quot; when reversing it would change what the harness guarantees
+(the accept path, decorrelation, the evidence rule), the shape of the bundle files, or the
+contract with rendered instances.</li>
+<li>Decisions made before this ADR are backfilled (0002–0008), each dated to the commit or
+issue that made it.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>The reasons for the driver's shape survive refactors, and a migration step can cite the
+decision it changes. Reopening a settled question needs a new ADR, which costs more than an
+issue comment; that is intended. Docstrings can drop their issue history over time and point
+at an ADR instead.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -35,14 +37,14 @@
   <main>
     <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
     <article class="prose">
-<h1>Step 02 — Rehearse offline</h1>
+<h1 id="step-02--rehearse-offline">Step 02 — Rehearse offline</h1>
 <p>← <a href="/guide/01-render-and-integrate.html">01 Render &amp; integrate</a> · <a href="/guide/">Index</a> · next: <a href="/guide/03-plan.html">03 Plan →</a></p>
 <p>Before any beat touches a real model or runs a live gate, drive the <strong>whole
 control flow offline</strong> with stub leaves and stub gates. This is the single most
 valuable habit when adopting the harness: it proves the <em>plumbing</em> (state
 transitions, artifact assembly, archiving on iterate) independent of any model
 behaviour, in well under a second, for free.</p>
-<h2>The toy bundle</h2>
+<h2 id="the-toy-bundle">The toy bundle</h2>
 <p>The template ships a worked brief at <code>examples/toy/brief.md</code> whose only purpose is
 to let the driver run end-to-end with nothing wired up:</p>
 <pre><code class="language-markdown"># Brief — issue TOY / off-by-one-in-pager
@@ -63,7 +65,7 @@ to let the driver run end-to-end with nothing wired up:</p>
 </code></pre>
 <p>Note the <code>- **Label:** value</code> shape — those labels are exactly what the driver
 parses out of every brief, including your real ones.</p>
-<h2>Drive it, beat by beat</h2>
+<h2 id="drive-it-beat-by-beat">Drive it, beat by beat</h2>
 <pre><code class="language-bash"># seed a bundle from the toy brief  →  state: PLANNED
 PYTHONPATH=src python -m pdca_harness.cli init-issue TOY --from-brief examples/toy/brief.md
 
@@ -85,23 +87,26 @@ PYTHONPATH=src python -m pdca_harness.cli signoff TOY --iterate-do    # → arch
 PYTHONPATH=src python -m pdca_harness.cli signoff TOY --iterate-plan  # → archives brief too, back to UNPLANNED
 PYTHONPATH=src python -m pdca_harness.cli signoff TOY --discontinue   # → DISCONTINUED (terminal)
 </code></pre>
-<h2>The one-shot rehearsal</h2>
+<h2 id="the-one-shot-rehearsal">The one-shot rehearsal</h2>
 <p>Typing the beats individually is good for <em>seeing</em> the state machine. To rehearse
-the <strong>same orchestration <code>pdca flow</code> uses</strong> — Plan → Do → Check → sign-off →
-publish — but entirely stubbed, use the <code>--rehearse</code> flag:</p>
+the <strong>same orchestration <code>pdca flow</code> uses</strong> — Plan → Do → Check, through
+Check's sign-off and publish steps — but entirely stubbed, use the <code>--rehearse</code>
+flag:</p>
 <pre><code class="language-bash">pdca flow TOY --rehearse
 </code></pre>
 <p>This forces <code>PDCA_LEAVES_MODE=stub</code>, stubs the gates, dry-runs the publish, and
 writes to a throwaway bundle root (<code>.rehearse/</code>, not your real <code>results/</code>). No
-Claude, no Docker, no network — just the control flow, instantly. gramps used
-this constantly while building out its <code>engine/</code> gates, because it answers &quot;did I
-break the driver?&quot; without &quot;is the model having a bad day?&quot; muddying the signal.</p>
-<h2>What you've proven</h2>
+Claude, no Codex, no <code>cargo</code>, no network — just the control flow, instantly. Wyrd's
+maintainer used this constantly while wiring <code>engine/xtask.sh</code> and the per-fix
+verifier, because it answers &quot;did I break the driver?&quot; without &quot;is the model
+having a bad day?&quot; muddying the signal.</p>
+<h2 id="what-youve-proven">What you've proven</h2>
 <p>After a green rehearsal you know the <strong>plumbing</strong> is sound: states derive
 correctly from files, the SUMMARY assembles, iterate archives into
 <code>iteration-v&lt;N&gt;/</code>, and the sign-off transitions fire. Now — and only now — is it
 worth pointing the beats at real models and real gates. The next five steps walk
-one <strong>live</strong> gramps cycle through each beat.</p>
+one <strong>live</strong> Wyrd cycle — issue 779, a <code>Server</code> header on every response of
+Wyrd's S3 gateway — through each beat.</p>
 <p>← <a href="/guide/01-render-and-integrate.html">01 Render &amp; integrate</a> · <a href="/guide/">Index</a> · next: <a href="/guide/03-plan.html">03 Plan →</a></p>
 
     </article>
@@ -115,6 +120,8 @@ one <strong>live</strong> gramps cycle through each beat.</p>
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pdca-harness — design documentation — PDCA Harness</title>
+<meta name="description" content="The design documentation is organized into four classes, each with its own purpose and">
+<meta property="og:title" content="pdca-harness — design documentation — PDCA Harness">
+<meta property="og:description" content="The design documentation is organized into four classes, each with its own purpose and">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="pdca-harness--design-documentation">pdca-harness — design documentation</h1>
+<p>The design documentation is organized into four classes, each with its own purpose and
+change process. The split is the one pdca-harness gives every rendered project through
+<a href="https://github.com/eduralph/pdca-project-template">pdca-project-template</a>: some documents
+describe the system and change with it, some record decisions and never change, and some are
+contracts that other code must honour.</p>
+<p>The walkthrough in <a href="/guide/"><code>docs/</code></a> stays the applied guide — how to render, integrate
+and run the harness. This folder records <em>why</em> the driver is shaped the way it is, so the same
+debates are not re-derived in issues.</p>
+<h2 id="the-four-document-classes">The four document classes</h2>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Location</th>
+<th>Nature</th>
+<th>Change process</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Specifications</td>
+<td><a href="/design/specs/"><code>specs/</code></a></td>
+<td>Normative, versioned</td>
+<td>Strict; a stable version is never edited, only replaced by a new version</td>
+</tr>
+<tr>
+<td>2. Architecture overview</td>
+<td><a href="/design/architecture/01-introduction-and-goals.html"><code>architecture/</code></a></td>
+<td>Descriptive, living</td>
+<td>Edited continuously; always describes the current system</td>
+</tr>
+<tr>
+<td>3. Decision records (ADRs)</td>
+<td><a href="/design/adr/"><code>adr/</code></a></td>
+<td>Immutable history</td>
+<td>Append-only; superseded, never edited</td>
+</tr>
+<tr>
+<td>4. Enhancement proposals</td>
+<td><a href="/design/proposals/"><code>proposals/</code></a></td>
+<td>The change process</td>
+<td>Draft → accepted → implemented; accepted records are immutable</td>
+</tr>
+</tbody>
+</table>
+<h3 id="1-specifications-specs">1. Specifications (<code>specs/</code>)</h3>
+<p>Contracts that more than one piece of code depends on, written in RFC 2119 language
+(MUST / SHOULD / MAY). Write one before a second consumer depends on the format. The
+quality-cycle model in <a href="/spec/"><code>template/PCDA/quality-cycle/</code></a>
+is the harness's first specification; it is referenced from <code>specs/</code>, not copied, so it keeps a
+single source.</p>
+<h3 id="2-architecture-overview-architecture">2. Architecture overview (<code>architecture/</code>)</h3>
+<p>A trimmed <a href="https://arc42.org/">arc42</a> structure (a standard set of chapters for describing a
+software architecture). It describes the system as it currently is and must not lag the code.
+Where the <a href="/design/proposals/accepted/0002-target-architecture.html">target architecture</a> differs from
+today, a chapter says so and names the migration step that closes the gap.</p>
+<h3 id="3-architecture-decision-records-adr">3. Architecture Decision Records (<code>adr/</code>)</h3>
+<p>Short, numbered records of <em>why</em> a decision was made. An ADR is never edited after
+acceptance; a later ADR supersedes it. Format: the lightweight
+<a href="https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions">Nygard-style</a>
+template. See <a href="/design/adr/0001-record-architecture-decisions.html">ADR-0001</a>.</p>
+<h3 id="4-enhancement-proposals-proposals">4. Enhancement proposals (<code>proposals/</code>)</h3>
+<p>How larger changes and milestone plans are proposed (modeled on Kubernetes KEPs and Rust
+RFCs). A proposal moves from <code>draft/</code> to <code>accepted/</code> and carries motivation, design,
+alternatives and graduation criteria.</p>
+<p>The fill-in templates for all four classes are in <a href="/design/templates/"><code>templates/</code></a>.</p>
+<h2 id="process-rules">Process rules</h2>
+<p>These rules come from the <a href="/design/proposals/accepted/0001-approach-review-2026-10.html">approach review</a>
+and keep the structure current:</p>
+<ul>
+<li><strong>A migration step opens with its ADR.</strong> Each step of the
+<a href="/design/architecture/09-build-order-and-roadmap.html">migration order</a> carries its ADR in its first
+PR; the step is not open until that ADR is Accepted.</li>
+<li><strong>Structural PRs update the architecture.</strong> A PR that changes a layer boundary, a record
+format or a role contract updates <code>architecture/</code> in the same PR.</li>
+<li><strong>Act feeds the decision record.</strong> An Act delta that changes architecture (not just a gate,
+a brief field or a prompt line) is filed as a proposal; its acceptance produces an ADR.</li>
+<li><strong>Instances reference, never copy.</strong> An instance keeps its own <code>docs/design/</code> for its own
+decisions and refers to harness ADRs by number.</li>
+</ul>
+<h2 id="conventions">Conventions</h2>
+<ul>
+<li><strong>Diagrams as code.</strong> Diagrams are Mermaid source in the Markdown, never binary exports.</li>
+<li><strong>Docs live with code.</strong> Documentation is in the same repository as the code it describes
+and is reviewed in the same pull requests.</li>
+<li><strong>ADR-first habit.</strong> When a design question is settled, the output is an ADR, not an issue
+comment.</li>
+<li><strong>Cite the code.</strong> A claim about the driver names <code>path:line</code> on <code>main</code> at a stated commit,
+the same rule briefs and reviews follow.</li>
+</ul>
+<h2 id="reading-order-for-newcomers">Reading order for newcomers</h2>
+<ol>
+<li><a href="/design/architecture/01-introduction-and-goals.html"><code>architecture/01-introduction-and-goals.md</code></a> — what the harness is and why.</li>
+<li><a href="/design/architecture/08-crosscutting-concepts.html"><code>architecture/08-crosscutting-concepts.md</code></a> — the core concepts.</li>
+<li><a href="/design/adr/"><code>adr/</code></a> — the founding decisions.</li>
+<li><a href="/design/architecture/09-build-order-and-roadmap.html"><code>architecture/09-build-order-and-roadmap.md</code></a> — the migration order and where to start.</li>
+</ol>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

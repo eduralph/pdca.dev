@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enhancement proposals — PDCA Harness</title>
+<meta name="description" content="KEP/RFC-style proposals for larger changes and milestone plans. Start one by copying">
+<meta property="og:title" content="Enhancement proposals — PDCA Harness">
+<meta property="og:description" content="KEP/RFC-style proposals for larger changes and milestone plans. Start one by copying">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="enhancement-proposals">Enhancement proposals</h1>
+<p>KEP/RFC-style proposals for larger changes and milestone plans. Start one by copying
+<a href="/design/templates/proposal.html"><code>../templates/proposal.md</code></a> into <code>draft/</code>. Accepted proposals move
+to <code>accepted/</code> and are never edited; a later supersession is recorded <strong>here</strong>, not on the
+frozen file.</p>
+<p>An Act delta that changes the architecture (not just a gate, a brief field or a prompt line)
+is filed here as a proposal; its acceptance produces an ADR.</p>
+<h2 id="index">Index</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Title</th>
+<th>Status</th>
+<th>Tracking</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="/design/proposals/accepted/0001-approach-review-2026-10.html">0001</a></td>
+<td>pdca-harness — approach review (Oct 2026)</td>
+<td>accepted 2026-10-15</td>
+<td><a href="https://github.com/eduralph/pdca-harness/issues/709">#709</a></td>
+</tr>
+<tr>
+<td><a href="/design/proposals/accepted/0002-target-architecture.html">0002</a></td>
+<td>Target architecture and migration order</td>
+<td>accepted 2026-10-15</td>
+<td><a href="https://github.com/eduralph/pdca-harness/issues/709">#709</a>; steps <a href="https://github.com/eduralph/pdca-harness/issues/711">#711</a>, <a href="https://github.com/eduralph/pdca-harness/issues/712">#712</a>, <a href="https://github.com/eduralph/pdca-harness/issues/716">#716</a>, <a href="https://github.com/eduralph/pdca-harness/issues/713">#713</a>, <a href="https://github.com/eduralph/pdca-harness/issues/714">#714</a>, <a href="https://github.com/eduralph/pdca-harness/issues/715">#715</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="decisions-taken-at-acceptance">Decisions taken at acceptance</h2>
+<p>Recorded here because accepted proposals are not edited:</p>
+<ul>
+<li><strong>Cost is measured in tokens, not dollars.</strong> Wherever 0001 and 0002 say &quot;cost&quot;, &quot;dollars&quot;,
+<code>total_cost_usd</code> or <code>max_budget_usd</code>, the accepted reading is token counts (input, output,
+cache read, cache write) and a <code>max_tokens</code> budget. See #711.</li>
+<li><strong>Instances are not pinned.</strong> 0002's &quot;instances stay pinned at v0.59 until the step-1
+renderer passes golden tests&quot; is not adopted; instances keep following <code>main</code> (ADR-0016).</li>
+<li><strong>The §6 parser bugs</strong> #606, #608, #634 and #644 moved to 0.62 to land with step 1; #642
+stays in 0.61.</li>
+</ul>
+<h2 id="candidates">Candidates</h2>
+<p>Documents written elsewhere that belong here once someone moves them: wyrd-pdca's
+oversized-slices report (2026-07-31), its backlog-reversal proposal (2026-09-11), and the
+restructure outline in #505.</p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

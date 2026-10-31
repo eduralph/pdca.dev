@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration reference — every `pdca.toml` section and key — PDCA Harness</title>
+<meta name="description" content="← 08 Command reference · Index · next: 10 Upgrading an instance →">
+<meta property="og:title" content="Configuration reference — every `pdca.toml` section and key — PDCA Harness">
+<meta property="og:description" content="← 08 Command reference · Index · next: 10 Upgrading an instance →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="configuration-reference--every-pdcatoml-section-and-key">Configuration reference — every <code>pdca.toml</code> section and key</h1>
+<p>← <a href="/guide/08-command-reference.html">08 Command reference</a> · <a href="/guide/">Index</a> · next: <a href="/guide/10-upgrading-an-instance.html">10 Upgrading an instance →</a></p>
+<p><code>pdca.toml</code> is the driver's only configuration file. The rendered copy carries a
+long comment above almost every key — the authority for the version you have —
+and this page is the map: each section, each key, what it changes, and where the
+walkthrough shows it in use. Defaults are those of template <code>v0.59.0</code>. A key
+shown commented out in the rendered file is optional and off until you uncomment
+it.</p>
+<p>Two rules of TOML that have bitten instances, worth stating up front:</p>
+<ul>
+<li><strong>A key belongs to the table header above it.</strong> A bare <code>[driver]</code> key written
+after <code>[driver.sizing]</code> lands in the sub-table and is silently ignored, so new
+<code>[driver]</code> keys go above the sub-tables. The rendered file keeps <code>size_guard</code>
+last among the bare keys for that reason.</li>
+<li><strong>A table may be declared once.</strong> <code>[leaves.sandbox]</code> takes both of its keys
+under one header; a second header makes <code>tomllib</code> refuse the file and every
+command exits 2 (<a href="/guide/11-troubleshooting.html">11</a>).</li>
+<li><strong>Booleans are unquoted.</strong> <code>dependency_halt = &quot;true&quot;</code> and
+<code>network_access = &quot;true&quot;</code> are strings and stay off.</li>
+</ul>
+<h2 id="project"><code>[project]</code></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>render answer</td>
+<td>Human-readable project name, used in prompts and headings.</td>
+</tr>
+<tr>
+<td><code>default_branch</code></td>
+<td>render answer</td>
+<td>The branch fixes target unless an INTEGRATION §2 area rule or a brief's <code>Repo + branch target</code> says otherwise.</td>
+</tr>
+<tr>
+<td><code>author</code></td>
+<td>render answer</td>
+<td>Default §9 sign-off attribution, so <code>flow</code> and <code>signoff</code> need no <code>--by</code>.</td>
+</tr>
+<tr>
+<td><code>rubric_file</code>, <code>rubric_section</code></td>
+<td>unset</td>
+<td>The target repo's standing review rubric, a path relative to the <strong>target</strong> checkout, optionally narrowed to one <code>## Heading</code>. Snapshotted per attempt and handed to the builder, reviewer and adversary alike, so the builder sees the criteria it will be judged by. <code>pdca triage</code> reads its class list too. Wyrd points it at the target's <code>AGENTS.md</code> § &quot;Review rubric &amp; protocol&quot;.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="paths"><code>[paths]</code></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bundle_root</code></td>
+<td><code>results</code></td>
+<td>Where <code>issue_&lt;id&gt;/</code> bundles live. <code>PDCA_BUNDLE_ROOT</code> redirects it for one run; <code>--rehearse</code> points it at <code>.rehearse/</code>.</td>
+</tr>
+<tr>
+<td><code>process_dir</code></td>
+<td><code>process</code></td>
+<td>Cross-cycle artifacts: <code>act-log.md</code>, <code>act-ledger.json</code>, <code>.act-reviewed</code>, <code>.drive-claims/</code>.</td>
+</tr>
+<tr>
+<td><code>templates_dir</code></td>
+<td><code>templates</code></td>
+<td>The artifact templates (<a href="/guide/10-upgrading-an-instance.html#the-templates-folder">10</a>).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="driver"><code>[driver]</code></h2>
+<p>The run's shape. Covered in <a href="/guide/07-crosscutting.html">07</a> unless noted.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lanes</code></td>
+<td><code>1</code></td>
+<td>Worker-pool size for the unattended Do + Check band; Plan, sign-off, publish and Act stay serial. <code>PDCA_LANES</code> or <code>--lanes</code> override for one run. Gates see their slot as <code>$PDCA_LANE</code>.</td>
+</tr>
+<tr>
+<td><code>max_passes</code></td>
+<td><code>20</code></td>
+<td>Build → sign-off passes a wave gets before the driver stops driving a bundle; also sizes the run's pass pool. Never silent: the bundle is named with a resume hint.</td>
+</tr>
+<tr>
+<td><code>auto_iterate</code></td>
+<td><code>false</code></td>
+<td>Record <code>iterate-do</code> and rebuild while §6 carries implementation findings; human-judgment findings are deferred to the handover. Never accepts. <code>PDCA_AUTO_ITERATE</code> or <code>--auto-iterate</code> override.</td>
+</tr>
+<tr>
+<td><code>max_auto_iters</code></td>
+<td><code>3</code></td>
+<td>Hard cap on automatic rounds per bundle, clamped below <code>max_passes</code>. <code>PDCA_MAX_AUTO_ITERS</code> overrides.</td>
+</tr>
+<tr>
+<td><code>worktree</code></td>
+<td><code>true</code></td>
+<td>Run Do and Check in a per-cycle git worktree off the target's base (<code>$PDCA_WORKTREE</code>); the primary checkout is never edited. Best-effort: a non-git target falls back to in place (<a href="/guide/04-do.html#isolated-in-a-worktree-issue-94">04</a>).</td>
+</tr>
+<tr>
+<td><code>overflow</code></td>
+<td><code>0</code></td>
+<td>Cap on throwaway worktrees for a gate read against a lane another bundle owns. <code>0</code> disables; the lane is healed in place instead.</td>
+</tr>
+<tr>
+<td><code>lane_preflight</code></td>
+<td>unset</td>
+<td>One command run before a <code>lanes &gt; 1</code> fan-out, <code>{lanes}</code> interpolated; non-zero aborts the run. The <code>per_lane</code> doctor rows run regardless.</td>
+</tr>
+<tr>
+<td><code>wave_mode</code></td>
+<td><code>&quot;stack&quot;</code></td>
+<td>How a wave's accepted work reaches the next wave's base: <code>&quot;stack&quot;</code> folds PR branches onto a run-scoped integration line, push-only and fork-safe; <code>&quot;merge&quot;</code> has the driver merge each non-final wave's PRs (own-repo only, needs merge rights).</td>
+</tr>
+<tr>
+<td><code>merge_method</code></td>
+<td><code>&quot;merge&quot;</code></td>
+<td>The <code>gh pr merge</code> strategy in merge mode: <code>merge</code>, <code>squash</code> or <code>rebase</code>.</td>
+</tr>
+<tr>
+<td><code>merge_requires</code></td>
+<td><code>&quot;all&quot;</code></td>
+<td>Merge mode: <code>&quot;all&quot;</code> reads the PR's full check rollup, brings a behind-base head up to date and merges pinned to it; <code>&quot;required&quot;</code> trusts branch protection alone.</td>
+</tr>
+<tr>
+<td><code>merge_wait_secs</code></td>
+<td><code>300</code></td>
+<td>Merge mode: how long to wait for a fresh PR's checks to register and report before refusing; also covers the branch update. <code>0</code> reads once. A green is confirmed by a second read 15 s later, so values 1 to 14 refuse every PR.</td>
+</tr>
+<tr>
+<td><code>expected_checks</code></td>
+<td><code>[]</code></td>
+<td>Merge mode: check names a complete rollup must contain, so a slow job that has not registered cannot be mistaken for absent.</td>
+</tr>
+<tr>
+<td><code>regate_between_waves</code></td>
+<td><code>false</code></td>
+<td>Stack mode: run the repo-scoped gates over each folded tip before the next wave builds on it.</td>
+</tr>
+<tr>
+<td><code>act_cadence</code></td>
+<td><code>5</code></td>
+<td>Frozen cycles since the last Act review before <code>flow</code> runs Act on its own. <code>1</code> restores &quot;after every flow&quot;; <code>pdca act log</code> ignores it (<a href="/guide/06-act.html#cadence--why-act-doesnt-fire-every-cycle">06</a>).</td>
+</tr>
+<tr>
+<td><code>sweep_worktrees</code></td>
+<td><code>&quot;clean&quot;</code></td>
+<td>What <code>flow</code> does with the harness's worktrees after a run: <code>clean</code> strips build state, <code>remove</code> deletes lane worktrees too, <code>off</code> never sweeps automatically.</td>
+</tr>
+<tr>
+<td><code>close_dispositions</code></td>
+<td>built-in list</td>
+<td><code>Disposition hint</code> values that skip the builder and reviewer and route straight to a confirm-the-close sign-off (<a href="/guide/04-do.html#the-close-disposition-fast-path">04</a>).</td>
+</tr>
+<tr>
+<td><code>size_guard</code></td>
+<td><code>&quot;off&quot;</code></td>
+<td><code>&quot;warn&quot;</code> prints the a-priori size signal before Do. There is no blocking mode; <code>&quot;hold&quot;</code> is accepted and treated as <code>&quot;warn&quot;</code> (<a href="/guide/03-plan.html#the-two-guards">03</a>).</td>
+</tr>
+<tr>
+<td><code>dependency_guard</code></td>
+<td><code>&quot;hold&quot;</code></td>
+<td>Hold a bundle before Do when a brief's <code>External dependencies</code> token names no doctor row, or its row's command fails. <code>&quot;warn&quot;</code> or <code>&quot;off&quot;</code> relax it. Not pre-populated; add the key to change it.</td>
+</tr>
+<tr>
+<td><code>dependency_halt</code></td>
+<td><code>false</code></td>
+<td>Adjudicate a dependency the <strong>builder</strong> declares in <code>build-notes.md</code> at <code>BUILT</code>: confirmed ⇒ park at sign-off without a reviewer spend; refuted ⇒ full Check. Unquoted <code>true</code> to enable.</td>
+</tr>
+<tr>
+<td><code>leaf_memory_max</code></td>
+<td>unset</td>
+<td>A systemd byte value (<code>&quot;16G&quot;</code>, <code>&quot;50%&quot;</code>) every leaf runs under; a leaf that overruns dies as itself and the run survives. Turns on per-leaf memory telemetry (<code>*.memory.jsonl</code>). A host without <code>systemd-run --user</code> degrades to a no-op with one note.</td>
+</tr>
+</tbody>
+</table>
+<p>Two sub-tables, both commented out because the shipped values are the calibrated
+ones, and both placed after every bare <code>[driver]</code> key:</p>
+<table>
+<thead>
+<tr>
+<th>Sub-table</th>
+<th>Keys</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[driver.sizing]</code></td>
+<td><code>conflicts_with</code>, <code>difficulty_high</code>, <code>ext_deps</code>, <code>brief_bytes</code>, <code>is_plan_pointer</code>, <code>brief_bytes_kb</code>, <code>watch</code>, <code>oversized</code>, <code>model_weight</code></td>
+<td>Weights, size cutoff and band thresholds of the a-priori size estimate; retune from <code>scripts/size-calibrate</code> at Act cadence (<a href="/guide/07-crosscutting.html#the-estimate">07</a>).</td>
+</tr>
+<tr>
+<td><code>[driver.size_signal]</code></td>
+<td><code>patch_kb</code> (100), <code>patch_files</code> (20), <code>rounds</code> (2)</td>
+<td>The empirical size backstop measured at Check; crossing one raises a §6 item recommending <code>iterate-plan</code> and stops auto-iterate. <code>0</code> switches a rule off (<a href="/guide/07-crosscutting.html#auto-iterate-the-driver-deciding-for-itself">07</a>).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="install"><code>[install]</code></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>extra_bootstrap</code></td>
+<td><code>&quot;&quot;</code></td>
+<td>One idempotent command <code>make install</code> runs last to provision your gate toolchain. Survives <code>copier update</code>. For several concerns, drop scripts into <code>scripts/bootstrap-tools.d/</code> instead (<a href="/guide/01-render-and-integrate.html#make-install--provision-every-tool-flow-needs">01</a>).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="manual_test"><code>[manual_test]</code></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cmd</code></td>
+<td><code>&quot;&quot;</code></td>
+<td>What <code>pdca try &lt;id&gt;</code> runs from the patched worktree, terminal inherited, no timeout. Reference your own scripts by absolute path (<code>$PDCA_BUNDLE/../../scripts/…</code>), since the cwd is the worktree. Empty ⇒ <code>try</code> prints a configure-me hint (<a href="/guide/05-check.html#trying-the-build-by-hand--pdca-try-id">05</a>).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="tracker"><code>[tracker]</code></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>system</code>, <code>url</code>, <code>issue_id_example</code></td>
+<td>render answers</td>
+<td>Which tracker, its base URL, and how an id looks in briefs and commits.</td>
+</tr>
+<tr>
+<td><code>issue_trailer</code></td>
+<td><code>&quot;Fixes #{id}&quot;</code></td>
+<td>The commit and PR trailer that links the contribution to its issue; <code>&quot;&quot;</code> enforces none. <code>publish --no-issue</code> omits it and records <code>id_pending</code>.</td>
+</tr>
+<tr>
+<td><code>issue_url_pattern</code></td>
+<td><code>&quot;&quot;</code></td>
+<td>A <code>{id}</code> URL template; set, publish hyperlinks the id in the PR body deterministically.</td>
+</tr>
+<tr>
+<td><code>export_csv</code></td>
+<td>unset</td>
+<td>A tracker export the planner reads the issue's row from when <code>flow</code> runs without <code>--from-csv</code>.</td>
+</tr>
+<tr>
+<td><code>notes_cmd</code></td>
+<td>unset</td>
+<td>A <code>{id}</code> shell template run before Plan to write <code>issue_&lt;id&gt;/notes.json</code> (the comment thread); <code>$PDCA_BUNDLE</code> is set. Best-effort; skipped when the file exists. Wyrd: <code>./engine/scripts/scrape-notes.sh {id}</code> (<a href="/guide/03-plan.html#how-to-use">03</a>).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="plansource"><code>[[plan.source]]</code></h2>
+<p>Zero or more providers that write context into the bundle's <code>sources/</code> before
+Plan (<a href="/guide/03-plan.html#composing-several-sources">03</a>). Each is best-effort.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>type</code></td>
+<td><code>github</code> (<code>gh issue view</code>), <code>gitlab</code> (<code>glab</code>), <code>csv</code>, <code>file</code> (a path or glob with <code>{id}</code>), or <code>command</code> (a <code>{id}</code> shell template run with <code>$PDCA_BUNDLE</code> and <code>$PDCA_SOURCES</code> set).</td>
+</tr>
+<tr>
+<td><code>role = &quot;tracker&quot;</code></td>
+<td>Makes this source the tracker thread: it writes <code>notes.json</code> itself and suppresses <code>notes_cmd</code>. The two are mutually exclusive.</td>
+</tr>
+<tr>
+<td><code>repo</code></td>
+<td><code>github</code>: <code>OWNER/REPO</code> when not <code>gh</code>'s default.</td>
+</tr>
+<tr>
+<td><code>path</code>, <code>key</code></td>
+<td><code>file</code>: the glob; <code>csv</code>: the export and the id column (omit <code>key</code> to copy the whole export).</td>
+</tr>
+<tr>
+<td><code>cmd</code></td>
+<td><code>command</code>: the shell template.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="publisher-and-the-contribution-model"><code>[publisher]</code> and the contribution model</h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fix_branch_pattern</code></td>
+<td><code>&quot;fix/{id}-{slug}&quot;</code></td>
+<td>Branch name for a fix; <code>{id}</code> and <code>{slug}</code> from the brief.</td>
+</tr>
+<tr>
+<td><code>feature_branch_pattern</code></td>
+<td><code>&quot;enhancement/{id}-{slug}&quot;</code></td>
+<td>Branch name for an enhancement (the brief's <code>Kind</code> or disposition decides which pattern applies).</td>
+</tr>
+<tr>
+<td><code>base_remote</code></td>
+<td>per <code>contribution_model</code></td>
+<td>The remote the new branch is cut from: <code>upstream</code> for a fork, <code>origin</code> for an own-repo target. Change it if your remotes are named differently.</td>
+</tr>
+<tr>
+<td><code>[publisher.checkouts]</code></td>
+<td><code>{}</code></td>
+<td><code>&quot;org/repo&quot; = &quot;../dir&quot;</code> entries for target repos whose checkout is <strong>not</strong> at the sibling default <code>../&lt;repo-last-segment&gt;</code>. Most setups need none.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Own repo or fork.</strong> The render-time <code>contribution_model</code> answer sets
+<code>base_remote</code> and decides whether the shipped <code>docs/fork-discipline.md</code> applies.
+Under <code>own-repo</code> (Wyrd) the target is the instance's own project: one remote,
+<code>origin</code>, and publish branches from <code>origin/&lt;base&gt;</code>. Under <code>fork</code> the target is
+someone else's project: <code>upstream</code> is the canonical, read-only repo and <code>origin</code>
+is your fork. Then publish branches from <code>upstream/&lt;base&gt;</code> so the diff is exactly
+the fix and none of your fork's tooling commits, pushes to <code>origin</code>, and opens
+the PR with <code>--head OWNER:BRANCH</code> against the upstream repo. The fork-discipline
+file carries the rest of that contract: validate against the clean upstream
+base in a pinned worktree, treat a cherry-pick as a correctness check rather
+than a conflict check, search prior art by affected path across merged history
+and closed PRs, and keep <code>wave_mode = &quot;stack&quot;</code>, since a fork has no merge rights
+upstream. The per-project answers (which branches, which remotes, which
+runners) go in INTEGRATION §2, §5 and §8, not in that file.</p>
+<h2 id="records"><code>[records]</code></h2>
+<p>Commented out by default; enable only if the instance versions its bundle root.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mode</code></td>
+<td><code>off</code></td>
+<td><code>commit</code> commits finished bundles to the instance repo as one batch; <code>pr</code> pushes a branch and opens one draft PR for the batch (<a href="/guide/05-check.html#publishing-the-accepted-change">05</a>).</td>
+</tr>
+<tr>
+<td><code>branch</code></td>
+<td><code>&quot;records/{date}&quot;</code></td>
+<td><code>pr</code> mode: the branch name.</td>
+</tr>
+<tr>
+<td><code>subject</code></td>
+<td><code>&quot;chore(records): record {n} result bundle(s)&quot;</code></td>
+<td>The commit subject; <code>{n}</code>, <code>{ids}</code>, <code>{date}</code> interpolate.</td>
+</tr>
+<tr>
+<td><code>issue</code></td>
+<td><code>&quot;ask&quot;</code></td>
+<td><code>pr</code> mode: the issue the batch PR references; <code>&quot;ask&quot;</code> prompts when interactive.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="leaves"><code>[leaves.*]</code></h2>
+<p>One table per leaf: <code>builder</code>, <code>reviewer</code> (headless); <code>planner</code>, <code>signoff</code>,
+<code>publisher</code>, <code>act</code>, <code>splitter</code> (interactive); <code>sizer</code> (headless, <code>stub</code> by
+default). Keys every leaf table takes:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mode</code></td>
+<td><code>&quot;stub&quot;</code> (offline placeholder) or <code>&quot;command&quot;</code> (run <code>argv</code>). <code>PDCA_LEAVES_MODE</code> forces one value everywhere.</td>
+</tr>
+<tr>
+<td><code>family</code></td>
+<td><code>claude</code>, <code>codex</code>, <code>gemini</code>, or any name with a <code>[families.&lt;name&gt;]</code> profile; unknown names get the generic profile. Drives grounding flags, role injection and the STOP guard.</td>
+</tr>
+<tr>
+<td><code>interactive</code></td>
+<td><code>true</code> hands the terminal to the human (a seeded REPL); <code>false</code> runs headless and writes its artifact.</td>
+</tr>
+<tr>
+<td><code>agent</code></td>
+<td>The role prompt: the canonical body is <code>agents/&lt;name&gt;.md</code>; Claude leaves resolve it through <code>--agent &lt;name&gt;</code> and the generated <code>.claude/agents/&lt;name&gt;.md</code> wrapper, other families have it inlined into the prompt.</td>
+</tr>
+<tr>
+<td><code>argv</code></td>
+<td>The whole command. A flag with an optional value (<code>--remote-control</code>) must not sit last: the driver appends the seed prompt after it (<a href="/guide/01-render-and-integrate.html#the-leaves--one-command-per-beat">01</a>).</td>
+</tr>
+<tr>
+<td><code>model</code>, <code>effort</code></td>
+<td>Mapped through the family profile to its model flag and effort mapping; recorded per attempt in <code>loop-telemetry.json</code>. Explicit flags in <code>argv</code> win.</td>
+</tr>
+<tr>
+<td><code>memory_max</code></td>
+<td>This leaf's own memory bound, overriding <code>[driver].leaf_memory_max</code>; <code>&quot;off&quot;</code> opts it out. Variants and escalations inherit their base leaf's.</td>
+</tr>
+</tbody>
+</table>
+<p>Array tables that extend a leaf:</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Keys</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[[leaves.builder_escalation]]</code></td>
+<td><code>min_iteration</code> + any leaf key</td>
+<td>A stronger backend from that attempt on; the highest <code>min_iteration</code> ≤ the attempt wins (<a href="/guide/04-do.html#choosing-the-do-model-per-bundle-issues-134167">04</a>).</td>
+</tr>
+<tr>
+<td><code>[[leaves.builder_variant]]</code></td>
+<td><code>model</code>, <code>when = {field, substring}</code> + any leaf key</td>
+<td>A backend a brief selects: by <code>Do model: &lt;model&gt;</code> or by a matching field. First match wins; no match keeps the default.</td>
+</tr>
+<tr>
+<td><code>[[leaves.sizer_escalation]]</code></td>
+<td><code>on_band</code>, <code>on_confidence</code> + any leaf key</td>
+<td>Re-ask the size question with a stronger model when the first verdict is <code>watch</code> or low-confidence. At most one runs.</td>
+</tr>
+<tr>
+<td><code>[[leaves.advisory]]</code></td>
+<td><code>id</code>, <code>role</code>, <code>when</code> + any leaf key</td>
+<td>Extra Check lenses, each writing <code>check-advisory-&lt;id&gt;.md</code>; always advisory (<a href="/guide/05-check.html#adding-a-second-opinion">05</a>).</td>
+</tr>
+<tr>
+<td><code>[leaves.advisory_selection]</code></td>
+<td><code>mode = &quot;vendor-complement&quot;</code></td>
+<td>Run the one advisory leaf whose family differs from the builder that ran; no such leaf ⇒ first applicable one plus a §6 note.</td>
+</tr>
+<tr>
+<td><code>[[leaves.plan_advisory]]</code></td>
+<td><code>id</code>, <code>role</code>, <code>when</code> + any leaf key</td>
+<td>Antagonists of the brief, run right after Plan; one bounded planner revision follows (<a href="/guide/03-plan.html#a-second-opinion-on-the-brief--plan-advisory-leaves-issue-301">03</a>).</td>
+</tr>
+<tr>
+<td><code>[leaves.plan_advisory_selection]</code></td>
+<td><code>mode = &quot;vendor-complement&quot;</code></td>
+<td>As above, anchored on the planner's family.</td>
+</tr>
+<tr>
+<td><code>[leaves.sandbox]</code></td>
+<td><code>unsandboxed_commands</code> (claude), <code>network_access</code> (codex)</td>
+<td>What a Check leaf may reach outside its sandbox: named commands for a Claude leaf, the whole socket layer for a Codex leaf. One table, both keys (<a href="/guide/05-check.html#docker-backed-conformance-gates-opt-in">05</a>).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="familiesname"><code>[families.&lt;name&gt;]</code></h2>
+<p>Vendor behaviour is data. Built-in profiles ship for <code>claude</code>, <code>codex</code>, <code>gemini</code>
+and <code>generic</code>; declare a table to add or override one, no driver change needed.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default (generic)</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>grounding_flag</code></td>
+<td><code>&quot;&quot;</code></td>
+<td>The flag that grants the leaf an extra directory (<code>--add-dir</code> for Claude, <code>--include-directories</code> for Gemini); empty means grounding by <code>$PDCA_TARGET</code> and <code>$PDCA_WORKTREE</code> only.</td>
+</tr>
+<tr>
+<td><code>role_injection</code></td>
+<td><code>inline</code></td>
+<td><code>flag</code> (Claude's <code>--agent</code>), <code>inline</code> (the <code>agents/&lt;name&gt;.md</code> body prepended to the prompt) or <code>none</code>.</td>
+</tr>
+<tr>
+<td><code>stream_argv</code></td>
+<td><code>[]</code></td>
+<td>Flags that turn on a live tool-use stream, if the CLI has one.</td>
+</tr>
+<tr>
+<td><code>cwd_discovery</code></td>
+<td><code>false</code></td>
+<td><code>true</code> runs the CLI from the harness root so it discovers project settings (Claude-style).</td>
+</tr>
+<tr>
+<td><code>native_guard</code></td>
+<td><code>false</code></td>
+<td><code>true</code> means the CLI has its own STOP hook; otherwise a non-Claude builder gets the driver's <code>gh</code> PATH shim, the same rules as <code>builder_guard.py</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="doctor-and-doctorchecks"><code>[doctor]</code> and <code>[[doctor.checks]]</code></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[doctor].min_free_gb</code></td>
+<td><code>10.0</code></td>
+<td>Free-space floor under the project root; below it the workspace row warns. <code>0</code> disables.</td>
+</tr>
+<tr>
+<td><code>[[doctor.checks]]</code> rows</td>
+<td>none</td>
+<td><code>group</code>, <code>id</code>, <code>cmd</code>, <code>hint</code>, <code>level</code> (<code>MISSING</code> or <code>WARN</code>), <code>required</code>, <code>per_lane</code>. A brief's <code>External dependencies</code> token must equal a row <code>id</code>; that row's <code>cmd</code> then also runs as the dependency guard, so keep it cheap and read-only (<a href="/guide/08-command-reference.html#pdca-doctor--report-every-prerequisite-change-nothing">08</a>).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="gates"><code>[gates]</code></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runner</code></td>
+<td><code>&quot;&quot;</code> or the <code>gates_runner</code> answer</td>
+<td>A host gate runner (<code>cargo xtask</code>, <code>./engine/xtask.sh</code>); a row's bare <code>subcmd</code> runs as <code>&lt;runner&gt; &lt;subcmd&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>checks</code></td>
+<td>the shipped <code>T4-contribution</code> row, or empty when delegating</td>
+<td>The gate rows (below). Empty ⇒ built-in all-PASS stubs so the offline slice runs.</td>
+</tr>
+<tr>
+<td><code>default_timeout_secs</code></td>
+<td>unset</td>
+<td>Wall-clock bound for every row without its own; expiry records <code>unverifiable</code>.</td>
+</tr>
+<tr>
+<td><code>confirm_gating_fail</code></td>
+<td><code>true</code></td>
+<td>Re-run a failing gating row once at Check; fail→pass records <code>pass</code> with <code>flaky = true</code> and a §6 item.</td>
+</tr>
+<tr>
+<td><code>host_ci</code></td>
+<td><code>[]</code></td>
+<td>Commands the host's CI runs on every PR that the gate ladder does not: run at Check and again at publish against the exact base to be pushed; always gating. A bare string is <code>{ cmd = &quot;…&quot; }</code>.</td>
+</tr>
+<tr>
+<td><code>target_default</code></td>
+<td><code>&quot;&quot;</code></td>
+<td>Primary target label when no <code>target_match</code> entry matches.</td>
+</tr>
+<tr>
+<td><code>[gates.target_match]</code></td>
+<td><code>{}</code></td>
+<td><code>label = &quot;substring&quot;</code> matched against the brief's <code>Repo + branch target</code>; mutually exclusive primary labels such as <code>core</code> versus <code>addon</code>.</td>
+</tr>
+<tr>
+<td><code>[gates.target_flags]</code></td>
+<td><code>{}</code></td>
+<td><code>label = { field = &quot;…&quot;, substring = &quot;…&quot; }</code> matched against any brief field; additive flags, such as <code>frontend = { field = &quot;surfaces&quot;, substring = &quot;gui&quot; }</code>.</td>
+</tr>
+<tr>
+<td><code>[gates.registry_consistency]</code></td>
+<td><code>{}</code></td>
+<td><code>files</code> (manifest paths) and an optional <code>pattern</code> (regex, group 1 = the path) for the <code>registry-check</code> gate (<a href="/guide/08-command-reference.html#pdca-registry-check--a-manifest-line-must-point-at-a-touched-path">08</a>).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>A gate row's keys</strong> (an entry in <code>checks</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code>, <code>tier</code>, <code>label</code></td>
+<td>The row's name, its 5/5/1 slot (<code>C4</code>, <code>T3</code>, …), and the text the matrix shows.</td>
+</tr>
+<tr>
+<td><code>cmd</code> or <code>subcmd</code></td>
+<td>A full shell command, or a sub-command of <code>runner</code>.</td>
+</tr>
+<tr>
+<td><code>gating</code></td>
+<td><code>true</code> blocks sign-off on failure; <code>false</code> is advisory and lands in §6 on failure.</td>
+</tr>
+<tr>
+<td><code>scope</code></td>
+<td><code>&quot;repo&quot;</code> (whole tree; what <code>gates --working-tree</code> re-runs in CI) or <code>&quot;bundle&quot;</code> (needs <code>$PDCA_BUNDLE</code>; local only).</td>
+</tr>
+<tr>
+<td><code>target</code></td>
+<td>A label or list; the row runs only when its labels are a subset of the bundle's.</td>
+</tr>
+<tr>
+<td><code>timeout_secs</code></td>
+<td>This row's wall clock; <code>0</code> opts out of the default.</td>
+</tr>
+<tr>
+<td><code>promote_after</code></td>
+<td><code>N</code> passing frozen cycles earn the row a listing in <code>gates --promotions</code>.</td>
+</tr>
+<tr>
+<td><code>verifies_base</code></td>
+<td><code>true</code> marks the row that resets to the bundle's base and receives the base ladder (<code>PDCA_BASE</code>, <code>PDCA_VERIFY_BASE</code>, <code>PDCA_BRIEF_BASE</code>). Undeclared, a <code>C4</code> row is assumed to be it. Every row that resets to the base needs it, not only one (the mistake behind Wyrd's diff-coverage finding in <a href="/guide/06-act.html#the-779-findings-one-review-later">06</a>).</td>
+</tr>
+<tr>
+<td><code>at_publish</code></td>
+<td>Whether <code>publish</code> re-runs the row before pushing. Defaults from <code>scope</code>: a bundle-scoped T4 row does, a repo-scoped one does not. Set <code>false</code> on a model-backed review row Check already paid for.</td>
+</tr>
+<tr>
+<td><code>confirm_fail</code></td>
+<td>Per-row override of <code>confirm_gating_fail</code>; <code>false</code> for a model-backed row, where a second run is a fresh sample.</td>
+</tr>
+</tbody>
+</table>
+<p>How the gating policy is meant to be used — one gating red→green row, the
+rest advisory until promoted — is in <a href="/guide/01-render-and-integrate.html#the-gates--your-deterministic-check-oracles">01</a>
+and <a href="/guide/05-check.html#gates--the-deterministic-oracles">05</a>.</p>
+<h2 id="environment-overrides">Environment overrides</h2>
+<p>The <code>PDCA_*</code> variables that override a key for one run, and the ones the driver
+exports to your gate commands, are listed in the
+<a href="/guide/08-command-reference.html#environment-variables">command reference</a>.</p>
+<p>← <a href="/guide/08-command-reference.html">08 Command reference</a> · <a href="/guide/">Index</a> · next: <a href="/guide/10-upgrading-an-instance.html">10 Upgrading an instance →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

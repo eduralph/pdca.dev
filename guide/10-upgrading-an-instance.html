@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upgrading an instance — what the template owns, what is yours, and `copier update` — PDCA Harness</title>
+<meta name="description" content="← 09 Configuration reference · Index · next: 11 Troubleshooting →">
+<meta property="og:title" content="Upgrading an instance — what the template owns, what is yours, and `copier update` — PDCA Harness">
+<meta property="og:description" content="← 09 Configuration reference · Index · next: 11 Troubleshooting →">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Walkthrough</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="upgrading-an-instance--what-the-template-owns-what-is-yours-and-copier-update">Upgrading an instance — what the template owns, what is yours, and <code>copier update</code></h1>
+<p>← <a href="/guide/09-configuration-reference.html">09 Configuration reference</a> · <a href="/guide/">Index</a> · next: <a href="/guide/11-troubleshooting.html">11 Troubleshooting →</a></p>
+<p>A rendered project is two things in one tree: files the template owns and
+re-renders on every update, and files that are yours. Knowing which is which
+decides where you make a change, how you carry one you had to make in the wrong
+place, and what to check after an upgrade.</p>
+<h2 id="the-ownership-boundary">The ownership boundary</h2>
+<p><strong>The template owns these.</strong> <code>copier update</code> re-renders them from the new
+release and merges that against your tree. Edit them only as a last resort, and
+mark the edit (below):</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/pdca_harness/</code></td>
+<td>The driver. Never edit; a fix belongs upstream.</td>
+</tr>
+<tr>
+<td><code>agents/*.md</code>, <code>.claude/agents/*.md</code></td>
+<td>The leaves' role prompts (vendor-neutral bodies and their Claude wrappers).</td>
+</tr>
+<tr>
+<td><code>.claude/hooks/builder_guard.py</code>, <code>handoff_guard.py</code></td>
+<td>The STOP-discipline hook and the session exit check.</td>
+</tr>
+<tr>
+<td><code>.claude/settings.json</code></td>
+<td>The sandbox and permission settings the driver seeds into leaves.</td>
+</tr>
+<tr>
+<td><code>scripts/bootstrap-tools.sh</code>, <code>scripts/install.ps1</code>, <code>scripts/size-calibrate</code>, <code>scripts/checks/</code></td>
+<td>The bootstrap, the sizing calibrator, the reference checks.</td>
+</tr>
+<tr>
+<td><code>templates/*.tpl</code></td>
+<td>The artifact templates (<a href="#the-templates-folder">below</a>).</td>
+</tr>
+<tr>
+<td><code>PCDA/</code></td>
+<td>The vendored model spec. Reference only.</td>
+</tr>
+<tr>
+<td><code>docs/principles.md</code>, <code>docs/fork-discipline.md</code></td>
+<td>The generic planning principles and the fork contribution rules (<a href="#the-documents-a-render-ships">below</a>).</td>
+</tr>
+<tr>
+<td><code>README.md</code>, <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>CONTRIBUTING.md</code>, <code>Makefile</code>, <code>pyproject.toml</code>, <code>examples/toy/</code>, <code>engine/README.md</code></td>
+<td>Project scaffolding, rendered from your answers.</td>
+</tr>
+<tr>
+<td><code>.github/workflows/check-gates.yml</code></td>
+<td>The merge re-gate, when <code>ship_ci_workflow</code> was on.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>These are yours.</strong> The template renders a skeleton once and then only merges;
+your content is what the update preserves:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>What you put there</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pdca.toml</code></td>
+<td>Every key you set: gate rows, leaf commands, doctor rows, checkouts. The most-edited file, so the most-tested merge path (below).</td>
+</tr>
+<tr>
+<td><code>docs/INTEGRATION.md</code></td>
+<td>Your repo's concretizations, the 11 items.</td>
+</tr>
+<tr>
+<td><code>engine/</code></td>
+<td>Your gate runners and verifiers. The template ships a skeleton <code>run-verify.sh</code> and a README; everything you add is yours.</td>
+</tr>
+<tr>
+<td><code>scripts/bootstrap-tools.d/*.sh</code>, <code>[install].extra_bootstrap</code></td>
+<td>Your gate toolchain's provisioning.</td>
+</tr>
+<tr>
+<td><code>results/</code>, <code>process/</code></td>
+<td>Bundles, the Act log and ledger. Never touched by an update.</td>
+</tr>
+<tr>
+<td><code>.claude/settings.local.json</code>, <code>.venv/</code>, <code>.copier-answers.yml</code></td>
+<td>Machine-local permissions, the install, and the record Copier keeps of your answers and the template commit. <code>.copier-answers.yml</code> is committed and never hand-edited, with one exception: a relative <code>_src_path</code> (<a href="/guide/01-render-and-integrate.html#1a-render-the-template">01</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>The rendered <code>CLAUDE.md</code> tells agents working inside the instance the same
+boundary from their side: <code>agents/*.md</code> is template machinery, so a prompt change
+an Act review wants is filed upstream, not edited locally.</p>
+<h2 id="what-copier-update-does">What <code>copier update</code> does</h2>
+<ol>
+<li>It reads <code>.copier-answers.yml</code>: <code>_src_path</code> (where the template is) and
+<code>_commit</code> (the release you are on, <code>v0.59.0</code> for Wyrd).</li>
+<li>It renders the template twice, at your current release and at the new one,
+and applies the difference to your tree as a <strong>three-way merge</strong>, so a key you
+set in <code>pdca.toml</code> and a row you appended survive a release that changed the
+lines around them.</li>
+<li>Where the template and your edit changed the same lines, the merge leaves
+<strong>conflict markers inline</strong> in the file. In <code>pdca.toml</code> that means every
+<code>pdca</code> command exits 2 at config load until you resolve them
+(<a href="/guide/11-troubleshooting.html">11</a>). The template keeps new <code>[driver]</code> keys away
+from the lines instances commonly edit to make this rare.</li>
+<li>It writes the new <code>_commit</code> into <code>.copier-answers.yml</code>.</li>
+</ol>
+<p>Copier re-asks the render questions with your previous answers pre-filled;
+accept them unless the release added a question. A release never switches a
+leaf from <code>stub</code> to <code>command</code> or turns the sizer on: an update must never start
+spending model calls an instance did not ask for.</p>
+<h2 id="the-procedure">The procedure</h2>
+<pre><code class="language-bash"># 1. never under a live flow — a running pdca imports the code you are about to replace
+git worktree add ../my-instance.upgrade main &amp;&amp; cd ../my-instance.upgrade
+
+# 2. read what changed: each release tag carries its notes
+git -C ../pdca-harness fetch --tags &amp;&amp; git -C ../pdca-harness show v0.60.0 --no-patch
+
+# 3. update, then look for markers
+copier update
+grep -rn '^&lt;&lt;&lt;&lt;&lt;&lt;&lt;\|^&gt;&gt;&gt;&gt;&gt;&gt;&gt;' pdca.toml docs/INTEGRATION.md engine/ || echo &quot;no conflicts&quot;
+
+# 4. prove the result before any real cycle
+make install          # re-provisions if pdca.toml or the bootstrap changed
+pdca doctor
+make check
+pdca flow TOY --rehearse
+
+# 5. commit, review the diff as a PR like any other change, merge, then pull into the live checkout
+</code></pre>
+<p>Step 1 is the rule from <a href="/guide/04-do.html#the-harness-checkout-is-not-isolated--dont-do-git-maintenance-under-a-live-flow-issue-130">04</a>:
+a branch switch or <code>copier update</code> under a live <code>pdca flow</code> rewrites
+<code>src/pdca_harness/*.py</code> beneath a running interpreter, and any subprocess it
+spawns afterward runs mixed-version code.</p>
+<p>Releases are tags of the form <code>vX.Y.0</code>, one minor per release, each annotated
+with its notes; the next version's work is the one open milestone on the
+template repo. <code>copier update --vcs-ref vX.Y.0</code> moves to a specific release
+rather than the newest tag.</p>
+<h2 id="carrying-a-local-change-to-a-template-owned-file">Carrying a local change to a template-owned file</h2>
+<p>Sometimes an instance cannot wait: a gate script the template ships has a hole,
+a prompt needs a line, a driver fix is open upstream but not released. The
+practice Wyrd settled on, written into its INTEGRATION §2:</p>
+<ul>
+<li><strong>File it upstream first</strong>, as an issue on the template repo, and fix it there
+if you can. An edit that only exists in your instance is a merge conflict
+waiting for the next update and a fix the other instances never get.</li>
+<li><strong>Mark every local divergence</strong> where it lives with a comment that names the
+upstream issue in full: <code>INSTANCE DELTA — eduralph/pdca-harness#434</code>, on the
+marker line or within the two lines after it. The marker is what makes the
+divergence findable at the next update, and what lets the three-way merge show
+you a conflict you expected rather than one you forgot.</li>
+<li><strong>Check at every update whether a delta can go.</strong> Wyrd runs a doctor row
+(<code>delta retirement</code>, level <code>WARN</code>) whose command scans the engine, scripts, role
+prompts and <code>pdca.toml</code> for the markers, asks <code>gh</code> for each named issue's
+state, and names the sites whose issue is now closed. The fix having landed
+upstream does not mean the local code is safe to drop unread; it means a human
+reads both and removes the delta deliberately.</li>
+<li><strong>Audit every off-default key at an upgrade</strong>, not only the delta you came to
+change. Wyrd's record shows why: a <code>verifies_base = false</code> set on the wrong row
+in one upgrade cost a wave's diff-coverage figure for weeks
+(<a href="/guide/06-act.html#the-779-findings-one-review-later">06</a>).</li>
+</ul>
+<p>Wyrd's INTEGRATION §2 is also a record of the other direction: a list of local
+changes retired at the <code>v0.59.0</code> upgrade because upstream shipped the same
+(integration branches per batch, stacked PRs that land on the target, the
+confirm-once gate run), each named with the issue that retired it. That list is
+the instance's upgrade log, and a good shape to copy.</p>
+<h2 id="the-documents-a-render-ships">The documents a render ships</h2>
+<p>Beside <code>pdca.toml</code> and <code>INTEGRATION.md</code>, the render puts six documents in your
+tree. Which agent reads which:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Who reads it</th>
+<th>What it says</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docs/INTEGRATION.md</code></td>
+<td>Every leaf, and you</td>
+<td>Your repo's answers to the 11 integration questions (<a href="/guide/01-render-and-integrate.html#1b-concretize-fill-docsintegrationmd">01</a>). Yours.</td>
+</tr>
+<tr>
+<td><code>docs/principles.md</code></td>
+<td>The planner, at Plan</td>
+<td>Solution-design discipline for briefs: minimalism is scoped to behavioural fixes; a cost used to reject an alternative must be checkable; a brief states the <strong>invariant</strong>, not a mechanism, quantified over the defect category (the self-test: could a one-module guard satisfy it?); invariants come from citable sources. Sections 5 and 6, the invariant catalogue and the category mapping, are project-provided, and section 8 says what evidence promotes a principle to a gate. Template-owned; add your catalogue in the marked sections.</td>
+</tr>
+<tr>
+<td><code>docs/fork-discipline.md</code></td>
+<td>Planner, builder, reviewer, publisher under <code>contribution_model = fork</code></td>
+<td>The generic fork contract: remote layout, branch from <code>upstream/&lt;base&gt;</code>, draft-only and STOP, targeting across maintenance lines, validation against the clean upstream, prior art by affected path. Under <code>own-repo</code> the file says so at the top and the agents do not cite it (<a href="/guide/09-configuration-reference.html#publisher-and-the-contribution-model">09</a>). Template-owned; your answers go in INTEGRATION.</td>
+</tr>
+<tr>
+<td><code>CLAUDE.md</code></td>
+<td>Claude leaves, as project guidance</td>
+<td>The four beats and six leaves, the builder's scope (read <code>brief.md</code> only; patch, test, notes; never ready or merge), sign-off as the human's, Act as cross-cycle.</td>
+</tr>
+<tr>
+<td><code>AGENTS.md</code></td>
+<td>Codex leaves, as shared project context</td>
+<td>STOP discipline for every leaf, the boundary (write only your role's artifacts into the bundle; ground citations on <code>$PDCA_TARGET</code>), and that <code>agents/&lt;name&gt;.md</code> is the canonical role. Rendered only when a Codex family is configured.</td>
+</tr>
+<tr>
+<td><code>CONTRIBUTING.md</code></td>
+<td>Human contributors to the instance</td>
+<td>The license, the DCO sign-off, and that the gates must be green before contributing.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-templates-folder">The templates folder</h2>
+<p><code>templates/</code> holds the artifact templates the leaves and the driver fill:</p>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Filled by</th>
+<th>Becomes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>brief.md.tpl</code></td>
+<td>the planner</td>
+<td><code>brief.md</code>; the <code>- **Label:** value</code> lines are what the driver parses (<a href="/guide/03-plan.html#why-each-field-is-there">03</a>).</td>
+</tr>
+<tr>
+<td><code>plan-pointer.md.tpl</code></td>
+<td>the planner</td>
+<td>A thin brief that points at a host planning artifact (an ADR, a proposal).</td>
+</tr>
+<tr>
+<td><code>design-proposal.md.tpl</code></td>
+<td>the planner</td>
+<td>The brief form for a change that needs design buy-in (Wyrd's <code>Kind</code> and <code>Goal</code> labels come from it).</td>
+</tr>
+<tr>
+<td><code>split-proposal.md.tpl</code></td>
+<td>the splitter</td>
+<td><code>split-proposal.md</code>, one full draft brief per child between HTML-comment delimiters.</td>
+</tr>
+<tr>
+<td><code>SUMMARY.md.tpl</code></td>
+<td>the driver</td>
+<td>The ten-section <code>SUMMARY.md</code> the human signs.</td>
+</tr>
+<tr>
+<td><code>MANUAL-VERIFICATION.md.tpl</code></td>
+<td>the driver, for a <code>manual-verification</code> close</td>
+<td>The stub the human fills after <code>pdca try</code>.</td>
+</tr>
+<tr>
+<td><code>commit-msg.txt.tpl</code>, <code>pr-description.md.tpl</code></td>
+<td>the publisher</td>
+<td>The commit message and PR body the T4 contribution check lints.</td>
+</tr>
+<tr>
+<td><code>tracker-comment.md.tpl</code></td>
+<td>the publisher</td>
+<td>The comment posted to the tracker issue.</td>
+</tr>
+</tbody>
+</table>
+<p>They are template-owned, so an edit is a delta to mark. The safe way to add a
+field is to <strong>append</strong> it: the driver parses only the labels it knows, the
+planner and reviewers read everything, and an appended line merges cleanly at
+the next update. Wyrd's brief template adds <code>Verification posture</code>,
+<code>Production reach</code> and <code>Track</code> this way. Removing or renaming a shipped label is
+different: the driver, a gate or a check may read it, so treat that as a change
+to propose upstream.</p>
+<p>← <a href="/guide/09-configuration-reference.html">09 Configuration reference</a> · <a href="/guide/">Index</a> · next: <a href="/guide/11-troubleshooting.html">11 Troubleshooting →</a></p>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

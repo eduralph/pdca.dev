@@ -18,6 +18,8 @@
     <nav class="topnav" aria-label="primary">
       <a href="/guide/">guide</a>
       <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
       <a href="https://github.com/eduralph/pdca-harness">github</a>
     </nav>
   </header>
@@ -35,10 +37,12 @@
   <main>
     <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
     <article class="prose">
-<h1>Worked example — driving the PDCA cycle with the harness</h1>
+<h1 id="worked-example--driving-the-pdca-cycle-with-the-harness">Worked example — driving the PDCA cycle with the harness</h1>
 <p>This folder is a <strong>tutorial</strong>. It walks you through using the <code>pdca-harness</code>
-template end-to-end, using a real project — <a href="https://github.com/eduralph"><strong>Gramps Testbed
-v2</strong></a> — as the worked example at every step.</p>
+template end-to-end, using a real project — <a href="https://github.com/getwyrd/wyrd-pdca"><strong>Wyrd PDCA</strong></a>,
+the quality-cycle instance that contributes to <a href="https://github.com/getwyrd/wyrd"><strong>Wyrd</strong></a>,
+a distributed file storage system written in Rust — as the worked example at
+every step.</p>
 <p>The harness itself (the driver, the templates, the generic model docs) lives in
 <a href="https://github.com/eduralph/pdca-harness/tree/main/template"><code>../template/</code></a>. The canonical <em>reference</em> for the model is the
 vendored spec in
@@ -49,10 +53,12 @@ typed, what the harness produced, and the real decisions they made&quot; on a li
 codebase.</p>
 <blockquote>
 <p>Everything quoted here — briefs, gate tables, sign-off lines, the Act log — is
-copied verbatim from the gramps-testbed-v2 instance. Paths look like
-<code>results/issue_11589/SUMMARY.md</code>; those are real files in that repo.</p>
+copied verbatim from the wyrd-pdca instance (rendered from this template at
+<code>v0.59.0</code>). Paths look like <code>results/issue_779/SUMMARY.md</code>; those are real,
+committed files in that repo, so you can open any of them and read the whole
+artifact rather than the excerpt.</p>
 </blockquote>
-<h2>What the harness is, in one paragraph</h2>
+<h2 id="what-the-harness-is-in-one-paragraph">What the harness is, in one paragraph</h2>
 <p>One contribution turns one <strong>PDCA cycle</strong>: <strong>Plan</strong> (author the spec) → <strong>Do</strong>
 (implement) → <strong>Check</strong> (verify the built artifact against the spec —
 correctness, conformance, <em>and</em> validation) → <strong>Act</strong> (improve the process so the
@@ -82,9 +88,11 @@ stateDiagram-v2
 <p>The five <strong>halted</strong> states — <code>UNPLANNED</code>, <code>AWAITING_SIGNOFF</code>, <code>COMPLETE</code>,
 <code>DISCONTINUED</code>, <code>RESOLVED</code> — are where the driver hands control back. Everything
 else it advances through unattended.</p>
-<h2>The steps</h2>
+<h2 id="the-steps">The steps</h2>
 <p>Read these in order. Each maps to one beat of the cycle (or one setup step) and
-shows the real gramps-testbed-v2 artifact it produces.</p>
+shows the real wyrd-pdca artifact it produces. One contribution runs through
+steps 03–05: Wyrd issue 779, which puts a <code>Server: wyrd/&lt;version&gt;</code> header on
+every response the S3 gateway sends.</p>
 <table>
 <thead>
 <tr>
@@ -105,7 +113,7 @@ shows the real gramps-testbed-v2 artifact it produces.</p>
 <td><a href="/guide/01-render-and-integrate.html">01</a></td>
 <td>Render &amp; integrate</td>
 <td>—</td>
-<td><code>copier copy</code> the template; fill <code>docs/INTEGRATION.md</code>; wire gates and leaves in <code>pdca.toml</code></td>
+<td><code>copier copy</code> the template; fill <code>docs/INTEGRATION.md</code>; wire gates and leaves in <code>pdca.toml</code> (real: Wyrd delegates every gate to its own <code>cargo xtask</code>)</td>
 </tr>
 <tr>
 <td><a href="/guide/02-rehearse-offline.html">02</a></td>
@@ -117,45 +125,86 @@ shows the real gramps-testbed-v2 artifact it produces.</p>
 <td><a href="/guide/03-plan.html">03</a></td>
 <td>Plan</td>
 <td><strong>P</strong></td>
-<td>Author <code>brief.md</code> — the contribution spec (real: gramps issue 11589)</td>
+<td>Author <code>brief.md</code> — the contribution spec (real: issue 779's brief, including the plan reviewer's findings it answered)</td>
 </tr>
 <tr>
 <td><a href="/guide/04-do.html">04</a></td>
 <td>Do</td>
 <td><strong>D</strong></td>
-<td>Builder writes <code>patch.diff</code> + the test + <code>build-notes.md</code></td>
+<td>Builder writes <code>patch.diff</code> + the test + <code>build-notes.md</code> (real: the stamp at the one point every response passes through)</td>
 </tr>
 <tr>
 <td><a href="/guide/05-check.html">05</a></td>
 <td>Check (gates, reviewer, sign-off, publish)</td>
 <td><strong>C</strong></td>
-<td>Gates + reviewer run; you record §9 (<code>--accept</code> / <code>--iterate-do</code> / <code>--iterate-plan</code> / <code>--discontinue</code>, real: issue 46's two iterations); accept publishes a draft PR</td>
+<td>Gates, reviewer and two advisory lenses run; you record §9 (<code>--accept</code> / <code>--iterate-do</code> / <code>--iterate-plan</code> / <code>--discontinue</code>; real: 779's auto-iterate round and accept, and a human reject from issue 576); accept publishes a draft PR, stacked on its prerequisite</td>
 </tr>
 <tr>
 <td><a href="/guide/06-act.html">06</a></td>
 <td>Act</td>
 <td><strong>A</strong></td>
-<td>The cross-cycle review that turns recurring misses into spec/gate/rule deltas</td>
+<td>The cross-cycle review that turns recurring misses into spec/gate/rule deltas (real: the reviews of 2026-09-20 and 2026-10-14)</td>
 </tr>
 <tr>
 <td><a href="/guide/07-crosscutting.html">07</a></td>
 <td>Cross-cutting</td>
 <td>—</td>
-<td>Mechanisms that span beats, not owned by one: size &amp; <code>pdca split</code>, iteration/carry-forward + auto-iterate, parallel lanes, sweep &amp; cleanup</td>
+<td>Mechanisms that span beats, not owned by one: size &amp; <code>pdca split</code> (real: issue 736 split into 778 and 779), iteration/carry-forward + auto-iterate, parallel lanes, waves, sweep &amp; cleanup</td>
+</tr>
+<tr>
+<td><a href="/guide/08-command-reference.html">08</a></td>
+<td>Command reference</td>
+<td>—</td>
+<td>Getting set up (<code>copier</code>, <code>make install</code>, <code>make setup</code>, <code>pdca doctor</code>), then every <code>pdca</code> subcommand with its options, exit codes and environment variables</td>
+</tr>
+<tr>
+<td><a href="/guide/09-configuration-reference.html">09</a></td>
+<td>Configuration reference</td>
+<td>—</td>
+<td>Every <code>pdca.toml</code> section and key, including gate routing by surface, the fork contribution model and vendor profiles</td>
+</tr>
+<tr>
+<td><a href="/guide/10-upgrading-an-instance.html">10</a></td>
+<td>Upgrading an instance</td>
+<td>—</td>
+<td>What the template owns and what is yours, <code>copier update</code>, carrying a local change, the documents and templates a render ships</td>
+</tr>
+<tr>
+<td><a href="/guide/11-troubleshooting.html">11</a></td>
+<td>Troubleshooting</td>
+<td>—</td>
+<td>The driver's messages and gate verdicts, by symptom, with the fix</td>
 </tr>
 </tbody>
 </table>
-<h2>The whole cycle in one command</h2>
+<h2 id="the-whole-cycle-in-one-command">The whole cycle in one command</h2>
 <p>Once a repo is integrated, a maintainer rarely types the per-beat commands. The
 front door is the <strong>console script</strong> (<code>pdca</code>, named per the project):</p>
-<pre><code class="language-bash">pdca flow 13636               # Plan → Do → Check → sign-off → publish, for one issue
-pdca flow 13636 13637 13638   # several ids → batch; unbriefed are auto-planned
+<pre><code class="language-bash">pdca flow 779                 # Plan → Do → Check (through sign-off and publish), for one issue
+pdca flow 778 779             # several ids → batch; unbriefed are auto-planned,
+                              # dependencies schedule the waves
 pdca flow --from-csv issues.csv   # one Plan session briefs SEVERAL from the export, then drives all
+pdca waves 778 779            # preview the wave plan without building
 pdca status                   # every bundle and its state (also the bare `pdca`)
 </code></pre>
 <p>The per-beat detail in steps 03–06 is what <code>pdca flow</code> orchestrates for you —
-worth understanding once, even though you'll mostly drive from the top.</p>
-<h2>Prerequisites (for a live run)</h2>
+worth understanding once, even though you'll mostly drive from the top. This is
+what <code>pdca status</code> printed on the wyrd-pdca instance while this walkthrough was
+written (trimmed) — the states a human owns are at the top, the frozen cycles
+below:</p>
+<pre><code>AWAITING_SIGNOFF  issue_1007  [15 NEEDS-HUMAN]  [oversized]
+AWAITING_SIGNOFF  issue_927  [18 NEEDS-HUMAN]
+BUILT             issue_508  [blocked-by: 927, 658, 659]  [oversized]
+PLANNED           issue_1008  [blocked-by: 1007, 927]
+PLANNED           issue_1009  [blocked-by: 1008]
+...
+COMPLETE          issue_778  [PR https://github.com/getwyrd/wyrd/pull/885]  [oversized]
+COMPLETE          issue_779  [PR https://github.com/getwyrd/wyrd/pull/886 ↑main]
+COMPLETE          issue_809  [close: no PR]
+DISCONTINUED      issue_636  [oversized]
+RESOLVED          issue_773
+</code></pre>
+<h2 id="prerequisites-for-a-live-run">Prerequisites (for a live run)</h2>
 <p>The offline rehearsal in <a href="/guide/02-rehearse-offline.html">step 02</a> needs only Python
 3.11+. A <em>live</em> cycle additionally needs:</p>
 <ul>
@@ -164,11 +213,17 @@ publish, and Act beats run as configured subprocesses (&quot;leaves&quot;) — a
 commands set in <code>pdca.toml</code>, so the model is the harness's choice, not a
 requirement. The cycle model itself is <strong>model-agnostic</strong>; it even recommends a
 <em>cross-vendor</em> reviewer (the template defaults the builder to Claude and the
-reviewer to Codex). The worked example uses the <strong>Claude CLI</strong> (<code>claude</code>)
-installed and authenticated.</li>
-<li>Whatever your <strong>gates</strong> need. For gramps that's <strong>Docker</strong> (the test suites run
-in a container) and the sibling fork checkouts (<code>../gramps</code>,
-<code>../addons-source</code>). Your project's gates will differ — you define them in
+reviewer to Codex). The worked example uses <strong>two</strong> CLIs: the <strong>Claude CLI</strong>
+(<code>claude</code>) for the planner, builder, sign-off, publisher, Act and the adversary
+lens, and the <strong>Codex CLI</strong> (<code>codex</code>) for the reviewer, the code-review lens and
+the plan reviewer — so the second opinion comes from a different vendor by
+configuration, not by hope.</li>
+<li>Whatever your <strong>gates</strong> need. For Wyrd that is a <strong>Rust toolchain</strong>: every gate
+delegates to <code>cargo xtask</code>, Wyrd's own single-sourced gate runner, through a
+short shell wrapper. Docker and the FoundationDB and TiKV client libraries are
+needed only by conformance legs that bring up a cluster, and Wyrd declares
+them as optional (<code>WARN</code>) <code>pdca doctor</code> rows rather than hard requirements. Your
+project's gates will differ — you define them in
 <a href="/guide/01-render-and-integrate.html">step 01</a>.</li>
 <li><code>git</code> and (for publishing) the <code>gh</code> CLI.</li>
 </ul>
@@ -188,6 +243,8 @@ driver move a bundle with no model or gates wired up? Jump to
         <a href="https://github.com/eduralph/pdca-harness">github</a>
         <a href="/guide/">guide</a>
         <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
       </nav>
       <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
     </div>

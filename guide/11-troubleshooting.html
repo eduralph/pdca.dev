@@ -111,7 +111,11 @@ that run to end, or pin lanes with <code>PDCA_LANE</code> for runs that share a 
 names a bundle this run is not driving, and its PR has not merged into the
 dependent's base. Name the prerequisite in the same <code>pdca flow &lt;ids&gt;</code> so the run
 carries it onto its line, or wait for the merge and re-run
-(<a href="/guide/07-crosscutting.html#waves-in-execution">07</a>).</p>
+(<a href="/guide/07-crosscutting.html#waves-in-execution">07</a>). In merge mode there is no line, so
+naming it does not help. The hold line gives the way out that fits that PR, and
+it holds for a <code>Depends on (merged)</code> edge or a named prerequisite too. When it
+says <code>not known to be merged</code>, another live <code>pdca flow</code> holds that prerequisite's
+claim, so this run did not read it: let that run finish (or stop it), then re-run.</p>
 <p><strong><code>flow: &lt;bundle&gt; held — it </code>Conflicts with<code> …</code></strong>, <strong><code>held out of this run's integration line</code></strong>, and a run that <strong>exits 3</strong> with every bundle <code>COMPLETE</code>.
 A fold left a bundle off the line: its publish pushed no branch, or its branch
 conflicts with a same-wave bundle that merged before it. The run names the pair
@@ -128,7 +132,8 @@ and what to do; the common fix is to restore the branch or delete the stale
 red, pending or empty check rollup, the branch update failed, or the PR's base
 was not the bundle's target base. The PR is returned to draft; fix CI or the
 base and re-run. Raise <code>[driver].merge_wait_secs</code> if your checks are slow to
-register.</p>
+register. The same refusal of a prerequisite merged before wave 0 says who is
+held instead of <code>STOP</code>, and the rest of the run goes on.</p>
 <h2 id="a-gate-or-review-did-not-say-pass-or-fail">A gate or review did not say pass or fail</h2>
 <p><strong>A row reads <code>unverifiable</code>.</strong> The oracle did not answer: the command exceeded
 its wall clock (<code>timeout_secs</code> or <code>[gates].default_timeout_secs</code>), a tool it

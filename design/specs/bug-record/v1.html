@@ -460,7 +460,7 @@ leg and it can lead to <code>&quot;answer-only&quot;</code>, but it is never a f
 <tr>
 <td><code>decision</code></td>
 <td><code>&quot;fix-on-main&quot;</code>, <code>&quot;backport-existing&quot;</code>, <code>&quot;fix-on-release&quot;</code> or <code>&quot;answer-only&quot;</code></td>
-<td>The outcomes of ADR-0020 section 4 (<code>&quot;fix-on-release&quot;</code>: bisection did not finish, so the fix is built on the release branch)</td>
+<td>The outcomes of ADR-0020 section 4 (<code>&quot;fix-on-release&quot;</code>: the fix is built on the release branch, because bisection did not finish or the instance sets release first)</td>
 </tr>
 <tr>
 <td><code>ref</code></td>
@@ -470,7 +470,12 @@ leg and it can lead to <code>&quot;answer-only&quot;</code>, but it is never a f
 <tr>
 <td><code>backports</code></td>
 <td>array of refs</td>
-<td>Further release branches that get a backport cycle; empty unless <code>decision</code> is <code>&quot;fix-on-main&quot;</code> or <code>&quot;backport-existing&quot;</code></td>
+<td>Further release branches that get a backport cycle; empty unless <code>decision</code> is <code>&quot;fix-on-main&quot;</code> or <code>&quot;backport-existing&quot;</code>, or <code>merge_forward</code> is <code>true</code></td>
+</tr>
+<tr>
+<td><code>merge_forward</code></td>
+<td>boolean, optional (absent means <code>false</code>)</td>
+<td>Whether the release branch in <code>ref</code> then merges forward to <code>main</code> under release first; MUST be <code>false</code> unless <code>decision</code> is <code>&quot;fix-on-release&quot;</code>, and when <code>true</code>, <code>main</code> MUST appear in <code>reproduction.results</code> with outcome <code>&quot;red&quot;</code></td>
 </tr>
 <tr>
 <td><code>fixing_commit</code></td>

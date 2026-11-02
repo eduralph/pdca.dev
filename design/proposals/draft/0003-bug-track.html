@@ -134,7 +134,9 @@ backport: <code>bugfix/&lt;n&gt;-r&lt;X.Y&gt;</code>), open the draft pull reque
 <code>pdca try</code> refused for bug bundles. Publish runs in the driver container or, by
 configuration, only from a maintainer's checkout.</li>
 <li><strong>Backports.</strong> One cycle per supported release branch, with the same test, published
-with it, id <code>issue_&lt;n&gt;-r&lt;X.Y&gt;</code> and branch <code>bugfix/&lt;n&gt;-r&lt;X.Y&gt;</code> for <code>release/X.Y</code>.</li>
+with it, id <code>issue_&lt;n&gt;-r&lt;X.Y&gt;</code> and branch <code>bugfix/&lt;n&gt;-r&lt;X.Y&gt;</code> for <code>release/X.Y</code>. An
+instance can set release first instead (ADR-0020 section 4): the release cycle comes first
+and merges forward to <code>main</code>, with the same ids and branches.</li>
 <li><strong>Delegation.</strong> <code>track:needs-plan</code> on budget exhaustion and on protected paths; the
 bundle pull request with the test only.</li>
 </ol>

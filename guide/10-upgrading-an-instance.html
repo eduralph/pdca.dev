@@ -180,8 +180,9 @@ a branch switch or <code>copier update</code> under a live <code>pdca flow</code
 spawns afterward runs mixed-version code.</p>
 <p>Releases are tags of the form <code>vX.Y.0</code>, one minor per release, each annotated
 with its notes; the next version's work is the one open milestone on the
-template repo. <code>copier update --vcs-ref vX.Y.0</code> moves to a specific release
-rather than the newest tag.</p>
+template repo. Bug fixes for the latest release are patch tags, <code>vX.Y.Z</code>.
+<code>copier update --vcs-ref vX.Y.Z</code> moves to a specific release rather than the
+newest tag.</p>
 <h2 id="carrying-a-local-change-to-a-template-owned-file">Carrying a local change to a template-owned file</h2>
 <p>Sometimes an instance cannot wait: a gate script the template ships has a hole,
 a prompt needs a line, a driver fix is open upstream but not released. The

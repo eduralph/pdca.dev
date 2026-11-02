@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0021. Bug-track jobs run in containers on one disposable runner per batch; the driver runs in an operator&#x27;s container and holds no leaf credential — PDCA Harness</title>
+<meta name="description" content="The bug track runs leaves on issues anyone can file. Reproduce writes a test">
+<meta property="og:title" content="0021. Bug-track jobs run in containers on one disposable runner per batch; the driver runs in an operator&#x27;s container and holds no leaf credential — PDCA Harness">
+<meta property="og:description" content="The bug track runs leaves on issues anyone can file. Reproduce writes a test">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="0021-bug-track-jobs-run-in-containers-on-one-disposable-runner-per-batch-the-driver-runs-in-an-operators-container-and-holds-no-leaf-credential">0021. Bug-track jobs run in containers on one disposable runner per batch; the driver runs in an operator's container and holds no leaf credential</h1>
+<h2 id="context">Context</h2>
+<p>The bug track (ADR-0020) runs leaves on issues anyone can file. Reproduce writes a test
+shaped by a stranger's report, the builder runs <code>Bash</code> against the target project, and the
+C4 gate executes both. Architecture §8.10 treats a leaf as able to leave any file in any
+state, and the claude builder is not confined to its worktree today (#710). Three weaknesses
+of the current cycle matter here and exist independently of the track: the publisher is a
+model leaf holding the operator's repository credentials (#853); the state machine reads
+evidence from files a leaf or a build script can write (#854); the reviewer re-executes
+bundle code on the host inside a sandbox that confines writes, not reads (#855).</p>
+<p>A place to run the track's jobs needs:</p>
+<ul>
+<li><strong>a fresh environment per job</strong>, so nothing one job leaves behind reaches the next, and
+<strong>a fresh kernel often enough</strong> that a container escape does not become a foothold;</li>
+<li><strong>no credential on the job's side</strong> that can write to a repository, spend without a
+limit, or read another job's data;</li>
+<li><strong>evidence that the job cannot forge</strong>: whatever decides red or green must not run where
+the stranger's code ran;</li>
+<li><strong>many cores</strong>, because instance test suites, Rust builds and simulation seed sweeps are
+CPU-bound;</li>
+<li><strong>the target project's production architecture.</strong> In getwyrd/wyrd, erasure coding takes
+different SIMD paths on x86_64 and aarch64, so a bug reported on one may not reproduce on
+the other.</li>
+</ul>
+<p>The options weighed for where the jobs run:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Machines that also serve personal use</td>
+<td>Rejected: personal credentials and sessions on the same machine</td>
+</tr>
+<tr>
+<td>Small Arm boards and other low-power machines</td>
+<td>Rejected as runners: the wrong architecture, or too slow for builds and seed sweeps</td>
+</tr>
+<tr>
+<td>One virtual machine per job</td>
+<td>Rejected: minutes of provisioning per job, one spot interruption per job, and a provisioning lottery on every job when a provider rations capacity</td>
+</tr>
+<tr>
+<td>GitHub-hosted runners</td>
+<td>Rejected: workflows triggered by issues sit next to repository tokens, and keeping the publisher apart from the job inside Actions is hard</td>
+</tr>
+<tr>
+<td>Hetzner Cloud</td>
+<td>Rejected for now: provisioning of new cloud servers has been limited since the capacity incident of 26 June 2026 (<a href="http://status.hetzner.com">status.hetzner.com</a>), and dedicated-vCPU lines were repriced in June 2026</td>
+</tr>
+<tr>
+<td>A self-hosted server</td>
+<td>Deferred: needs hardware and lead time, and its size cannot be chosen before the load is known</td>
+</tr>
+<tr>
+<td>OVHcloud, STACKIT</td>
+<td>Viable; candidates for later backends</td>
+</tr>
+<tr>
+<td>Google Cloud, one spot VM per batch, containers per job</td>
+<td>Chosen</td>
+</tr>
+</tbody>
+</table>
+<h2 id="decision">Decision</h2>
+<h3 id="1-three-roles-three-places">1. Three roles, three places</h3>
+<p>Every job of the track is one of three kinds, and the kinds never share a place:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>What runs</th>
+<th>Where</th>
+<th>What it may produce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Produce</strong></td>
+<td>Summarize, Reproduce, the builder, the reviewer (model leaves)</td>
+<td>a container on the runner, under gVisor</td>
+<td>bytes: a summary, a test file, a diff, review findings</td>
+</tr>
+<tr>
+<td><strong>Verify</strong></td>
+<td>the recorded test against a recorded tree, N times</td>
+<td>a container on the runner, plain rootless Podman, no network</td>
+<td>exit codes and captured output</td>
+</tr>
+<tr>
+<td><strong>Decide</strong></td>
+<td>the driver: validation, verdicts, routing, records, bundle PRs</td>
+<td>the driver container (section 4)</td>
+<td>every file the state machine reads</td>
+</tr>
+</tbody>
+</table>
+<p>Nothing a produce job writes is evidence. The driver takes from it exactly the bytes its
+stage owns (spec <code>bug-record/v1</code> §7 and §9), by hash, and discards the rest with the
+container. Verify jobs run from recorded inputs only: the target commit as a <code>git archive</code>
+export (no <code>.git</code>, so a test cannot read which ref it is on), the recorded test bytes, the
+recorded diff bytes (empty for the red leg), and the runner command from the instance's
+<code>pdca.toml</code>, never from leaf output. Each run gets a fresh copy of the tree. The driver
+parses the verify output and writes <code>check-gates.json</code>, the red/green counts and the
+routing itself, in the decide place. This is the rule that makes ADR-0006's evidence hold
+for code a stranger shaped: the gate's bookkeeping is produced where the stranger's code
+never ran.</p>
+<p>The reviewer therefore does not re-execute the red and green legs (ADR-0005's stash and
+unstash) for bug bundles; it adjudicates from the verify job's log, the path docs 05 already
+provides for rows a reviewer cannot re-run (#403).</p>
+<h3 id="2-one-runner-per-batch">2. One runner per batch</h3>
+<p>A <strong>batch</strong> is one scheduled run of the track (ADR-0020 §2). The driver creates one runner
+VM when, and only when, the poll found work; a quiet day creates nothing.</p>
+<ul>
+<li><strong>Intake stops at 20 hours, the VM is deleted at 23.</strong> <code>max_run_duration</code> of 23 h with
+termination action <code>DELETE</code> is enforced by the provider and holds if the driver dies. The
+runner's own agent takes no new job after 20 h, finishes what runs, and powers off when
+the last container exits; the driver deletes the instance.</li>
+<li><strong>The job limit is the drain window.</strong> No job may run longer than
+<code>lifetime − intake_cutoff</code> (3 h by default), so a job started at the cutoff still ends
+before the hard stop. <code>doctor</code> checks <code>job_limit ≤ lifetime − intake_cutoff</code>. The limit is
+per job, not per issue; what exhausting it means is decided in ADR-0020 §6.</li>
+<li><strong>The runner powers off when the queue is empty</strong> for a short grace period, so a batch
+with two bugs does not pay for 23 hours.</li>
+<li><strong>Containers per job.</strong> Each job runs in a fresh container from a pinned image: read-only
+root, a tmpfs working directory, no capabilities, seccomp, user namespaces, cgroup
+limits, a timeout of the job limit. Produce containers run under gVisor (<code>runsc</code>) and
+reach only the endpoints of the model vendors the instance configures for its leaves
+(at least two, since ADR-0005 wants the reviewer decorrelated from the builder); verify
+containers run under plain
+rootless Podman with no network. Dependencies come from a read-only cache volume that a
+trusted job writes from the target's <code>main</code>; no container fetches from a registry.</li>
+<li><strong>One VM, with a taint rule.</strong> Produce and verify containers share the runner's kernel.
+If any anomaly occurs during a batch (a seccomp kill, a container timeout, an attempted
+connection the proxy refused, an out-of-memory kill), every verdict of that batch is
+marked tainted and verified again in the next batch before anything is published. A
+kernel escape is thereby bounded to one batch's verdicts, which never reach a pull
+request unverified. Separate runners for produce and verify remain the stricter option
+an operator may configure.</li>
+<li><strong>Spot.</strong> The runner is a spot VM; an interruption ends the batch. Claimed jobs expire
+(ADR-0020 §12) and the next batch picks them up.</li>
+</ul>
+<h3 id="3-what-the-runner-holds">3. What the runner holds</h3>
+<ul>
+<li>A service account that can read the job bucket and the cache bucket and write to one
+result prefix; never the default compute service account, never a role on the project.</li>
+<li>No external IP, no SSH (OS Login off), no serial console; outbound through NAT to the
+configured model endpoints, the job and cache buckets, and nothing else. The egress rule is by
+destination, logged in full, not errors only.</li>
+<li>The model credential for produce containers: a key bound to a workspace with its own
+spending limit, placed in the runner's metadata for the batch, never a subscription
+login (for the reason ADR-0017 rejects one). <strong>[OPEN]</strong> whether a small gateway in the
+project holds the key instead and enforces a per-batch token quota, so no spendable
+credential is on the runner at all; the pilot's spend data decides.</li>
+<li>Nothing that can write to a repository. Jobs and results move through object storage
+with URLs the driver signs per job.</li>
+<li>Result bundles are plain tar archives with a fixed member list; the driver extracts them
+with <code>tarfile</code>'s data filter, rejects any member outside the list, and never decompresses
+a format outside the standard library (ADR-0008).</li>
+</ul>
+<h3 id="4-the-driver-container">4. The driver container</h3>
+<p>The driver runs as a scheduled container the operator deploys (&quot;the workflow host&quot; in
+ADR-0020): a rendered instance plus the driver, started by the operator's workflow engine,
+reporting back when the batch ends. It is the only trusted place and it runs no leaf.</p>
+<table>
+<thead>
+<tr>
+<th>Credential</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cloud credential</td>
+<td>create and delete runners in the dedicated project; read the result prefix</td>
+</tr>
+<tr>
+<td>Tracker token</td>
+<td>read issues and comments; write labels and comments; the target repository only, no code scopes</td>
+</tr>
+<tr>
+<td>Deploy key</td>
+<td>push <code>bug/*</code> branches to the pdca repository and open pull requests there</td>
+</tr>
+<tr>
+<td>MAC key</td>
+<td>the bug records (spec §11)</td>
+</tr>
+<tr>
+<td>Target push credential</td>
+<td>push <code>bugfix/*</code> branches to the target and open draft pull requests; present only if publish runs here (ADR-0020 §7), absent if the operator publishes from their own machine</td>
+</tr>
+</tbody>
+</table>
+<p>No personal login of the maintainer is among them. The container keeps two volumes, the
+checkout of the pdca repository and <code>process/</code> for job claims; everything else is Git.
+Its image definition is rendered into instances under <code>deploy/driver/</code> (ADR-0007); how an
+operator runs it is the operator's.</p>
+<h3 id="5-backend-and-seam">5. Backend and seam</h3>
+<ul>
+<li><strong>Google Cloud first</strong>, in a dedicated project, in <code>europe-west3</code>, on x86_64 machine
+types; the runner image is built with Packer and the infrastructure is OpenTofu under
+<code>deploy/bug-track/gcp/</code>, reference infrastructure for an operator and not rendered into
+instances, because it carries the operator's project, billing and network.</li>
+<li><strong>Requirements on the runner seam.</strong> The runner is reached through the <code>LeafRunner</code> seam
+that ADR-0010 will decide. This ADR requires of that seam: a job is created from
+recorded inputs and a job kind; its result is a bundle of named members collected by
+hash; budgets and token rows are recorded per job; a backend talks to its provider through
+the provider's CLI or plain HTTPS, never a cloud SDK (ADR-0008). <strong>[OPEN]</strong> the seam's
+exact contract is ADR-0010's to decide; this ADR does not fix it.</li>
+<li><strong>Other backends.</strong> Any host that runs containers from a queue satisfies the seam: a
+self-hosted server, OVHcloud, STACKIT. The decision for one of them is a new ADR.</li>
+</ul>
+<p><strong>Sovereignty.</strong> The projects the harness serves aim at digital sovereignty, so running on a
+US-controlled provider is a conscious compromise. It is accepted for this track because the
+track handles only public data (open-source code and public issues), because the leaves
+already call US model providers and the repositories already live on GitHub, so no new
+class of dependency is added, and because the seam keeps the exit cost low. It is not a
+precedent for any workload with data that is not public. Gaining hands-on experience with
+Google Cloud is a stated secondary reason.</p>
+<p><strong>When to revisit.</strong> When the monthly spend, averaged over three months, exceeds the cost of
+a self-hosted server amortised over three years plus running costs, a self-hosted backend
+becomes the default and Google Cloud the overflow.</p>
+<h2 id="consequences">Consequences</h2>
+<p>A hostile issue that steers a leaf reaches a container that holds no repository credential,
+can reach at most the model endpoint, and is gone with its batch. At worst it hands the
+driver a diff and a test, whose red and green are established on a container the stranger's
+code never touched, and which a human then judges in a bundle pull request (ADR-0020 §7).
+For the bug track this removes the practical effect of #710, #853, #854 and #855; the gaps
+remain for ordinary cycles and are tracked there.</p>
+<p>A batch that reproduces and fixes several bugs costs one VM for the hours it needs;
+provisioning happens once a day at most, and a quiet day costs nothing.</p>
+<p>Every verdict costs a verify container in addition to the produce container, and every
+reproduced test runs N times per candidate ref; this is the price of evidence that means
+something, and the runner's cores are what pay it.</p>
+<p>A cold cache makes the builder slow; the cache job on the target's <code>main</code> must exist before
+the track is useful for a large Rust project, and the pilot measures cold against warm
+build time before the job limit is treated as a budget rather than a ceiling.</p>
+<p>The taint rule can delay a batch's results by a day when an unrelated container times out;
+a separate verify runner removes the delay at the cost of a second VM.</p>
+<p>An operator now runs a Google Cloud project and a driver container alongside the instance.</p>
+<p>Left open:</p>
+<ul>
+<li><strong>[OPEN]</strong> The model-key gateway (section 3).</li>
+<li><strong>[OPEN]</strong> The runner seam's contract (section 5, ADR-0010).</li>
+<li><strong>[OPEN]</strong> Whether reproduction for aarch64-only reports runs on a separate backend (an
+Arm machine or an Arm VM), or such reports always need a maintainer's go.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

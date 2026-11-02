@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec: Bug record -- v1 — PDCA Harness</title>
+<meta name="description" content="The bug track carries a bug from a public issue to a draft pull request through">
+<meta property="og:title" content="Spec: Bug record -- v1 — PDCA Harness">
+<meta property="og:description" content="The bug track carries a bug from a public issue to a draft pull request through">
+<meta property="og:type" content="article">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><a href="/">PDCA Harness</a></div>
+    <nav class="topnav" aria-label="primary">
+      <a href="/guide/">guide</a>
+      <a href="/spec/">spec</a>
+      <a href="/design/">design</a>
+      <a href="/governance/">governance</a>
+      <a href="https://github.com/eduralph/pdca-harness">github</a>
+    </nav>
+  </header>
+</div>
+
+<!-- DOC_HEADER: doc-class + optional status/meta line. render_site.py emits the
+     whole block, or nothing when there is neither a class label nor meta. -->
+<div class="wrap">
+  <header class="doc-header">
+    <p class="doc-class">Design documentation</p>
+  </header>
+</div>
+
+<div class="wrap">
+  <main>
+    <!-- CONTENT: rendered Markdown body (includes its own <h1>). -->
+    <article class="prose">
+<h1 id="spec-bug-record----v1">Spec: Bug record -- v1</h1>
+<blockquote>
+<p>Normative specification. <strong>Status: DRAFT (unstable -- will change).</strong> This
+document uses <a href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a> keywords:
+MUST, SHOULD, MAY.</p>
+</blockquote>
+<h2 id="motivation">Motivation</h2>
+<p>The bug track (ADR-0020) carries a bug from a public issue to a draft pull request through
+several stages, run by different leaves, possibly from different vendors, on different
+machines (ADR-0021). The bug record is what passes between them. It has to be written down
+for three reasons:</p>
+<ul>
+<li><strong>It is the handover between untrusted and trusted places.</strong> Every stage after Summarize
+reads the record instead of the issue, and the record is the only thing the driver takes
+from a produce job besides the bytes of a test or a diff (ADR-0021 §1). What it may
+contain must therefore be a rule a program checks, not a prompt. Its sanitization is
+hygiene, not a security boundary: it stops literal copying, not steering, and the design
+does not rely on it to keep a steered leaf from doing harm.</li>
+<li><strong>It separates what a model says from what the driver decides.</strong> Leaves describe the bug
+and write the test; the driver records results, the target ref and routing. That split
+holds only if it is part of the format.</li>
+<li><strong>It outlives a run.</strong> A track can stay open across an instance's <code>copier update</code>, so a
+record written by one release of the driver must be read correctly, or refused, by the
+next.</li>
+</ul>
+<h2 id="scope">Scope</h2>
+<p>This specification defines the bug record document: its encoding, its fields, which stage
+writes each section, the validation a reader performs, how a leaf hands its part over, and
+how the driver detects a record it did not write.</p>
+<p>It does not define:</p>
+<ul>
+<li>the directory a record is kept in, which ADR-0020 section 8 decides, or how it relates
+to the bundle format (<code>bundle-format/v1</code>, planned in #712);</li>
+<li>the issue form a reporter fills in; section &quot;Intake&quot; below says only what Summarize may
+take from it;</li>
+<li>the stage logic, triggers, target-ref choice and protected paths, which ADR-0020 decides.
+This spec gives them fields, not rules.</li>
+</ul>
+<h2 id="conventions">Conventions</h2>
+<ul>
+<li>A <strong>record</strong> is one JSON document per bug, encoded as UTF-8 and conforming to I-JSON
+(RFC 7493): no duplicate member names, no unpaired surrogates, numbers within IEEE 754
+double precision.</li>
+<li>A <strong>writer</strong> produces or changes a record; a <strong>reader</strong> parses and validates one. The
+driver is both. A leaf reads the record (never the issue) and produces only the fragment
+its stage owns (see &quot;Ownership&quot;).</li>
+<li><strong>Text fields</strong> are strings meant for people. <strong>Identifier fields</strong> are strings matched
+against a fixed pattern.</li>
+<li>A <strong>ref</strong> is a Git branch name, written without <code>refs/heads/</code> (for example <code>main</code>,
+<code>release/0.1</code>), matching <code>[A-Za-z0-9][A-Za-z0-9._/-]{0,127}</code> and containing no <code>..</code>. A
+<strong>commit</strong> is a full 40-character lowercase hexadecimal object ID. A <strong>tag</strong> follows the
+ref pattern. Whenever the driver passes one of these to <code>git</code>, it does so after
+<code>--end-of-options</code>.</li>
+<li><strong>Text</strong> is compared after Unicode normalization form NFKC and case folding.</li>
+<li>&quot;Absent&quot; means the member is not present. <code>null</code> is allowed only where this spec says so.</li>
+</ul>
+<h2 id="requirements">Requirements</h2>
+<h3 id="1-top-level">1. Top level</h3>
+<p>A record MUST be a JSON object with exactly these members:</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Written by</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>format</code></td>
+<td>string, exactly <code>&quot;pdca.bug-record&quot;</code></td>
+<td>driver</td>
+<td>Identifies the document type</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>integer, exactly <code>1</code></td>
+<td>driver</td>
+<td>This specification's version</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>object (§2)</td>
+<td>driver</td>
+<td>Where the bug came from</td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td>object (§3)</td>
+<td>Summarize leaf, validated by the driver</td>
+<td>The sanitized description</td>
+</tr>
+<tr>
+<td><code>reproduction</code></td>
+<td>object (§4) or <code>null</code></td>
+<td>Reproduce leaf (<code>test</code>) and driver (the rest)</td>
+<td>The red test and its results</td>
+</tr>
+<tr>
+<td><code>target</code></td>
+<td>object (§5) or <code>null</code></td>
+<td>driver</td>
+<td>Where the fix goes</td>
+</tr>
+<tr>
+<td><code>routing</code></td>
+<td>object (§6) or <code>null</code></td>
+<td>driver</td>
+<td>Whether a cycle may start without a maintainer</td>
+</tr>
+<tr>
+<td><code>closure</code></td>
+<td>object (§13) or <code>null</code></td>
+<td>driver</td>
+<td>How the track ended; <code>null</code> while it runs</td>
+</tr>
+</tbody>
+</table>
+<p>A reader MUST reject a record with a member missing, a member not listed here, or a member
+of the wrong type. This holds at every level of the document: v1 has no extension members.</p>
+<p><code>reproduction</code>, <code>target</code>, <code>routing</code> and <code>closure</code> are <code>null</code> until their stage has run. A record in
+which <code>target</code> is not <code>null</code> MUST have a non-null <code>reproduction</code> whose <code>status</code> is
+<code>&quot;reproduced&quot;</code>; one in which <code>routing</code> is not <code>null</code> MUST have a non-null <code>target</code>.</p>
+<h3 id="2-source">2. <code>source</code></h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kind</code></td>
+<td><code>&quot;issue&quot;</code> or <code>&quot;scheduled-run&quot;</code></td>
+<td>An issue in the tracker, or a failing test from the instance's own scheduled runs (ADR-0020, stage 4)</td>
+</tr>
+<tr>
+<td><code>repository</code></td>
+<td>string, <code>owner/name</code></td>
+<td>The repository the bug is filed against</td>
+</tr>
+<tr>
+<td><code>issue</code></td>
+<td>integer ≥ 1, or <code>null</code></td>
+<td>The issue number; MUST be non-null when <code>kind</code> is <code>&quot;issue&quot;</code> and <code>null</code> otherwise</td>
+</tr>
+<tr>
+<td><code>run</code></td>
+<td>string of 1–128 characters from <code>[A-Za-z0-9._-]</code>, or <code>null</code></td>
+<td>The scheduled run's ID; MUST be non-null when <code>kind</code> is <code>&quot;scheduled-run&quot;</code> and <code>null</code> otherwise</td>
+</tr>
+<tr>
+<td><code>issue_digest</code></td>
+<td>64 lowercase hexadecimal characters, or <code>null</code></td>
+<td>SHA-256 of the <strong>issue text</strong> Summarize was given (below); MUST be non-null exactly when <code>kind</code> is <code>&quot;issue&quot;</code></td>
+</tr>
+<tr>
+<td><code>attempt</code></td>
+<td>integer 1–9</td>
+<td>Which attempt of Summarize and Reproduce this record holds (ADR-0020 section 11)</td>
+</tr>
+</tbody>
+</table>
+<p>The <strong>issue text</strong> is the UTF-8 encoding of: the issue title, one line feed, the issue body
+and, from the second attempt on, one line feed and each comment by the reporter since the
+track's questions, in order, each followed by one line feed. When the driver truncates the
+text it gives Summarize (<code>summary.truncated</code>), the digest is of the truncated text, and the
+truncation is a cut after a fixed number of bytes set per instance, so it can be repeated.
+Every comparison in §3 is against this text.</p>
+<h3 id="3-summary">3. <code>summary</code></h3>
+<p>The summary is the only part of the record derived from text a stranger wrote.</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Limit</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>title</code></td>
+<td>text</td>
+<td>1–120 characters</td>
+<td>One line naming the defect</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>text</td>
+<td>1–600 characters</td>
+<td>What goes wrong, in plain language for someone who does not know the code</td>
+</tr>
+<tr>
+<td><code>impact</code></td>
+<td>text</td>
+<td>1–600 characters</td>
+<td>Who is affected and what it costs them (lost data, a wrong result, a crash, a slowdown)</td>
+</tr>
+<tr>
+<td><code>observed</code></td>
+<td>text</td>
+<td>1–1500 characters</td>
+<td>What happens</td>
+</tr>
+<tr>
+<td><code>expected</code></td>
+<td>text</td>
+<td>1–1500 characters</td>
+<td>What should happen instead</td>
+</tr>
+<tr>
+<td><code>trigger</code></td>
+<td>text</td>
+<td>1–1500 characters</td>
+<td>The conditions under which it happens</td>
+</tr>
+<tr>
+<td><code>areas</code></td>
+<td>array of 1–2 identifier strings</td>
+<td>from the instance's configured area list</td>
+<td>Where the leaf believes the defect lives; informational, never used for routing (ADR-0020 section 5)</td>
+</tr>
+<tr>
+<td><code>reported_ref</code></td>
+<td>object</td>
+<td></td>
+<td>The version the reporter saw the bug on (below)</td>
+</tr>
+<tr>
+<td><code>truncated</code></td>
+<td>boolean</td>
+<td></td>
+<td><code>true</code> if the leaf had to shorten the issue text it was given</td>
+</tr>
+</tbody>
+</table>
+<p><code>reported_ref</code> has two members:</p>
+<ul>
+<li><code>kind</code>: <code>&quot;ref&quot;</code>, <code>&quot;tag&quot;</code>, <code>&quot;commit&quot;</code> or <code>&quot;none&quot;</code>.</li>
+<li><code>value</code>: a ref, a tag or a commit as defined in &quot;Conventions&quot;, matching <code>kind</code>; <code>null</code>
+when <code>kind</code> is <code>&quot;none&quot;</code>. A reader MUST reject a value that does not match the pattern.</li>
+</ul>
+<p><strong>Sanitization.</strong> The driver MUST validate every text field of <code>summary</code> before it writes
+the record, and MUST reject the leaf's output, never repair it, when a text field fails any
+rule below. Text is normalized (NFKC, case-folded) on both sides first. A <strong>word</strong> is a
+maximal run of letters and digits; a <strong>token</strong> is a maximal run of non-whitespace characters
+with leading and trailing punctuation (<code>.,;:!?()[]{}&quot;'</code>) removed.</p>
+<ul>
+<li>It contains a run of five or more consecutive words that also appears in the issue text.</li>
+<li>It contains a number of three or more digits that also appears in the issue text.</li>
+<li>It contains a token of eight or more characters that also appears in the issue text and
+that contains a digit, one of <code>. / _ : = @ +</code>, or two or more hyphens (a likely
+identifier, path, host name, token or repository name).</li>
+<li>It contains a URL, a Markdown link or image, a code span or fence, an HTML tag, or an
+<code>@</code>-mention.</li>
+<li>It contains a character of Unicode category Cc other than line feed, or of category Cf
+(zero-width and bidirectional controls), or a character outside the Basic Latin, Latin-1
+Supplement and General Punctuation blocks that the issue text does not also contain.</li>
+</ul>
+<p>These are the reason-field rules of ADR-0017 section 5 (including its edge-punctuation
+stripping and its &quot;also appears in the issue&quot; condition for identifiers), extended to the
+whole summary and to the comments a later attempt reads. They make the summary say <em>what
+kind of thing</em> fails, never <em>which literal input</em> makes it fail; the Reproduce leaf
+rediscovers the literals from the code. They do not stop a summary from carrying an
+instruction in plain words; nothing downstream treats the summary as more than a
+description, and the design's safety does not rest on these rules (ADR-0021 §1). When the
+leaf's output is rejected, the driver MAY ask the leaf once more and otherwise stops the
+track for the issue with <code>needs-triage</code>.</p>
+<p><strong><code>reported_ref</code>.</strong> The driver MUST check that a <code>reported_ref</code> other than <code>&quot;none&quot;</code> names a
+ref, tag or commit that exists in <code>source.repository</code>, and MUST replace it with
+<code>{&quot;kind&quot;: &quot;none&quot;, &quot;value&quot;: null}</code> when it does not. A leaf's guess never becomes a ref the
+driver checks out.</p>
+<h3 id="4-reproduction">4. <code>reproduction</code></h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Written by</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>status</code></td>
+<td><code>&quot;reproduced&quot;</code>, <code>&quot;flaky&quot;</code> or <code>&quot;not-reproduced&quot;</code></td>
+<td>driver</td>
+<td>A test that fails on every verify run, one that fails only on some, or none within the stage's budget (ADR-0020 section 9)</td>
+</tr>
+<tr>
+<td><code>test</code></td>
+<td>object (below), or <code>null</code></td>
+<td>Reproduce leaf (<code>kind</code>, <code>path</code>, <code>seed</code>), driver (<code>sha256</code>)</td>
+<td>The test; MUST be non-null exactly when <code>status</code> is <code>&quot;reproduced&quot;</code> or <code>&quot;flaky&quot;</code></td>
+</tr>
+<tr>
+<td><code>signature</code></td>
+<td>string, or <code>null</code></td>
+<td>driver</td>
+<td>Where the test failed, <code>&lt;path&gt;:&lt;line&gt;</code>, as the verify job's <code>PDCA-FAILURE-AT:</code> marker reported it; <code>null</code> when the marker was absent or <code>status</code> is not <code>&quot;reproduced&quot;</code>. Informational: it links tracks and never closes one (ADR-0020 section 10)</td>
+</tr>
+<tr>
+<td><code>results</code></td>
+<td>array of result objects (below)</td>
+<td>driver</td>
+<td>The verify job's outcome on each candidate ref; at least one when <code>status</code> is <code>&quot;reproduced&quot;</code> or <code>&quot;flaky&quot;</code></td>
+</tr>
+<tr>
+<td><code>questions</code></td>
+<td>array of 0–5 text strings, each 1–300 characters</td>
+<td>Reproduce leaf, validated by the driver</td>
+<td>What the reporter would have to tell; MUST be empty unless <code>status</code> is <code>&quot;not-reproduced&quot;</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>signature</code>'s path part is relative to the repository root, uses <code>/</code>, and is neither
+absolute nor contains <code>..</code>; it may point anywhere in the tree, since a failure is usually in
+source, not in the test. The line is a decimal integer ≥ 1. The marker is printed by the
+test under test, so the signature is a hint, not a fact.</p>
+<p><code>questions</code> are posted to the public issue. The driver MUST apply the sanitization rules of
+§3 to them.</p>
+<p><code>test</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kind</code></td>
+<td><code>&quot;unit&quot;</code>, <code>&quot;property&quot;</code> or <code>&quot;simulation-seed&quot;</code></td>
+<td>What kind of test it is</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td>string</td>
+<td>The test file, relative to the repository root, using <code>/</code>; MUST NOT be absolute or contain <code>..</code>, and MUST lie under one of the instance's configured test directories</td>
+</tr>
+<tr>
+<td><code>sha256</code></td>
+<td>64 lowercase hexadecimal characters</td>
+<td>The SHA-256 of the test file's bytes as the driver took them from the Reproduce job</td>
+</tr>
+<tr>
+<td><code>seed</code></td>
+<td>string of 1–64 characters from <code>0-9</code>, <code>A-Z</code>, <code>a-z</code>, <code>-</code> and <code>_</code>, or <code>null</code></td>
+<td>The seed the test runs with; MUST be non-null exactly when <code>kind</code> is <code>&quot;simulation-seed&quot;</code>. Always present, <code>null</code> when it does not apply</td>
+</tr>
+</tbody>
+</table>
+<p>The record names no command: the command that runs a test of each <code>kind</code> is instance
+configuration, and the driver passes it <code>path</code> (and <code>seed</code>) as arguments after
+<code>--end-of-options</code> or its equivalent. The driver MUST compute <code>sha256</code> itself from the bytes
+it took, not take a leaf's value, and every verify job runs exactly those bytes (ADR-0021
+§1); a diff that changes the file at <code>path</code> makes the C4 row unverifiable (ADR-0020,
+stage 5).</p>
+<p>A result object:</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ref</code></td>
+<td>ref or tag, or <code>null</code></td>
+<td>The candidate ref the test ran on, or the reported version (below); <code>null</code> only for a reported commit</td>
+</tr>
+<tr>
+<td><code>commit</code></td>
+<td>commit</td>
+<td>The commit <code>ref</code> pointed to at the time</td>
+</tr>
+<tr>
+<td><code>runs</code></td>
+<td>integer 1–100</td>
+<td>How many times the verify job ran the test on this ref, each on a fresh copy of the tree</td>
+</tr>
+<tr>
+<td><code>failures</code></td>
+<td>integer 0–<code>runs</code></td>
+<td>How many of those runs failed</td>
+</tr>
+<tr>
+<td><code>outcome</code></td>
+<td><code>&quot;red&quot;</code>, <code>&quot;green&quot;</code>, <code>&quot;flaky&quot;</code> or <code>&quot;error&quot;</code></td>
+<td>Derived from the counts, or could not run (build failure, infrastructure)</td>
+</tr>
+</tbody>
+</table>
+<p><code>outcome</code> MUST be <code>&quot;red&quot;</code> exactly when <code>failures</code> equals <code>runs</code>, <code>&quot;green&quot;</code> exactly when
+<code>failures</code> is 0, and <code>&quot;flaky&quot;</code> otherwise, unless it is <code>&quot;error&quot;</code>; an <code>&quot;error&quot;</code> result has
+<code>failures</code> 0. An <code>&quot;error&quot;</code> outcome is not evidence either way. Results are listed in the order they were
+run; a ref MUST NOT appear twice.</p>
+<p>The results cover every candidate ref and, when <code>summary.reported_ref</code> is not <code>&quot;none&quot;</code>
+and names something other than a candidate ref, one more result for the <strong>reported
+version</strong>: <code>ref</code> is the reported ref or tag, or <code>null</code> for a reported commit, and <code>commit</code>
+is what it resolved to. That result is evidence only (ADR-0020 section 4): it can be the red
+leg and it can lead to <code>&quot;answer-only&quot;</code>, but it is never a fix target. A result with a <code>null</code>
+<code>ref</code> MUST have a <code>commit</code> equal to <code>summary.reported_ref.value</code>.</p>
+<h3 id="5-target">5. <code>target</code></h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>decision</code></td>
+<td><code>&quot;fix-on-main&quot;</code>, <code>&quot;backport-existing&quot;</code>, <code>&quot;fix-on-release&quot;</code> or <code>&quot;answer-only&quot;</code></td>
+<td>The outcomes of ADR-0020 section 4 (<code>&quot;fix-on-release&quot;</code>: bisection did not finish, so the fix is built on the release branch)</td>
+</tr>
+<tr>
+<td><code>ref</code></td>
+<td>ref, or <code>null</code></td>
+<td>Where the fix is built or backported first; <code>null</code> only for <code>&quot;answer-only&quot;</code></td>
+</tr>
+<tr>
+<td><code>backports</code></td>
+<td>array of refs</td>
+<td>Further release branches that get a backport cycle; empty unless <code>decision</code> is <code>&quot;fix-on-main&quot;</code> or <code>&quot;backport-existing&quot;</code></td>
+</tr>
+<tr>
+<td><code>fixing_commit</code></td>
+<td>commit, or <code>null</code></td>
+<td>The commit on <code>main</code> found by bisection; MUST be non-null exactly when <code>decision</code> is <code>&quot;backport-existing&quot;</code></td>
+</tr>
+<tr>
+<td><code>answered_release</code></td>
+<td>string of 1–64 characters, or <code>null</code></td>
+<td>The first release in which the test is green; MUST be non-null exactly when <code>decision</code> is <code>&quot;answer-only&quot;</code></td>
+</tr>
+</tbody>
+</table>
+<p>Every ref in <code>ref</code> and <code>backports</code> MUST appear in <code>reproduction.results</code> with outcome
+<code>&quot;red&quot;</code>, and MUST be a branch: the reported version's result never names a target
+unless the reported ref is itself a candidate ref.</p>
+<h3 id="6-routing">6. <code>routing</code></h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected</code></td>
+<td>boolean</td>
+<td>Whether the test file's path or any path the diff touches is in the instance's protected paths</td>
+</tr>
+<tr>
+<td><code>matched</code></td>
+<td>array of strings</td>
+<td>The protected-path patterns that matched; empty exactly when <code>protected</code> is <code>false</code></td>
+</tr>
+<tr>
+<td><code>start</code></td>
+<td><code>&quot;auto&quot;</code> or <code>&quot;maintainer&quot;</code></td>
+<td>Whether Fix starts on its own or the bundle pull request opens with the test only (ADR-0020 section 3)</td>
+</tr>
+</tbody>
+</table>
+<p><code>start</code> MUST be <code>&quot;maintainer&quot;</code> when <code>protected</code> is <code>true</code>. Routing is computed from the test
+path when the test is verified and again when a diff exists; it may move from <code>&quot;auto&quot;</code> to
+<code>&quot;maintainer&quot;</code>, never back. Nothing a leaf writes is an input to it.</p>
+<h3 id="7-ownership">7. Ownership</h3>
+<p>The record mirrors ADR-0017's rule that the model classifies and the code decides:</p>
+<ul>
+<li>A leaf's output for its stage MUST be a JSON object holding only the members that stage
+writes: <code>summary</code> for Summarize; <code>test</code> (without <code>sha256</code>) and <code>questions</code> for Reproduce.
+The driver MUST reject leaf output with any other member, before validating content.
+Both members are always present: a found test comes with <code>questions</code> <code>[]</code>, and a test
+not found is <code>test</code> <code>null</code> with 0–5 <code>questions</code>. A non-null <code>test</code> together with
+non-empty <code>questions</code> is rejected, not dropped.</li>
+<li><code>source</code>, <code>reproduction.status</code>, <code>reproduction.signature</code>, <code>reproduction.results</code>,
+<code>test.sha256</code>, <code>target</code>, <code>routing</code> and <code>closure</code> are written only by the driver, from
+the verify job's output or facts it established itself. Nothing in them comes from a
+produce job's output (ADR-0021 §1).</li>
+<li>Once <code>reproduction.status</code> is <code>&quot;reproduced&quot;</code> or <code>&quot;flaky&quot;</code>, a writer MUST NOT change
+<code>summary</code> or <code>reproduction.test</code>. A changed bug is a new record.</li>
+<li>A record with <code>reproduction.status</code> <code>&quot;not-reproduced&quot;</code>, <code>closure</code> <code>null</code> and
+<code>source.attempt</code> below the instance's limit is <strong>waiting on the reporter</strong> (ADR-0020
+section 11). A new attempt replaces <code>summary</code> and <code>reproduction</code>, increases
+<code>source.attempt</code> by one and recomputes <code>source.issue_digest</code> over the issue text as the
+new attempt read it. After the last attempt the driver writes <code>closure</code>.</li>
+</ul>
+<h3 id="8-intake">8. Intake</h3>
+<p>The issue form of an instance's repository SHOULD ask for the version or commit the
+reporter used. Summarize MAY derive <code>summary.reported_ref</code> from that answer, subject to the
+check in §3. Nothing else from the form has a field of its own; it reaches the record only
+through the sanitized text fields.</p>
+<h3 id="9-leaf-output">9. Leaf output</h3>
+<p>A leaf hands over its part as one file with a fixed name in its output directory:
+<code>summarize.out.json</code> for Summarize, <code>reproduce.out.json</code> for Reproduce. The file MUST be a
+single JSON document as in &quot;Conventions&quot; and MUST hold only the members of §7.</p>
+<p>The driver MUST read that file and nothing else. It MUST NOT extract JSON from a leaf's
+standard output, from a transcript, or from prose around a code block. A missing file, an
+empty file or a file that does not parse means the stage failed; it is never read as an
+empty result.</p>
+<h3 id="10-one-record-per-file-markdown-only-rendered">10. One record per file, Markdown only rendered</h3>
+<p>A record is stored as its own file, <code>bug-record.json</code>, holding exactly one record. It is
+never embedded in another document and records are never concatenated.</p>
+<p>Any Markdown about a bug (the bundle's <code>README.md</code>, the cycle's brief, comments on the
+issue) is rendered from the record by the driver. A writer MUST NOT read state back from
+such Markdown; the record is the only source. This keeps the bug track out of the problem
+risk R5 describes, where state lives in model-written Markdown that every reader parses.</p>
+<h3 id="11-integrity">11. Integrity</h3>
+<p>Every stored record is accompanied by a MAC file, <code>bug-record.json.mac</code>, next to it.</p>
+<ul>
+<li>The MAC file holds exactly one line: <code>hmac-sha256 &lt;key-id&gt; &lt;mac&gt;</code>, fields separated by
+one space, ended by one line feed. <code>&lt;key-id&gt;</code> is 1–64 characters from
+<code>[A-Za-z0-9._-]</code>; <code>&lt;mac&gt;</code> is 64 lowercase hexadecimal characters.</li>
+<li><code>&lt;mac&gt;</code> is HMAC-SHA256 (RFC 2104) over the exact bytes of <code>bug-record.json</code>. There is
+no canonical form: changing any byte, including whitespace, changes the MAC.</li>
+<li>The key is a secret of at least 32 random bytes, held only on the workflow host and
+identified by <code>&lt;key-id&gt;</code> so it can be rotated. It MUST NOT reach a runner, a leaf, a
+repository or a log.</li>
+<li>The driver MUST write the record and then its MAC on every change, and MUST verify the
+MAC before using a record. A missing MAC file, an unknown key ID or a mismatch stops the
+track with a NEEDS-HUMAN item. The driver MUST NOT repair or re-MAC a record that failed
+verification.</li>
+<li>Leaf output (§9) carries no MAC: leaves hold no key. The driver validates it, merges it
+into the record and writes a new MAC.</li>
+</ul>
+<p>A MAC, not a signature: the driver both writes and reads records, so a shared secret
+suffices, and HMAC is in the standard library the driver is limited to (ADR-0008).</p>
+<h3 id="12-publication">12. Publication</h3>
+<p>A record and its MAC file are committed to the pdca repository, which may be public
+(ADR-0020 section 8).
+Writers MUST therefore put nothing in a record that is not fit to publish. The rules of §3
+keep issue text out; in addition, no member may hold a secret, a signed URL, a host name
+or path of the workflow host, or an identifier of the runner's infrastructure. A
+published MAC reveals nothing about the key.</p>
+<h3 id="13-closure">13. <code>closure</code></h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reason</code></td>
+<td><code>&quot;accepted&quot;</code>, <code>&quot;rejected&quot;</code>, <code>&quot;delegated&quot;</code>, <code>&quot;answered&quot;</code>, <code>&quot;not-reproduced&quot;</code>, <code>&quot;flaky&quot;</code>, <code>&quot;withdrawn&quot;</code> or <code>&quot;handed-over&quot;</code></td>
+<td>How the track ended (ADR-0020 sections 6, 7 and 11)</td>
+</tr>
+<tr>
+<td><code>bundle_pull_request</code></td>
+<td>integer ≥ 1, or <code>null</code></td>
+<td>The bundle pull request on the pdca repository; non-null exactly when <code>reason</code> is <code>&quot;accepted&quot;</code>, <code>&quot;rejected&quot;</code> or <code>&quot;delegated&quot;</code></td>
+</tr>
+<tr>
+<td><code>pull_requests</code></td>
+<td>array of integers ≥ 1</td>
+<td>The draft pull requests opened on the target repository after accept; non-empty only when <code>reason</code> is <code>&quot;accepted&quot;</code>, and MAY be empty there until publish has run</td>
+</tr>
+<tr>
+<td><code>linked_to</code></td>
+<td>array of integers ≥ 1</td>
+<td>Issues whose open track shared this one's <code>signature</code> (ADR-0020 section 10); informational</td>
+</tr>
+</tbody>
+</table>
+<p>A <code>closure</code> MUST agree with the rest of the record: <code>&quot;accepted&quot;</code> and <code>&quot;rejected&quot;</code> need a
+<code>target</code> whose <code>decision</code> is not <code>&quot;answer-only&quot;</code>; <code>&quot;delegated&quot;</code> needs <code>reproduction.status</code>
+<code>&quot;reproduced&quot;</code> and <code>routing.start</code> <code>&quot;maintainer&quot;</code> or a Fix that exhausted its budget;
+<code>&quot;answered&quot;</code> needs a <code>target</code> whose <code>decision</code> is <code>&quot;answer-only&quot;</code>; <code>&quot;not-reproduced&quot;</code> and
+<code>&quot;flaky&quot;</code> need <code>reproduction.status</code> with the same value. <code>&quot;withdrawn&quot;</code> and <code>&quot;handed-over&quot;</code>
+may close a record at any stage. A record with a non-null <code>closure</code> is changed once more at
+most, to fill <code>pull_requests</code> after publish; otherwise never.</p>
+<h2 id="versioning-and-compatibility">Versioning and compatibility</h2>
+<ul>
+<li>A reader MUST reject a record whose <code>format</code> is not <code>&quot;pdca.bug-record&quot;</code> or whose
+<code>version</code> it does not implement. It MUST NOT guess.</li>
+<li>Any change to a member, a type, a limit, a sanitization rule or an ownership rule is a
+new version. v1 has no compatible extensions.</li>
+<li>A driver that implements a later version SHOULD keep reading v1 records until no open
+track holds one, so a track started before a <code>copier update</code> can finish. A driver that
+cannot read a record MUST stop that track with a NEEDS-HUMAN item rather than restart
+it.</li>
+</ul>
+<h2 id="conformance">Conformance</h2>
+<p>A conforming reader MUST accept every record under <code>vectors/v1/valid/</code> and reject every
+record under <code>vectors/v1/invalid/</code>, for the reason given in the matching <code>.reason.txt</code>.</p>
+<p>The sanitization rules of §3 compare a summary against the issue it came from, so their
+vectors live apart, under <code>vectors/v1/sanitization/</code>. Each record there is structurally
+valid and comes with the issue text as <code>&lt;name&gt;.issue.txt</code>. A conforming summary validator
+MUST accept every record under <code>sanitization/accept/</code> and reject every record under
+<code>sanitization/reject/</code>, for the reason in its <code>.reason.txt</code>.</p>
+<p>Leaf-output vectors live under <code>vectors/v1/leaf-output/</code>: files named as §9 requires,
+under <code>accept/</code> and <code>reject/</code> with a <code>.reason.txt</code> each. A conforming driver MUST accept
+every file under <code>accept/</code> as that stage's output and refuse every file under <code>reject/</code>.</p>
+<p>Integrity vectors live under <code>vectors/v1/integrity/</code>. <code>test-key.txt</code> holds a key for
+tests only, as hexadecimal, with key ID <code>test-1</code>. A conforming driver MUST accept the
+record under <code>accept/</code> with its MAC file and MUST refuse every record under <code>reject/</code>,
+for the reason in its <code>.reason.txt</code>.</p>
+<p>Vectors are part of this version: changing, adding or removing one after v1 is stable is a
+spec change (ADR-0018).</p>
+<h2 id="open-questions">Open questions</h2>
+<ul>
+<li><strong>[OPEN]</strong> Whether <code>bug-record.json</code> becomes one of the files the bundle-format spec
+(#712) defines, or stays a document of its own next to the cycle bundles.</li>
+<li><strong>[OPEN]</strong> Whether the thresholds of §3 (five words, three digits, eight characters) are
+right for summaries, which are longer than ADR-0017's reasons and may reject useful
+descriptions more often.</li>
+<li><strong>[OPEN]</strong> Whether the <code>PDCA-FAILURE-AT:</code> marker should be replaced by the test runner's
+structured output (for example <code>cargo test</code>'s JSON) where one exists, to make <code>signature</code>
+less dependent on what the test chooses to print.</li>
+</ul>
+
+    </article>
+  </main>
+</div>
+
+<div class="wrap">
+  <footer>
+    <div class="foot-row">
+      <nav class="foot-links" aria-label="footer">
+        <a href="https://github.com/eduralph/pdca-harness">github</a>
+        <a href="/guide/">guide</a>
+        <a href="/spec/">spec</a>
+        <a href="/design/">design</a>
+        <a href="/governance/">governance</a>
+      </nav>
+      <div class="foot-meta">Apache-2.0 · Agentic AI · model agnostic</div>
+    </div>
+  </footer>
+</div>
+
+<!-- SCRIPTS: render_site.py injects the Mermaid include only on pages that
+     contain a diagram; empty otherwise. -->
+
+</body>
+</html>

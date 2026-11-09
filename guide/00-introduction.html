@@ -49,7 +49,7 @@
 <h1 id="introduction--why-the-pdca-harness-exists">Introduction — why the PDCA harness exists</h1>
 <p><a href="/guide/">Index</a> · next: <a href="/guide/01-render-and-integrate.html">01 Render &amp; integrate →</a></p>
 <p>Before the step-by-step, this page answers the <em>why</em>: the problem the harness
-solves, the benefits it delivers, the features that deliver them, and the
+solves, the benefits it delivers, the features behind them, and the
 vocabulary the rest of the walkthrough assumes. If you just want to run something,
 skip to <a href="/guide/01-render-and-integrate.html">step 01</a> — but five minutes here makes the
 rest land faster.</p>
@@ -105,16 +105,20 @@ as an explicit NEEDS-HUMAN item for a person to adjudicate. The gating path that
 decides &quot;can this be accepted?&quot; contains <strong>no LLM at all</strong> — it reads only
 deterministic gate results.</p>
 <p><strong>AI coding best practices, codified — not tribal knowledge.</strong> The harness bakes
-in discipline that's usually left to an individual's habits: implement against a
-written spec, not vibes (the brief); prove correctness with a test that's
-red-before/green-after, not a model's say-so; scope the builder's tools narrowly
-so it can edit and run tests but never merge or open a PR unsupervised
-(<a href="/guide/04-do.html">step 04</a>); decorrelate the reviewer from the builder — a different
-model family, no visibility into the builder's notes — so review isn't the same
-blind spot checking itself (<a href="/guide/05-check.html">step 05</a>); and ship every fix as a
-<em>draft</em> PR by default, so a human is always the one who makes it live
-(<a href="/guide/05-check.html#publishs-stop-discipline-and-batches">step 05</a>). None of it
-depends on a maintainer remembering to ask for it on any given contribution.</p>
+in discipline that's usually left to an individual's habits, so none of it
+depends on a maintainer remembering to ask for it on any given contribution:</p>
+<ul>
+<li>implement against a written spec (the brief), not vibes;</li>
+<li>prove correctness with a test that's red before the fix and green after, not
+a model's say-so;</li>
+<li>scope the builder's tools narrowly — it can edit, run tests and push a draft
+PR, but never mark a PR ready or merge it (<a href="/guide/04-do.html">step 04</a>);</li>
+<li>decorrelate the reviewer from the builder — a different model family, no
+visibility into the builder's notes — so review isn't the same blind spot
+checking itself (<a href="/guide/05-check.html">step 05</a>);</li>
+<li>ship every fix as a <em>draft</em> PR by default, so a human is always the one who
+makes it live (<a href="/guide/05-check.html#publishs-stop-discipline-and-batches">step 05</a>).</li>
+</ul>
 <p><strong>The process gets better over time.</strong> The <strong>Act</strong> beat turns recurring
 misses — something a maintainer caught at review that no gate owned — into
 permanent improvements: a new gate, a new brief field, a tightened rule. Each
@@ -124,8 +128,8 @@ two always-on review leaves and a builder escalation ladder — see
 <a href="/guide/06-act.html">step 06</a>.)</p>
 <p><strong>Scale without losing rigor.</strong> Because state lives in files (not a database), the
 driver is <strong>idempotent and resumable</strong>, and one Plan session can brief <em>several</em>
-issues that then build unattended and queue up for a fast, cheap-first sign-off
-burn-down. You review many contributions in one focused sitting.</p>
+issues that then build unattended and queue up for a fast sign-off burn-down,
+cheapest reviews first. You review many contributions in one focused sitting.</p>
 <p><strong>Cheap to adopt and cheap to learn.</strong> A full cycle can be <strong>rehearsed entirely
 offline</strong> — stub models, stub gates, no network — so you can prove the plumbing
 (and learn the state machine) before spending a single token. See

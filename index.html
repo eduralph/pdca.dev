@@ -40,13 +40,13 @@
   <div class="hero">
     <span class="status"><span class="dot" aria-hidden="true"></span>Iterating your way to a better process, one contribution at a time.</span>
     <hr class="thread-rule">
-    <h1>Keeping control of your AI-driven process</h1>
+    <h1>Verified AI contribution, one quality cycle at a time.</h1>
     <p class="lede">PDCA Harness turns each AI-driven contribution into one <strong>Plan → Do → Check → Act</strong> cycle. A deterministic driver does the work; a human stays at the three touch points that matter — authoring the spec, signing off the check, and improving the process.</p>
     <p class="pron"><strong>PDCA</strong> — Plan, Do, Check, Act: the improvement loop from quality control, applied one contribution at a time.</p>
   <div class="cta-row">
     <a class="btn primary" href="/guide/">Read the walkthrough <span class="arr" aria-hidden="true">→</span></a>
-    <a class="btn" href="/spec/">Read the model spec</a>
     <a class="btn" href="https://github.com/eduralph/pdca-harness">Get it on GitHub</a>
+    <a class="btn" href="/spec/">Read the model spec</a>
   </div>
   </div>
 </div>
@@ -56,7 +56,7 @@
     <p class="eyebrow">What it is</p>
     <h2>A prepared harness, not tribal knowledge.</h2>
     <p class="muted">An AI model can write a plausible fix for almost any issue in seconds — which is exactly the danger. A plausible diff is not a verified one, and at volume the maintainer becomes both the bottleneck and the only safety net. PDCA Harness funnels AI-generated contributions through a quality cycle so each one arrives scoped, proven, and ready to sign off.</p>
-    <p class="muted">Render the <a href="https://copier.readthedocs.io/">Copier</a> template into a new project, concretize it to your tracker / branches / gates once, and a deterministic driver advances every contribution through a file-derived state machine — stopping only where a human is irreducible.</p>
+    <p class="muted">Render the <a href="https://copier.readthedocs.io/">Copier</a> template into a new project, concretize it to your tracker, branches, and gates once, and a deterministic driver advances every contribution through a file-derived state machine — stopping only where a human is irreducible.</p>
   </section>
   <section>
     <p class="eyebrow">How it works</p>
@@ -77,27 +77,43 @@ ACT    ◆  every N cycles: recurring misses → new gates · rules · fields
 ◆  a beat with a human touch point — everything else is automated</pre>
     <ul class="props">
       <li><span class="term">Plan</span><span class="desc"><strong>Author the brief.</strong> A precise, field-structured spec every later beat is measured against. Human touch point #1.</span></li>
-      <li><span class="term">Do</span><span class="desc"><strong>Build against the spec.</strong> A headless builder writes the patch, a shipped test, and its rationale — and can't open a PR.</span></li>
-      <li><span class="term">Check</span><span class="desc"><strong>Verify it, then decide.</strong> Deterministic gates (red→green), a decorrelated reviewer, and a 5/5/1 verdict assembled into one SUMMARY. The human completes Check at sign-off — accept, iterate-do, iterate-plan, or discontinue; accept is refused while anything is unresolved — and an accepted bundle publishes as a draft PR the harness never marks ready. Human touch point #2.</span></li>
+      <li><span class="term">Do</span><span class="desc"><strong>Build against the spec.</strong> A headless builder writes the patch, a shipped test, and its rationale — and can't mark a PR ready or merge it.</span></li>
+      <li><span class="term">Check</span><span class="desc"><strong>Verify it, then decide.</strong> Deterministic gates (red→green), a decorrelated reviewer, and the irreducibly human judgments — folded into one SUMMARY with an explicit NEEDS-HUMAN checklist. The human completes Check at sign-off: accept, iterate (rebuild or re-spec), or discontinue — and accept is refused while anything is unresolved. An accepted bundle publishes as a <em>draft</em> PR the harness never marks ready. Human touch point #2.</span></li>
       <li><span class="term">Act</span><span class="desc"><strong>Improve the process.</strong> Across cycles, recurring misses become new gates, brief fields, and rules — a better baseline every time. Human touch point #3.</span></li>
-    </ul>
-  </section>
-  <section>
-    <p class="eyebrow">Key features</p>
-    <h2>Built for a backlog, not a single fix.</h2>
-    <ul class="props">
-      <li><span class="term">Parallel processing</span><span class="desc"><strong>Many issues at once.</strong> The unattended Do + Check band fans across a pool of lane workers, each with its own git worktree and <code>$PDCA_LANE</code> slot — while Plan, sign-off, and Act stay serial, so the human touch points never fork.</span></li>
-      <li><span class="term">Dependency resolution</span><span class="desc"><strong>Order computed, not hand-run.</strong> Declare <code>Depends on:</code> / <code>Conflicts with:</code> and the scheduler levels the batch deterministically — conflicting bundles split into different waves, and an unschedulable graph (a cycle, an unknown prereq) is rejected before any build.</span></li>
-      <li><span class="term">Dependency waves</span><span class="desc"><strong>A whole chain in one run.</strong> Each wave's accepted work is folded onto a run-scoped integration branch the next wave builds on, so a <em>B-needs-A</em> batch lands as a reviewable PR stack — push-only and fork-safe; the harness never merges for you. <code>pdca waves</code> previews the plan.</span></li>
-      <li><span class="term">Per-issue model selection</span><span class="desc"><strong>The right backend per fix.</strong> Route a bundle's builder by a brief field (<code>Difficulty: high</code> → a frontier model) or pin it explicitly (<code>Do model:</code> keeps a sensitive fix local). Issues in one wave can run on different models; a repeatedly-failing one escalates.</span></li>
-      <li><span class="term">Structured verification</span><span class="desc"><strong>Correctness, not vibes — the 5/5/1.</strong> Deterministic gates (a red→green proof, the <em>only</em> thing allowed to block — no LLM in the gating path), a decorrelated reviewer, and the irreducibly human judgments, assembled into one SUMMARY with an explicit NEEDS-HUMAN checklist.</span></li>
     </ul>
   </section>
   <section>
     <p class="eyebrow">Why it holds up</p>
     <h2>Correctness as the headline, not a vibe.</h2>
     <p class="muted">The one thing allowed to block a sign-off is a deterministic, LLM-free check: a test that is red before the fix and green after it. Everything a gate can't adjudicate — an ambiguous-scope lint, an environmental failure, the irreducibly human judgments — surfaces as an explicit checklist for a person, never silently passed or silently blocked.</p>
-    <p class="muted">State lives in files, so the driver is idempotent and resumable; one planning session can brief several issues that build unattended and queue for a fast, cheap-first sign-off. And a full cycle rehearses entirely offline — stub models, stub gates — so you can learn it and prove the plumbing before spending a token.</p>
+    <ul class="props">
+      <li><span class="term">No LLM in the gating path</span><span class="desc">Blocking a sign-off requires a deterministic red→green proof — not a model's say-so. The reviewer can't block on its own: what it can't settle goes on the human's NEEDS-HUMAN checklist.</span></li>
+      <li><span class="term">The builder can't ship</span><span class="desc">The Do leaf edits code, runs tests, and may push a draft PR — but it can never mark a PR ready or merge it.</span></li>
+      <li><span class="term">Draft PR by default</span><span class="desc">An accepted fix publishes as a <em>draft</em> — a human is always the one who marks it ready.</span></li>
+      <li><span class="term">Resumable by construction</span><span class="desc">State lives in files, not a database. A cycle pauses at a human touch point and resumes later, and one planning session can brief several issues that build unattended and queue for sign-off, cheapest reviews first.</span></li>
+      <li><span class="term">Provable before you spend</span><span class="desc">A full cycle rehearses entirely offline — stub models, stub gates, no network — so you can learn the state machine and prove the plumbing before a single token.</span></li>
+    </ul>
+  </section>
+  <section>
+    <p class="eyebrow">Key features</p>
+    <h2>Built for a backlog, not a single fix.</h2>
+    <ul class="props">
+      <li><span class="term">Parallel processing</span><span class="desc"><strong>Many issues at once.</strong> Do and Check run unattended across parallel lane workers — each with its own git worktree and <code>$PDCA_LANE</code> slot — while Plan, sign-off, and Act stay serial, so the human touch points never fork.</span></li>
+      <li><span class="term">Dependency resolution</span><span class="desc"><strong>Order computed, not hand-run.</strong> Declare <code>Depends on:</code> / <code>Conflicts with:</code> and the scheduler levels the batch deterministically — conflicting bundles split into different waves, and an unschedulable graph (a cycle, an unknown prereq) is rejected before any build.</span></li>
+      <li><span class="term">Dependency waves</span><span class="desc"><strong>A whole chain in one run.</strong> Each wave's accepted work lands on a run-scoped integration branch the next wave builds on, so a <em>B-needs-A</em> batch ships as a reviewable PR stack — the harness pushes, it never merges. <code>pdca waves</code> previews the plan.</span></li>
+      <li><span class="term">Per-issue model selection</span><span class="desc"><strong>The right backend per fix.</strong> Route a bundle's builder by a brief field (<code>Difficulty: high</code> → a frontier model) or pin it explicitly (<code>Do model:</code> keeps a sensitive fix local). Issues in one wave can run on different models; a repeatedly-failing one escalates.</span></li>
+      <li><span class="term">Structured verification</span><span class="desc"><strong>Three axes, one verdict.</strong> Correctness as a chain, conformance as a stack, validation as one indivisible judgment — with a red→green proof as the <em>only</em> thing allowed to block and the human judgments on an explicit NEEDS-HUMAN checklist.</span></li>
+    </ul>
+  </section>
+  <section>
+    <p class="eyebrow">See it for real</p>
+    <h2>A worked example, end to end.</h2>
+    <p class="muted">The <a href="/guide/">walkthrough</a> drives one real contribution end to end — a <code>Server:</code> response header for <a href="https://github.com/getwyrd/wyrd">Wyrd</a>, a distributed file storage system written in Rust: the actual brief, the actual patch, the gate table, the NEEDS-HUMAN checklist, an unattended iterate round, the stacked draft PR, and the Act review that traced a red gate row back to one line of configuration.</p>
+    <ul class="props">
+      <li><span class="term">The instance</span><span class="desc"><a href="https://github.com/getwyrd/wyrd-pdca">wyrd-pdca</a> — a project rendered from this template that contributes to Wyrd through its own <code>cargo xtask</code> gates.</span></li>
+      <li><span class="term">The shipped PR</span><span class="desc"><a href="https://github.com/getwyrd/wyrd/pull/886">wyrd#886</a> — the contribution above, published as a draft the harness never marked ready.</span></li>
+      <li><span class="term">The artifacts</span><span class="desc">The brief, patch, gate results, and signed SUMMARY for that cycle sit in the instance repo's <code>results/</code> — one folder per contribution.</span></li>
+    </ul>
   </section>
   <section>
     <p class="eyebrow">How it is built</p>
@@ -105,9 +121,13 @@ ACT    ◆  every N cycles: recurring misses → new gates · rules · fields
     <p class="muted">The harness keeps the four document classes it gives every rendered project: a living <a href="/design/architecture/">architecture overview</a>, append-only <a href="/design/adr/">decision records</a>, <a href="/design/proposals/">proposals</a> that move from draft to accepted, and <a href="/design/specs/">specifications</a> under change control — all in the repo, all published here. The project's <a href="/governance/">governance</a> and code of conduct sit beside them.</p>
   </section>
   <section>
-    <p class="eyebrow">See it for real</p>
-    <h2>A worked example, end to end.</h2>
-    <p class="name-note">The <a href="/guide/">walkthrough</a> drives one real contribution — a change to Wyrd, a distributed file storage system written in Rust — through every beat: the actual brief, the actual patch, the gate table, the §6 checklist, an unattended iterate round, the stacked draft PR, and the Act review that traced a red gate row back to one line of configuration. <span class="quote">Plan → Do → Check → Act, on a live codebase.</span></p>
+    <p class="eyebrow">Get started</p>
+    <h2>Render it, prove it offline, wire in your repo.</h2>
+    <pre class="cycle" aria-label="The PDCA cycle">copier copy gh:eduralph/pdca-harness my-pdca   # render the harness
+cd my-pdca &amp;&amp; make install                      # bootstrap the tools
+.venv/bin/pdca flow TOY --rehearse              # one full cycle — offline, zero tokens</pre>
+    <p class="muted">The rehearsal runs stub models and stub gates — no network, no tokens — so you can learn the state machine before a single real beat. If <code>make install</code> linked <code>pdca</code> onto your PATH, plain <code>pdca</code> works too. When it feels solid, <a href="/guide/01-render-and-integrate.html">step 01</a> wires it to your tracker, branches, and gates.</p>
+    <p class="name-note">Prefer to read first? <a href="/guide/">Start the walkthrough</a>.</p>
   </section>
 </div>
 
